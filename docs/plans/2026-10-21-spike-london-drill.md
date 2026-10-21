@@ -87,6 +87,31 @@ Nothing else in v1 changes.
   Chromebook run needs the school; it is the one bar this repo can't close
   alone.
 
+## Status, 2026-10-21 (Claude Code)
+
+Steps 1 to 6 built and running locally; step 7 not run. Run it:
+
+    cd spike && npm install && npm run model && npm start   # http://localhost:5180
+
+- **Maia encoding pinned** from the upstream source (`maia3/dataset.py`, `utils.py`,
+  `models.py`): see the header of `spike/maia.js`. Elo is raw, clamped 0 to 5000
+  and interpolated, so 600 to 1000 is accepted; whether it's believable there is
+  still Mitch's call. `node check-maia.mjs` passes. Sample: after 1.d4 d5 2.Bf4,
+  Maia at 900 plays ...Nc6 33%, ...Nf6 20%, ...e6 16%, ...Bf5 12%, ...f6 6%; at
+  1800 it shifts to ...Nf6 30%, ...e6 24%.
+- **Stockfish wrapper** (`spike/engine.js`): `node check-engine.mjs` passes (mate
+  found from both sides, score sign correct). Stockfish 19 scores are
+  win-probability normalized (100 = about 50% win chance), so a hung bishop reads
+  about 6.6, not 3. UI copy avoids "pawns".
+- **London tree** (`spike/london.js`): 25 lines, 64 White-to-move positions,
+  transpositions handled by position key. `node check-london.mjs`: every prep move
+  within 60 cp of Stockfish's best at 400 ms. **Needs Mitch's review.**
+- **Measured on Mitch's PC, Claude Code browser pane:** load to ready 1.2 to 1.5 s,
+  Maia 125 to 190 ms per move, Stockfish judgement about 600 ms (two 300 ms
+  searches), single-threaded. No console errors. Chromebook numbers still to come.
+- Design gate (design-lead) skipped on purpose: throwaway programmer-art page. The
+  design pass belongs to the real build.
+
 ## Not in the spike
 
 Spaced-repetition scheduling, the Caro-Kann, game import, review, puzzles,
