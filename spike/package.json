@@ -1,0 +1,16 @@
+{
+  "name": "off-book-spike",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "model": "curl -L --fail -o maia3-5m.fp16.onnx https://huggingface.co/bqrio/maia3-onnx/resolve/main/maia3-5m.fp16.onnx",
+    "start": "npx --yes serve -l 5180 ."
+  },
+  "dependencies": {
+    "chess.js": "1.4.0",
+    "chessground": "9.2.1",
+    "onnxruntime-web": "1.30.0",
+    "stockfish": "19.0.1"
+  }
+}

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Off Book spike</title>
+<!-- ponytail: throwaway spike, programmer art; design pass belongs to the real build -->
+<link rel="stylesheet" href="node_modules/chessground/assets/chessground.base.css">
+<link rel="stylesheet" href="node_modules/chessground/assets/chessground.brown.css">
+<link rel="stylesheet" href="node_modules/chessground/assets/chessground.cburnett.css">
+<style>
+  body { font: 16px/1.4 system-ui, sans-serif; margin: 16px; max-width: 980px; }
+  main { display: flex; gap: 24px; flex-wrap: wrap; }
+  #board { width: min(480px, 92vw); height: min(480px, 92vw); }
+  aside { flex: 1; min-width: 260px; }
+  #msg { min-height: 3em; font-weight: 600; }
+  .bar { height: 14px; background: #ddd; border-radius: 7px; overflow: hidden; }
+  .bar > div { height: 100%; background: #3a7d44; transition: width .3s; }
+  #levelup { color: #3a7d44; font-weight: 700; visibility: hidden; }
+  #timing { font: 12px/1.5 ui-monospace, monospace; background: #f4f4f4; padding: 8px; margin-top: 16px; white-space: pre-wrap; }
+  #maia, #moves { font-size: 14px; }
+  button { font-size: 16px; padding: 6px 14px; }
+</style>
+</head>
+<body>
+<h1>Off Book spike: London drill</h1>
+<main>
+  <div id="board"></div>
+  <aside>
+    <p id="msg">Loading engines…</p>
+    <p>Line level <b id="level">1</b> <span id="levelup">Level up!</span></p>
+    <div class="bar"><div id="fill" style="width:0%"></div></div>
+    <p><label>Opponent rating <b id="ratingOut">1000</b><br>
+      <input id="rating" type="range" min="600" max="1800" step="100" value="1000"></label></p>
+    <p><button id="next" disabled>New round</button></p>
+    <p id="maia"></p>
+    <p id="moves"></p>
+    <div id="timing"></div>
+  </aside>
+</main>
+<script type="importmap">
+{ "imports": {
+  "chess.js": "./node_modules/chess.js/dist/esm/chess.js",
+  "chessground": "./node_modules/chessground/dist/chessground.js",
+  "onnxruntime-web": "./node_modules/onnxruntime-web/dist/ort.wasm.bundle.min.mjs"
+} }
+</script>
+<script type="module">
+import { Chess } from 'chess.js';
+import { Chessground } from 'chessground';
+import * as ort from 'onnxruntime-web';
+import { maiaMoves, sample } from './maia.js';
+import { createEngine } from './engine.js';
+import { buildTree, posKey } from './london.js';
+
+const $ = (id) => document.getElementById(id);
+const PER_LEVEL = 10;
+const times = { load: null, maia: [], sf: [] };
+const tree = buildTree(Chess);
+let correct = 0;
+try { correct = +localStorage.getItem('offbook.correct') || 0; } catch {}
+
+// Engines
+ort.env.wasm.numThreads = 1;
+ort.env.wasm.wasmPaths = new URL('./node_modules/onnxruntime-web/dist/', location.href).href;
+const worker = new Worker('./node_modules/stockfish/bin/stockfish-19-lite-single.js');
+const engine = createEngine((cmd) => worker.postMessage(cmd));
+worker.onmessage = (e) => engine.onLine(String(e.data));
+const [session] = await Promise.all([
+  ort.InferenceSession.create('./maia3-5m.fp16.onnx', { graphOptimizationLevel: 'basic', executionProviders: ['wasm'] }),
+  engine.ready(),
+]);
+times.load = performance.now();
+
+let chess, missed;
+const ground = Chessground($('board'), { orientation: 'white', movable: { free: false, color: 'white', events: { after: onUserMove } } });
+
+function dests() {
+  const d = new Map();
+  for (const m of chess.moves({ verbose: true })) d.set(m.from, [...(d.get(m.from) ?? []), m.to]);
+  return d;
+}
+function sync(extra = {}) {
+  ground.set({ fen: chess.fen(), turnColor: chess.turn() === 'w' ? 'white' : 'black', lastMove: lastMove(),
+    movable: { color: 'white', dests: chess.turn() === 'w' ? dests() : new Map() }, ...extra });
+  $('moves').textContent = chess.history().map((s, i) => (i % 2 ? '' : `${i / 2 + 1}. `) + s).join(' ');
+}
+function lastMove() { const h = chess.history({ verbose: true }).at(-1); return h ? [h.from, h.to] : undefined; }
+const say = (t) => { $('msg').textContent = t; };
+const rating = () => +$('rating').value;
+
+function renderLevel(levelled) {
+  $('level').textContent = Math.floor(correct / PER_LEVEL) + 1;
+  $('fill').style.width = `${(correct % PER_LEVEL) * 100 / PER_LEVEL}%`;
+  $('levelup').style.visibility = levelled ? 'visible' : 'hidden';
+  try { localStorage.setItem('offbook.correct', correct); } catch {}
+}
+function renderTiming() {
+  const avg = (a) => a.length ? `${Math.round(a.reduce((s, x) => s + x, 0) / a.length)} ms avg, ${Math.round(Math.max(...a))} ms max (${a.length})` : '-';
+  $('timing').textContent = `load to ready: ${Math.round(times.load)} ms\nmaia per move: ${avg(times.maia)}\nstockfish per judgement: ${avg(times.sf)}\nthreads: ${crossOriginIsolated ? 'isolated' : 'single'}\n${navigator.userAgent}`;
+}
+async function timed(list, p) { const t = performance.now(); const r = await p; list.push(performance.now() - t); renderTiming(); return r; }
+
+function newRound() {
+  chess = new Chess(); missed = false;
+  $('maia').textContent = ''; $('levelup').style.visibility = 'hidden';
+  sync({ drawable: { autoShapes: [] } });
+  say('Your move. Play your London.');
+}
+
+async function onUserMove(orig, dest) {
+  const before = chess.fen();
+  const prep = tree.get(posKey(before));
+  const played = chess.move({ from: orig, to: dest, promotion: 'q' });
+  if (played.san === prep.san) {
+    let levelled = false;
+    if (!missed) { correct++; levelled = correct % PER_LEVEL === 0; }
+    missed = false;
+    renderLevel(levelled);
+    sync({ drawable: { autoShapes: [] } });
+    say(`${played.san}: that's your prep.`);
+    return blackReply();
+  }
+  // Not prep: Stockfish compares it with the prep move, then the student retries.
+  ground.set({ movable: { dests: new Map() } });
+  say('Checking with Stockfish…');
+  const prepFen = new Chess(before); prepFen.move(prep.san);
+  const [a, b] = await timed(times.sf, Promise.all([engine.evaluate(prepFen.fen(), 300), engine.evaluate(chess.fen(), 300)]));
+  const loss = a.cp - b.cp;
+  chess.undo(); missed = true;
+  sync({ drawable: { autoShapes: [{ orig: prep.uci.slice(0, 2), dest: prep.uci.slice(2, 4), brush: 'green' }] } });
+  say(loss < 50
+    ? `${played.san} is playable, but not your prep. Your move is ${prep.san}. Try again.`
+    : `${played.san} is a mistake (Stockfish scores it ${(loss / 100).toFixed(1)} lower than your prep). Your prep is ${prep.san}. Try again.`);
+}
+
+async function blackReply() {
+  const moves = await timed(times.maia, maiaMoves(ort, session, chess, rating(), rating()));
+  const pick = sample(moves);
+  await new Promise((r) => setTimeout(r, 350));
+  chess.move(pick.san);
+  const pct = (m) => `${m.san} ${Math.round(m.p * 100)}%`;
+  $('maia').textContent = `Maia at ${rating()}: played ${pct(pick)}. Top choices here: ${moves.slice(0, 4).map(pct).join(', ')}.`;
+  if (tree.has(posKey(chess.fen()))) { sync(); say(`Black played ${pick.san}. Your move.`); return; }
+  sync({ movable: { color: 'white', dests: new Map() } });
+  say(`Black played ${pick.san}. Your prep ends here. Asking Stockfish…`);
+  const r = await timed(times.sf, engine.evaluate(chess.fen(), 800));
+  const sug = new Chess(chess.fen()).move({ from: r.best.slice(0, 2), to: r.best.slice(2, 4), promotion: r.best[4] });
+  ground.setAutoShapes([{ orig: sug.from, dest: sug.to, brush: 'blue' }]);
+  say(`Black played ${pick.san}. Your prep ends here. Stockfish suggests ${sug.san} (looked ${r.depth} moves deep, ${r.nodes.toLocaleString()} positions).`);
+  $('next').disabled = false;
+}
+
+$('rating').oninput = () => { $('ratingOut').textContent = rating(); };
+$('next').onclick = newRound;
+renderLevel(false); renderTiming(); newRound();
+</script>
+</body>
+</html>
