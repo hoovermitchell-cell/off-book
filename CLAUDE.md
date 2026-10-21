@@ -1,4 +1,4 @@
-# chess-trainer
+# Off Book
 
 This file is the Claude Code project loader shim. Keep it paired with `AGENTS.md`,
 which carries the operating manual, the autonomous-loop kickoff, and the autonomy

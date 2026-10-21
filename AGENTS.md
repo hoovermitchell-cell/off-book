@@ -1,4 +1,4 @@
-# chess-trainer — operating manual
+# Off Book — operating manual
 
 A browser chess trainer for a middle and high school chess program, useful to
 any adult improver too. The core loop: learn an opening, play it in real games,

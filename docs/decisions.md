@@ -29,6 +29,7 @@ for my own personal growth."
 | 8 | v1 cut | Approved as listed below. Openings: London System for White, Caro-Kann for Black. |
 | 8b | Own-game puzzles | "Own-game puzzles are later; v1 puzzles are the opening filter only." |
 | 9 | First spike | "Combined spike: one London line, Maia likely-replies + Stockfish judge, level meter, run on a school Chromebook with those pass bars." Plan: [plans/2026-10-21-spike-london-drill.md](plans/2026-10-21-spike-london-drill.md). |
+| 10 | Name | "Off Book. Repo slug off-book." GitHub search found no chess projects with that name; trademark and app-store check still to do before going public. |
 
 ## v1 scope
 
@@ -74,7 +75,6 @@ for my own personal growth."
 
 - Whether solving opening-linked puzzles also levels up the line (raise when the
   collection screen is designed)
-- The project's real name
 - School facts: club or class, size, grades, devices, existing accounts, access
   to a Chromebook for the spike
 - Whether any stored data (later sync code) needs an NC DPI data agreement; ask

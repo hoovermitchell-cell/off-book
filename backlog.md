@@ -11,8 +11,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 ## Needs shaping
 
 - Combined spike: one London line, Maia likely replies, Stockfish judge, level meter. Shaped in `docs/plans/2026-10-21-spike-london-drill.md`; promote to Ready to run it unattended
-- Pick the project's real name (working name `chess-trainer`)
-- Publish as a public GitHub repo with an AGPL-3.0 LICENSE file and a source link in the app footer
+- Check "Off Book" for trademark and app-store conflicts, then publish as public GitHub repo `off-book` with an AGPL-3.0 LICENSE file and a source link in the app footer
 - Ask the school: club size, grades, devices, which students have Lichess/Chess.com accounts, and whether a school Chromebook can be borrowed for the spike
 - Set up CI (test + lint) so the loop has a green-gate to enforce
 - Define this project's "done" gate beyond green CI, if any
