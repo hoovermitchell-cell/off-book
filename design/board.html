@@ -1,0 +1,152 @@
+<!doctype html>
+<!--
+  PROOF-ONLY CDN LOADS. This page pulls chessground 9.2.1 and chess.js 1.4.0
+  from a third-party CDN so the board theme can be reviewed without a build.
+  Fonts are self-hosted via tokens.css. The app self-hosts everything: DESIGN.md
+  quality floor, "No third-party calls. Fonts, pieces and assets are self-hosted."
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Off Book board</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.base.css">
+<link rel="stylesheet" href="board.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 var(--text-md)/1.5 var(--font-ui); }
+  main { max-width: 640px; margin: 0 auto; padding: var(--space-8) var(--space-4); }
+  h1 { font-size: var(--text-xl); margin: 0 0 var(--space-4); }
+
+  /* Chessground sizes itself to this box. */
+  #board { width: min(560px, 100%); aspect-ratio: 1; margin: 0 auto; }
+
+  .row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-top: var(--space-4); }
+  button { font: 600 var(--text-md) var(--font-ui); min-height: var(--target-min); padding: 0 var(--space-4); border-radius: var(--radius); cursor: pointer;
+    background: var(--pen); color: var(--paper); border: 1px solid var(--pen); }
+  button.quiet { background: transparent; color: var(--pen); }
+  button:focus-visible { outline: 3px solid var(--pen); outline-offset: 2px; }
+
+  #announce { margin: var(--space-4) 0 0; min-height: var(--rule-height); border-bottom: 1px solid var(--rule); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Off Book board</h1>
+  <div id="board"></div>
+  <div class="row">
+    <button type="button" id="flip">Flip board</button>
+    <button type="button" id="reset" class="quiet">Reset</button>
+  </div>
+  <p id="announce" aria-live="polite" role="status"></p>
+</main>
+
+<script type="module">
+  import { Chessground } from "https://cdn.jsdelivr.net/npm/chessground@9.2.1/dist/chessground.js";
+  import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/dist/esm/chess.js";
+
+  const START_MOVES = ["d4", "d5", "Bf4", "Nf6", "e3", "e6", "Nf3", "c5", "c3", "Nc6"];
+  const NAMES = { p: "pawn", n: "knight", b: "bishop", r: "rook", q: "queen", k: "king" };
+  const COLORS = { w: "White", b: "Black" };
+
+  const announce = document.getElementById("announce");
+  const say = (text) => { announce.textContent = text; };
+
+  // Piece slide time comes from --dur-piece (150ms; 0 under reduced motion).
+  // chessground wants milliseconds, so read the token instead of copying it.
+  const durPiece = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dur-piece")) || 0;
+
+  let game;
+
+  function startGame() {
+    game = new Chess();
+    let last;
+    for (const san of START_MOVES) last = game.move(san);
+    return last;
+  }
+
+  function dests() {
+    const map = new Map();
+    for (const m of game.moves({ verbose: true })) {
+      if (!map.has(m.from)) map.set(m.from, []);
+      map.get(m.from).push(m.to);
+    }
+    return map;
+  }
+
+  function sync(lastMove) {
+    const turn = game.turn() === "w" ? "white" : "black";
+    cg.set({
+      fen: game.fen(),
+      turnColor: turn,
+      check: game.inCheck(),
+      lastMove: lastMove ? [lastMove.from, lastMove.to] : undefined,
+      movable: { color: game.isGameOver() ? undefined : turn, dests: dests() },
+    });
+  }
+
+  function describe(m) {
+    const who = `${COLORS[m.color]} ${NAMES[m.piece]}`;
+    let text;
+    if (m.flags.includes("k")) text = `${COLORS[m.color]} castles kingside`;
+    else if (m.flags.includes("q")) text = `${COLORS[m.color]} castles queenside`;
+    else if (m.captured) text = `${who} from ${m.from} captures ${NAMES[m.captured]} on ${m.to}`;
+    else text = `${who} from ${m.from} to ${m.to}`;
+    if (m.promotion) text += `, promotes to ${NAMES[m.promotion]}`;
+    return text;
+  }
+
+  function status() {
+    const side = game.turn() === "w" ? "White" : "Black";
+    if (game.isCheckmate()) return `Checkmate. ${side === "White" ? "Black" : "White"} wins.`;
+    if (game.isDraw()) return "Draw.";
+    return game.inCheck() ? `${side} is in check.` : `${side} to move.`;
+  }
+
+  const first = startGame();
+  const cg = Chessground(document.getElementById("board"), {
+    fen: game.fen(),
+    orientation: "white",
+    turnColor: "white",
+    lastMove: [first.from, first.to],
+    coordinates: true,
+    animation: { enabled: durPiece > 0, duration: durPiece },
+    highlight: { lastMove: true, check: true },
+    draggable: { showGhost: true },
+    movable: {
+      free: false,
+      color: "white",
+      dests: dests(),
+      showDests: true,
+      events: {
+        after(from, to) {
+          // Auto-promote to a queen; chess.js rejects illegal moves outright.
+          const m = game.move({ from, to, promotion: "q" });
+          if (!m) { sync(); return; }
+          sync(m);
+          say(`${describe(m)}. ${status()}`);
+        },
+      },
+    },
+    premovable: { enabled: false },
+  });
+  sync(first);
+  say(`Position loaded after 5 moves. ${status()}`);
+
+  document.getElementById("flip").addEventListener("click", () => {
+    cg.toggleOrientation();
+    say(`Board flipped. ${cg.state.orientation === "white" ? "White" : "Black"} is at the bottom.`);
+  });
+
+  document.getElementById("reset").addEventListener("click", () => {
+    const m = startGame();
+    sync(m);
+    say(`Position reset. ${status()}`);
+  });
+
+  window.cg = cg; // for manual poking in devtools
+  window.getGame = () => game;
+</script>
+</body>
+</html>

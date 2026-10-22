@@ -5,6 +5,8 @@ any adult improver too. The core loop: learn an opening, play it in real games,
 review how it held up. Every product decision so far is in
 [docs/decisions.md](docs/decisions.md); read it before building anything.
 Research behind those decisions: [docs/research/](docs/research/).
+Visual and interface canon: [DESIGN.md](DESIGN.md), tokens in
+[design/tokens.css](design/tokens.css). Read it before building any UI.
 
 ## Hard constraints (from decisions.md)
 

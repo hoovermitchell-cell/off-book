@@ -1,0 +1,462 @@
+{
+  "measurement": "Visible alpha >=128; height fill = bounding-box height / 1024. Baseline is last occupied pixel row, zero-based; bbox right/bottom exclusive.",
+  "processing": "Independent full-canvas generations; transparent margin trimmed, uniformly downscaled with Lanczos, centered and aligned. Generated RGBA preserved; no sheet extraction, recoloring, painting, or silhouette redrawing. Runtime WebP lossless; exact decoded RGBA round trip checked.",
+  "check_sheet": {
+    "path": "check-44.png",
+    "size": [
+      512,
+      320
+    ],
+    "sprite_size": [
+      44,
+      44
+    ],
+    "input": "decoded 256px runtime WebP"
+  },
+  "pieces": [
+    {
+      "piece": "wK",
+      "master": "master/wK.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "wK.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        219,
+        93,
+        804,
+        963
+      ],
+      "height_px": 870,
+      "height_fill_percent": 84.9609,
+      "width_px": 585,
+      "width_fill_percent": 57.1289,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 511.5,
+      "all_alpha_bbox_ltrb_exclusive": [
+        216,
+        90,
+        807,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-75066b91-1b05-4fd5-b531-1d101bb945c5.png"
+    },
+    {
+      "piece": "wQ",
+      "master": "master/wQ.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "wQ.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        229,
+        113,
+        796,
+        963
+      ],
+      "height_px": 850,
+      "height_fill_percent": 83.0078,
+      "width_px": 567,
+      "width_fill_percent": 55.3711,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 512.5,
+      "all_alpha_bbox_ltrb_exclusive": [
+        226,
+        110,
+        799,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-7a62f436-0966-42f9-acc5-b4aa87ed6b47.png"
+    },
+    {
+      "piece": "wR",
+      "master": "master/wR.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "wR.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        231,
+        164,
+        793,
+        963
+      ],
+      "height_px": 799,
+      "height_fill_percent": 78.0273,
+      "width_px": 562,
+      "width_fill_percent": 54.8828,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 512.0,
+      "all_alpha_bbox_ltrb_exclusive": [
+        228,
+        161,
+        796,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-36e64ae5-d3b8-4807-8a9c-448ad30bc999.png"
+    },
+    {
+      "piece": "wB",
+      "master": "master/wB.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "wB.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        232,
+        144,
+        792,
+        963
+      ],
+      "height_px": 819,
+      "height_fill_percent": 79.9805,
+      "width_px": 560,
+      "width_fill_percent": 54.6875,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 512.0,
+      "all_alpha_bbox_ltrb_exclusive": [
+        229,
+        141,
+        795,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-b9393bf2-3c88-4b04-af82-85aeed05391c.png"
+    },
+    {
+      "piece": "wN",
+      "master": "master/wN.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "wN.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        197,
+        155,
+        828,
+        963
+      ],
+      "height_px": 808,
+      "height_fill_percent": 78.9062,
+      "width_px": 631,
+      "width_fill_percent": 61.6211,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 512.5,
+      "all_alpha_bbox_ltrb_exclusive": [
+        194,
+        152,
+        831,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-f285b7d7-727e-4817-89a7-c84db8c100ad.png"
+    },
+    {
+      "piece": "wP",
+      "master": "master/wP.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "wP.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        228,
+        236,
+        796,
+        963
+      ],
+      "height_px": 727,
+      "height_fill_percent": 70.9961,
+      "width_px": 568,
+      "width_fill_percent": 55.4688,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 512.0,
+      "all_alpha_bbox_ltrb_exclusive": [
+        225,
+        233,
+        799,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-f8039719-4104-4f4a-be34-3d08d8b60dd1.png"
+    },
+    {
+      "piece": "bK",
+      "master": "master/bK.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "bK.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        224,
+        93,
+        800,
+        963
+      ],
+      "height_px": 870,
+      "height_fill_percent": 84.9609,
+      "width_px": 576,
+      "width_fill_percent": 56.25,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 512.0,
+      "all_alpha_bbox_ltrb_exclusive": [
+        221,
+        90,
+        803,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-3e65d64a-ec6d-49fa-afec-fd28992383d8.png"
+    },
+    {
+      "piece": "bQ",
+      "master": "master/bQ.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "bQ.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        227,
+        113,
+        798,
+        963
+      ],
+      "height_px": 850,
+      "height_fill_percent": 83.0078,
+      "width_px": 571,
+      "width_fill_percent": 55.7617,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 512.5,
+      "all_alpha_bbox_ltrb_exclusive": [
+        225,
+        110,
+        801,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-0b89f34e-ad93-4798-a108-1d07a5a12b45.png"
+    },
+    {
+      "piece": "bR",
+      "master": "master/bR.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "bR.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        221,
+        164,
+        804,
+        963
+      ],
+      "height_px": 799,
+      "height_fill_percent": 78.0273,
+      "width_px": 583,
+      "width_fill_percent": 56.9336,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 512.5,
+      "all_alpha_bbox_ltrb_exclusive": [
+        218,
+        161,
+        807,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-07b9eb9d-3ad1-4396-894f-b12b5b051d62.png"
+    },
+    {
+      "piece": "bB",
+      "master": "master/bB.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "bB.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        231,
+        144,
+        794,
+        963
+      ],
+      "height_px": 819,
+      "height_fill_percent": 79.9805,
+      "width_px": 563,
+      "width_fill_percent": 54.9805,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 512.5,
+      "all_alpha_bbox_ltrb_exclusive": [
+        229,
+        141,
+        796,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-c4991879-a964-4902-af11-f4d26b6749a8.png"
+    },
+    {
+      "piece": "bN",
+      "master": "master/bN.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "bN.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        191,
+        154,
+        832,
+        963
+      ],
+      "height_px": 809,
+      "height_fill_percent": 79.0039,
+      "width_px": 641,
+      "width_fill_percent": 62.5977,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 511.5,
+      "all_alpha_bbox_ltrb_exclusive": [
+        188,
+        151,
+        835,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-e26a3aab-b9b3-4cbb-9782-d23181f2d0ec.png"
+    },
+    {
+      "piece": "bP",
+      "master": "master/bP.png",
+      "master_size": [
+        1024,
+        1024
+      ],
+      "runtime": "bP.webp",
+      "runtime_size": [
+        256,
+        256
+      ],
+      "visible_bbox_ltrb_exclusive": [
+        249,
+        236,
+        775,
+        963
+      ],
+      "height_px": 727,
+      "height_fill_percent": 70.9961,
+      "width_px": 526,
+      "width_fill_percent": 51.3672,
+      "baseline_last_pixel_y": 962,
+      "baseline_percent": 93.9453,
+      "horizontal_center_x": 512.0,
+      "all_alpha_bbox_ltrb_exclusive": [
+        246,
+        233,
+        778,
+        966
+      ],
+      "generated_source_size": [
+        1254,
+        1254
+      ],
+      "generated_source": "C:\\Users\\hoove\\.codex\\generated_images\\01a1610a-e706-7a83-8513-4a54b349ac0b\\exec-254d4d19-7dd8-4858-879b-0f0425a58136.png"
+    }
+  ]
+}

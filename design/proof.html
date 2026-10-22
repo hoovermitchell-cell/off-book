@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Off Book proof</title>
+<link rel="icon" href="brand/off-the-page/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="brand/off-the-page/favicon-svg-32.png" sizes="32x32">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: var(--text-md)/1.5 var(--font-ui); }
+  main { max-width: 1100px; margin: 0 auto; padding: var(--space-8) var(--space-4); display: grid; gap: var(--space-8); }
+  h1 { font-size: var(--text-2xl); margin: 0; }
+  h2 { font-size: var(--text-lg); margin: 0 0 var(--space-3); padding-bottom: var(--space-1); border-bottom: 1px solid var(--rule); }
+  p { margin: 0; max-width: 65ch; }
+  .soft { color: var(--ink-soft); font-size: var(--text-sm); }
+  section { display: grid; gap: var(--space-3); }
+
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3); }
+  .sw { display: grid; gap: var(--space-1); font-size: var(--text-sm); }
+  .sw i { display: block; height: 48px; border-radius: var(--radius); border: 1px solid var(--rule); }
+
+  .drill { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+  @media (max-width: 760px) { .drill { grid-template-columns: 1fr; } }
+
+  .board { display: grid; grid-template-columns: repeat(8, 56px); grid-auto-rows: 56px; width: max-content; }
+  .sq { display: grid; place-items: center; font-size: 40px; line-height: 1; background: var(--board-light); position: relative; }
+  .sq.d { background: var(--board-dark); }
+  .sq.hl::before { content: ""; position: absolute; inset: 0; background: var(--board-highlight); box-shadow: inset 0 0 0 3px var(--board-ring); }
+  .board.small { grid-template-columns: repeat(8, 44px); grid-auto-rows: 44px; }
+  .sq i { position: absolute; inset: 0; background: center / 100% no-repeat; }
+  .compare { display: flex; flex-wrap: wrap; gap: var(--space-6); }
+  .compare figure { margin: 0; display: grid; gap: var(--space-2); }
+  .compare figcaption { font-size: var(--text-sm); color: var(--ink-soft); }
+  label { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--target-min); }
+
+  .sheet { background: var(--paper-sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: var(--space-4); display: grid; gap: var(--space-4); }
+  ol.moves { list-style: none; margin: 0; padding: 0; font: var(--text-md)/var(--rule-height) var(--font-notation);
+    background: repeating-linear-gradient(transparent 0 calc(var(--rule-height) - 1px), var(--rule) calc(var(--rule-height) - 1px) var(--rule-height));
+    font-variant-numeric: tabular-nums; }
+  ol.moves li { display: grid; grid-template-columns: 3ch 9ch 9ch; }
+  .n { color: var(--ink-soft); }
+  .book { background: var(--highlighter); padding: 0 2px; }
+
+  .feedback { display: grid; gap: var(--space-2); }
+  .fb { display: grid; grid-template-columns: 4ch minmax(0, 1fr) auto; gap: var(--space-3); align-items: baseline; }
+  .fb b { font: 600 var(--text-lg) var(--font-notation); }
+  .fb .num { font: var(--text-sm) var(--font-notation); color: var(--ink-soft); }
+  .good { color: var(--mark-good); } .dubious { color: var(--mark-dubious); }
+  .mistake { color: var(--mark-mistake); } .blunder { color: var(--mark-blunder); }
+
+  .scale { display: grid; gap: var(--space-2); }
+  .hands { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-4); }
+  .hand { margin: 0; gap: var(--space-2); align-content: start; }
+  .hand .note { font: var(--hand-size) / 1.3 var(--hand), cursive; color: var(--pen); }
+
+  button { font: 600 var(--text-md) var(--font-ui); min-height: var(--target-min); padding: 0 var(--space-4); border-radius: var(--radius); cursor: pointer;
+    background: var(--pen); color: var(--paper); border: 1px solid var(--pen); }
+  button.quiet { background: transparent; color: var(--pen); }
+  button:focus-visible { outline: 3px solid var(--pen); outline-offset: 2px; }
+  .row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+
+  h3 { font-size: var(--text-lg); margin: 0; }
+
+  .binder { display: grid; max-width: 720px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); padding-left: var(--space-4); }
+  .tab { background: var(--rule); color: var(--ink); border: 1px solid var(--rule); border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0;
+    font-weight: 600; min-height: var(--target-min); padding: 0 var(--space-4); }
+  .tab[aria-selected="true"] { background: var(--paper-sheet); position: relative; top: 1px; }
+  .tabpanel { border-radius: 0 var(--radius) var(--radius) var(--radius); }
+
+  .line-card { display: grid; gap: var(--space-3); }
+  .line-head { display: flex; justify-content: space-between; align-items: start; gap: var(--space-4); }
+  .badge-level { font: 700 var(--text-sm) var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mark-good);
+    border: 2px solid currentColor; border-radius: var(--radius); padding: 2px var(--space-2); transform: rotate(-4deg); white-space: nowrap; }
+  .meter { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .tally svg { display: block; }
+  .record { display: flex; flex-wrap: wrap; gap: var(--space-6); margin: 0; }
+  .record div { display: grid; }
+  .record dt { font-size: var(--text-xs); color: var(--ink-soft); letter-spacing: 0.04em; text-transform: uppercase; }
+  .record dd { margin: 0; font: 600 var(--text-xl) var(--font-notation); font-variant-numeric: tabular-nums; }
+
+  .parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-6); align-items: start; }
+  .panel { gap: var(--space-3); }
+  .evals { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .evals td { padding: var(--space-1) var(--space-2) var(--space-1) 0; border-bottom: 1px solid var(--rule); }
+  .evals .mv, .evals .cp { font-family: var(--font-notation); white-space: nowrap; }
+  .evals .book { white-space: nowrap; }
+  .evals .cp { text-align: right; }
+  .bar { display: block; width: 96px; height: 10px; background: var(--ink); border: 1px solid var(--ink); border-radius: 2px;
+    background-image: linear-gradient(90deg, var(--paper-sheet) var(--w), transparent var(--w)); }
+  .empty { gap: var(--space-3); }
+  .toast { justify-self: start; background: var(--ink); color: var(--paper); padding: var(--space-3) var(--space-4); border-radius: var(--radius); font-weight: 600; }
+
+  .stampbox { min-height: 96px; display: grid; place-items: start; }
+  .brands { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+  .brands figure { margin: 0; display: grid; gap: var(--space-3); justify-items: start; }
+  .brands figcaption { font-size: var(--text-sm); color: var(--ink-soft); }
+  .favs { display: flex; gap: var(--space-3); align-items: end; }
+  .lockup { display: flex; align-items: center; gap: var(--space-2); font: 700 var(--text-xl) var(--font-ui); }
+
+  /* Rubber stamp: live type, inked with the generated frame and grain. CSS masks only load over
+     http(s); opened from disk the stamp disappears. Serve design/ to view it. */
+  .stamp { position: relative; font: 700 var(--text-xl) var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mark-good);
+    padding: var(--space-3) var(--space-6); transform: rotate(-4deg);
+    -webkit-mask: url(brand/stamp/stamp-texture.png) center / 400px auto; mask: url(brand/stamp/stamp-texture.png) center / 400px auto; }
+  .stamp::before { content: ""; position: absolute; inset: 0; background: currentColor;
+    -webkit-mask: url(brand/stamp/stamp-frame.png) center / 100% 100% no-repeat; mask: url(brand/stamp/stamp-frame.png) center / 100% 100% no-repeat; }
+  .stamp small { display: block; font-size: var(--text-xs); letter-spacing: 0.04em; }
+  .stamp.go { animation: stamp var(--dur-stamp) var(--ease-stamp); }
+  @keyframes stamp { from { transform: rotate(-4deg) scale(1.6); opacity: 0; } to { transform: rotate(-4deg) scale(1); opacity: 1; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Off Book proof</h1>
+    <p class="soft">Proposed values for DESIGN.md. Pick a piece material and a hand face, and flag anything that looks wrong.</p>
+  </header>
+
+  <section aria-labelledby="h-pieces">
+    <h2 id="h-pieces">Pieces: pick one material</h2>
+    <p class="soft">Each board is at 44px squares, the smallest the quality floor allows. The drill board below switches sets at 56px.</p>
+    <div class="compare">
+      <figure><div class="board small" data-set="plastic"></div><figcaption>Tournament plastic</figcaption></figure>
+      <figure><div class="board small" data-set="wood"></div><figcaption>Boxwood and ebony</figcaption></figure>
+      <figure><div class="board small" data-set="stylized"></div><figcaption>Stylized</figcaption></figure>
+    </div>
+    <p class="soft">Round 2, seen from above at about 55 degrees, like chess.com's 3D sets.</p>
+    <div class="compare">
+      <figure><div class="board small" data-set="plastic-top"></div><figcaption>Tournament plastic, top-down</figcaption></figure>
+      <figure><div class="board small" data-set="wood-top"></div><figcaption>Boxwood and ebony, top-down</figcaption></figure>
+      <figure><div class="board small" data-set="stylized-top"></div><figcaption>Stylized, top-down</figcaption></figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-logo">
+    <h2 id="h-logo">Logo: pick one direction</h2>
+    <p class="soft">Home-screen icon, favicon at real size (32 and 16), and the mark beside the typeset name.</p>
+    <div class="brands">
+      <figure>
+        <img src="brand/tab/icon-512.png" width="96" height="96" alt="">
+        <div class="favs"><img src="brand/tab/favicon-32.png" width="32" height="32" alt=""><img src="brand/tab/favicon-32.png" width="16" height="16" alt=""></div>
+        <div class="lockup"><img src="brand/tab/mark.png" width="44" height="44" alt=""><span>Off Book</span></div>
+        <figcaption>Index tab</figcaption>
+      </figure>
+      <figure>
+        <img src="brand/highlighted-knight/icon-512.png" width="96" height="96" alt="">
+        <div class="favs"><img src="brand/highlighted-knight/favicon-32.png" width="32" height="32" alt=""><img src="brand/highlighted-knight/favicon-32.png" width="16" height="16" alt=""></div>
+        <div class="lockup"><img src="brand/highlighted-knight/mark.png" width="44" height="44" alt=""><span>Off Book</span></div>
+        <figcaption>Highlighted knight</figcaption>
+      </figure>
+      <figure>
+        <img src="brand/off-the-page/icon-512.png" width="96" height="96" alt="">
+        <div class="favs"><img src="brand/off-the-page/favicon-32.png" width="32" height="32" alt=""><img src="brand/off-the-page/favicon-32.png" width="16" height="16" alt=""><span class="soft">generated</span></div>
+        <div class="favs"><img src="brand/off-the-page/favicon.svg" width="32" height="32" alt=""><img src="brand/off-the-page/favicon.svg" width="16" height="16" alt=""><span class="soft">simplified</span></div>
+        <div class="lockup"><img src="brand/off-the-page/mark.png" width="44" height="44" alt=""><span>Off Book</span></div>
+        <figcaption>Off the page (chosen)</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-drill">
+    <h2 id="h-drill">A drill, mid-line</h2>
+    <div class="drill">
+      <div style="max-width:448px">
+        <div class="board" id="board" data-set="offbook" role="img" aria-label="Position after 5. c3 Nc6, last move Nb8 to c6 marked"></div>
+        <div class="row" role="radiogroup" aria-label="Piece set" style="margin-top:var(--space-3)">
+          <label><input type="radio" name="set" value="offbook" checked> Off Book (production)</label>
+          <label><input type="radio" name="set" value="plastic"> Plastic</label>
+          <label><input type="radio" name="set" value="wood"> Wood</label>
+          <label><input type="radio" name="set" value="stylized"> Stylized</label>
+          <label><input type="radio" name="set" value="plastic-top"> Plastic, top</label>
+          <label><input type="radio" name="set" value="wood-top"> Wood, top</label>
+          <label><input type="radio" name="set" value="stylized-top"> Stylized, top</label>
+        </div>
+      </div>
+      <div class="sheet">
+        <ol class="moves" aria-label="Moves">
+          <li><span class="n">1.</span><span class="book">d4</span><span class="book">d5</span></li>
+          <li><span class="n">2.</span><span class="book">Bf4</span><span class="book">Nf6</span></li>
+          <li><span class="n">3.</span><span class="book">e3</span><span class="book">e6</span></li>
+          <li><span class="n">4.</span><span class="book">Nf3</span><span class="book">c5</span></li>
+          <li><span class="n">5.</span><span class="book">c3</span><span class="book">Nc6</span></li>
+          <li><span class="n">6.</span><span></span><span></span></li>
+        </ol>
+        <div class="feedback" aria-label="Feedback examples">
+          <div class="fb"><b class="good">!</b><span>6. Nbd2. Your prep.</span><span class="num">+0.3</span></div>
+          <div class="fb"><b class="dubious">?!</b><span>6. h3. Playable, but not your prep.</span><span class="num">0.3 behind prep</span></div>
+          <div class="fb"><b class="mistake">?</b><span>6. g4. Mistake. Your prep is 6. Nbd2.</span><span class="num">0.9 behind prep</span></div>
+          <div class="fb"><b class="blunder">??</b><span>6. Bc7. Blunder. Qxc7 wins the bishop.</span><span class="num">3.2 behind prep</span></div>
+        </div>
+        <p class="soft">Eval numbers are placeholders until Stockfish runs.</p>
+        <div class="row"><button type="button">How did it know?</button><button type="button" class="quiet">Show my prep</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-parts">
+    <h2 id="h-parts">Parts of the binder</h2>
+    <p class="soft">Proposals for review. Engine numbers and counts are placeholders.</p>
+
+    <div class="binder">
+      <div class="tabs" role="tablist" aria-label="Sections">
+        <button role="tab" aria-selected="false" class="tab">Drill</button>
+        <button role="tab" aria-selected="false" class="tab">Spar</button>
+        <button role="tab" aria-selected="false" class="tab">Review</button>
+        <button role="tab" aria-selected="true" class="tab">Collection</button>
+        <button role="tab" aria-selected="false" class="tab">Puzzles</button>
+      </div>
+      <div class="sheet tabpanel">
+        <article class="line-card">
+          <header class="line-head">
+            <div>
+              <h3>London · the ...c5 line</h3>
+              <p class="soft">1. d4 d5 2. Bf4 Nf6 3. e3 c5</p>
+            </div>
+            <span class="badge-level" aria-label="Level 3">Lv 3</span>
+          </header>
+          <div class="meter">
+            <span class="tally" data-n="7" role="img" aria-label="7 of 10 correct moves toward level 4"></span>
+            <span class="soft">7 of 10 to level 4</span>
+          </div>
+          <dl class="record">
+            <div><dt>Won</dt><dd>2</dd></div>
+            <div><dt>Drew</dt><dd>1</dd></div>
+            <div><dt>Lost</dt><dd>0</dd></div>
+            <div><dt>Drilled this week</dt><dd>14</dd></div>
+          </dl>
+        </article>
+      </div>
+    </div>
+
+    <div class="parts">
+      <aside class="sheet panel" aria-labelledby="h-know">
+        <h3 id="h-know">How did it know?</h3>
+        <p>Stockfish looked 14 moves deep in 120 ms and scored each choice for White. Plus is good for White.</p>
+        <table class="evals">
+          <tbody>
+            <tr><td class="mv">6. Nbd2</td><td><span class="bar" style="--w:53%"></span></td><td class="cp">+0.3</td><td><span class="book">your prep</span></td></tr>
+            <tr><td class="mv">6. h3</td><td><span class="bar" style="--w:50%"></span></td><td class="cp">0.0</td><td></td></tr>
+            <tr><td class="mv">6. g4</td><td><span class="bar" style="--w:44%"></span></td><td class="cp">&minus;0.6</td><td></td></tr>
+            <tr><td class="mv">6. Bc7</td><td><span class="bar" style="--w:21%"></span></td><td class="cp">&minus;2.9</td><td></td></tr>
+          </tbody>
+        </table>
+        <p>Maia, playing like a 1000-rated opponent, answers 6. Nbd2 with ...Bd6 most often.</p>
+      </aside>
+
+      <div class="sheet empty">
+        <h3>No games yet</h3>
+        <p>Import your games from Lichess or Chess.com, or paste the moves from an over-the-board game.</p>
+        <div class="row"><button type="button">Import games</button><button type="button" class="quiet">Paste moves</button></div>
+      </div>
+
+      <div class="toast" role="status">Backup saved as off-book-backup-2026-10-21.json</div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-color">
+    <h2 id="h-color">Paper, ink, marks</h2>
+    <div class="swatches" id="swatches"></div>
+    <p class="soft">Every text pair passes AA: ink 14.0:1, ink-soft 6.6:1, pen 7.8:1, ink on highlighter 12.0:1, move marks 5.1 to 6.1:1 on paper. Ruled lines are 1.4:1 and decorative only; control borders use pen.</p>
+  </section>
+
+  <section aria-labelledby="h-type">
+    <h2 id="h-type">Type</h2>
+    <div class="scale">
+      <span style="font-size:var(--text-2xl);font-weight:700">London System · 28</span>
+      <span style="font-size:var(--text-xl);font-weight:600">The ...c5 line · 23</span>
+      <span style="font-size:var(--text-lg)">Black hits your centre early. Keep c3 ready. · 19</span>
+      <span>Drilled 14 times this week. Two real games, one win. · 16</span>
+      <span class="soft">Stockfish depth 14, 120 ms · 14</span>
+      <span style="font:var(--text-md) var(--font-notation)">1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 Nc6 · notation 16</span>
+    </div>
+    <h2>Margin notes</h2>
+    <div class="hands">
+      <figure class="hand sheet" style="--hand:var(--font-hand); --hand-size:var(--text-lg)">
+        <ol class="moves"><li><span class="n">4.</span><span>Nf3</span><span>c5</span></li><li><span class="n">5.</span><span>c3</span><span>Nc6</span></li><li><span class="n">6.</span><span>Nbd2</span><span></span></li></ol>
+        <p class="note">They always play ...c5 here.</p>
+        <p class="note">Keep c3 ready, then Nbd2. Don't rush Ne5.</p>
+        <figcaption class="soft">Kalam, coach notes only</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-motion">
+    <h2 id="h-motion">The level-up stamp</h2>
+    <p class="soft">The only flourish in the app. Reduced motion shows it already stamped.</p>
+    <div class="row"><button type="button" id="replay">Stamp it</button></div>
+    <div class="stampbox"><div class="stamp" id="stamp">Level 3<small>London · the ...c5 line</small></div></div>
+  </section>
+</main>
+<script>
+  // Position after 1. d4 d5 2. Bf4 Nf6 3. e3 e6 4. Nf3 c5 5. c3 Nc6
+  const rows = ["r.bqkb.r", "pp...ppp", "..n.pn..", "..pp....", "...P.B..", "..P.PN..", "PP...PPP", "RN.QKB.R"];
+  const marked = new Set(["b8", "c6"]);
+  const draw = el => {
+    el.replaceChildren();
+    rows.forEach((row, r) => [...row].forEach((c, f) => {
+      const sq = document.createElement("div");
+      const name = "abcdefgh"[f] + (8 - r);
+      sq.className = "sq" + ((f + r) % 2 ? " d" : "") + (marked.has(name) ? " hl" : "");
+      if (c !== ".") sq.innerHTML = `<i style="background-image:url(pieces/${el.dataset.set}/${c === c.toUpperCase() ? "w" : "b"}${c.toUpperCase()}.${el.dataset.set === "offbook" ? "webp" : "png"})"></i>`;
+      el.append(sq);
+    }));
+  };
+  document.querySelectorAll(".board").forEach(draw);
+  const board = document.getElementById("board");
+  document.querySelectorAll("input[name=set]").forEach(i => i.onchange = () => { board.dataset.set = i.value; draw(board); });
+
+  const swatches = [["--paper", "page ground"], ["--paper-sheet", "lifted sheet"], ["--rule", "ruled lines"], ["--ink", "text"], ["--ink-soft", "secondary text"],
+    ["--pen", "links, buttons, focus"], ["--highlighter", "your prep"], ["--mark-good", "!"], ["--mark-dubious", "?!"], ["--mark-mistake", "?"],
+    ["--mark-blunder", "??"], ["--board-light", "light square"], ["--board-dark", "dark square"]];
+  const css = getComputedStyle(document.documentElement);
+  document.getElementById("swatches").innerHTML = swatches.map(([t, role]) =>
+    `<div class="sw"><i style="background:var(${t})"></i><b>${t.slice(2)}</b><span class="soft">${role} · ${css.getPropertyValue(t).trim()}</span></div>`).join("");
+
+  // Tally marks: groups of five, four strokes and a slash. Earned reps in ink, the rest in ruling.
+  document.querySelectorAll(".tally").forEach(el => {
+    const n = +el.dataset.n, total = 10;
+    let s = "";
+    for (let i = 0; i < total; i++) {
+      const g = Math.floor(i / 5), k = i % 5, x = g * 44 + 6;
+      const color = i < n ? "var(--ink)" : "var(--rule)";
+      s += k < 4
+        ? `<line x1="${x + k * 7}" y1="4" x2="${x + k * 7}" y2="26" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>`
+        : `<line x1="${x - 4}" y1="22" x2="${x + 25}" y2="8" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>`;
+    }
+    el.innerHTML = `<svg width="${total / 5 * 44}" height="30" viewBox="0 0 ${total / 5 * 44} 30" aria-hidden="true">${s}</svg>`;
+  });
+
+  const stamp = document.getElementById("stamp");
+  document.getElementById("replay").onclick = () => { stamp.classList.remove("go"); void stamp.offsetWidth; stamp.classList.add("go"); };
+</script>
+</body>
+</html>

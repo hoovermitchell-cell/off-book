@@ -1,0 +1,87 @@
+/* Off Book design tokens. Canon: ../DESIGN.md. Values are proposed until
+   Mitch confirms them from proof.html.
+   Light only in v1. A later dark set ("carbon copy") redefines these same
+   names under [data-theme="dark"]; components never use raw values. */
+
+/* Self-hosted, OFL (licenses beside the files). No third-party font calls.
+   ponytail: TTF, unsubset. WOFF2 + Latin subset would roughly halve Kalam;
+   do it in the app build once fontTools is available. */
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("fonts/AtkinsonHyperlegibleNext-Variable.ttf") format("truetype");
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Mono";
+  src: url("fonts/AtkinsonHyperlegibleMono-Variable.ttf") format("truetype");
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Kalam";
+  src: url("fonts/Kalam-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  /* Scoresheet paper and ink */
+  --paper: #f6f8fb;          /* page ground, cool white with a blue bias */
+  --paper-sheet: #ffffff;    /* a sheet lifted off the page: move list, notes */
+  --rule: #cdd6e1;           /* ruled lines and dividers; never text */
+  --ink: #1a2740;            /* body text, pieces of UI that read as written */
+  --ink-soft: #4b5a72;       /* secondary text, captions, engine labels */
+  --pen: #2447a8;            /* interactive: links, buttons, focus ring */
+  --highlighter: #dcf26a;    /* "this is your prep"; background only, ink on top */
+
+  /* Move quality. The glyph is the signal; these colors back it up. */
+  --mark-good: #1d7a3c;      /* !  */
+  --mark-dubious: #876400;   /* ?! */
+  --mark-mistake: #b04800;   /* ?  */
+  --mark-blunder: #b3261e;   /* ?? */
+
+  /* Tournament vinyl board */
+  --board-light: #eceee3;
+  --board-dark: #4f7d54;     /* white coordinates 4.8:1 (AA); was #5b8a5f at 4.0 */
+  /* A fill alone vanishes on light squares (1.04:1), so a marked square
+     always gets fill + ring. Ring is 12.7:1 on light, 3.1:1 on dark. */
+  --board-highlight: rgb(220 242 106 / 0.6);
+  --board-ring: var(--ink);
+
+  /* Type */
+  --font-ui: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  --font-notation: "Atkinson Hyperlegible Mono", ui-monospace, monospace;
+  --font-hand: "Kalam", "Comic Sans MS", cursive; /* margin notes only */
+
+  /* Scale: 1.2 ratio from a 16px base. Sized for 1366x768 Chromebooks. */
+  --text-xs: 0.8125rem;  /* 13 */
+  --text-sm: 0.875rem;   /* 14 */
+  --text-md: 1rem;       /* 16 */
+  --text-lg: 1.1875rem;  /* 19 */
+  --text-xl: 1.4375rem;  /* 23 */
+  --text-2xl: 1.75rem;   /* 28 */
+
+  /* Space: 4px steps; ruled-line height doubles as the move-list row */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --rule-height: 28px;
+  --target-min: 44px;    /* quality floor: every control and square */
+
+  --radius: 3px;         /* paper corners, barely */
+
+  /* Motion. Each has one job; nothing else moves. */
+  --dur-piece: 150ms;    /* a piece sliding to its square */
+  --dur-mark: 120ms;     /* a glyph or highlight inking in */
+  --dur-stamp: 400ms;    /* the level-up stamp, the only flourish */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-stamp: cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-piece: 0ms; --dur-mark: 0ms; --dur-stamp: 0ms; }
+}
