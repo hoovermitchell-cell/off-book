@@ -19,6 +19,9 @@ Visual and interface canon: [DESIGN.md](DESIGN.md), tokens in
   are templates or pre-written text Mitch has reviewed. No live LLM in v1.
 - **Stockfish judges, Maia predicts.** Stockfish for evaluation and blunders;
   Maia for human-like replies at a given rating.
+- Run it: `npm install`, then `npm run dev` (fetches engine files and the Maia model
+  into `public/` first), `npm test`, `npm run build`. The app is the repo root; `spike/`
+  is the throwaway reference.
 - Stack default: TypeScript + Vite, static hosting (Cloudflare Pages). Spikes may
   be a single `index.html`.
 

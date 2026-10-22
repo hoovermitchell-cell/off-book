@@ -1,0 +1,321 @@
+// The London drill as a DOM-free state machine, extracted from the spike's index.html.
+// The student plays White. Dependencies are injected so tests can fake the engines and a UI can
+// render purely from `getState()` and the events passed to `on()`.
+//
+// Flow of one round:
+//   in prep:   student move == prep move -> correct (a rep, unless they missed here first)
+//              otherwise Stockfish compares it with the prep move (verdict "playable" or "mistake"),
+//              the move is taken back and the student retries.
+//   Black:     replies by sampling Maia at the chosen rating. A position outside the tree means
+//              the student is off book.
+//   off book:  any legal move. Stockfish judges before/after; a drop of MISTAKE or more that is not
+//              Stockfish's own best move is flagged, and play continues.
+//   the game is played out to checkmate, a draw, or resign() (decision 12b).
+import { Chess } from 'chess.js';
+import { posKey, type PrepMove, type PrepTree } from '../data/london';
+import { sample, type MaiaMove } from '../chess/maia';
+
+/** Centipawns a non-prep move may lose against the prep move and still be called "playable". */
+export const PLAYABLE = 50;
+/** Centipawns lost off book that count as a real mistake (100 = about 50% win chance). */
+export const MISTAKE = 100;
+/** Stockfish think time per judgement, in ms. */
+export const JUDGE_MS = 300;
+/** Pause before Black's reply appears, in ms. */
+export const BLACK_DELAY_MS = 350;
+/** Pause after an off-book mistake is flagged, so the student can read it, in ms. */
+export const MISTAKE_PAUSE_MS = 1200;
+export const DEFAULT_RATING = 1000;
+
+export type Result = 'won' | 'lost' | 'draw' | 'resigned';
+export type EndReason = 'checkmate' | 'draw' | 'resign';
+export type Phase = 'idle' | 'student' | 'judging' | 'black' | 'over';
+
+export interface DrillDeps {
+  tree: PrepTree;
+  /** Scores are centipawns from White's point of view. */
+  engine: { evaluate(fen: string, ms: number): Promise<Judgement> };
+  /** Legal moves for the side to move with probabilities, sorted high to low. */
+  maia: (chess: Chess, elo: number) => Promise<MaiaMove[]>;
+  rand?: () => number;
+  delay?: (ms: number) => Promise<void>;
+}
+
+/** Plain, serializable snapshot. */
+export interface DrillState {
+  phase: Phase;
+  fen: string;
+  /** SAN of every move played so far, both sides. */
+  history: string[];
+  rating: number;
+  offBook: boolean;
+  /** Prep moves played correctly this round. */
+  prepMoves: number;
+  /** Prep moves that counted as a rep (correct on the first try). */
+  reps: number;
+  /** Off-book mistakes flagged this round. */
+  mistakes: number;
+  /** The student has missed at the current prep position and has not yet played it correctly. */
+  missed: boolean;
+  result: Result | null;
+}
+
+/** One Stockfish search. depth/nodes feed the "How did it know?" panel. */
+export interface Judgement {
+  cp: number;
+  best: string;
+  depth?: number;
+  nodes?: number;
+}
+
+export interface TopMove {
+  san: string;
+  p: number;
+}
+
+export type DrillEvent =
+  | { type: 'start'; state: DrillState }
+  | { type: 'judging'; kind: 'prep' | 'offbook' }
+  | { type: 'prep-correct'; san: string; counted: boolean; prepMoves: number; reps: number }
+  | { type: 'prep-miss'; played: string; prep: string; prepUci: string; loss: number; verdict: 'playable' | 'mistake'; depth?: number; nodes?: number }
+  | { type: 'black-move'; san: string; uci: string; p: number; top: TopMove[]; rating: number }
+  | { type: 'off-book'; san: string }
+  | { type: 'offbook-mistake'; played: string; better: string; betterUci: string; loss: number; depth?: number; nodes?: number }
+  | { type: 'game-over'; result: Result; reason: EndReason; prepMoves: number; reps: number; mistakes: number };
+
+export interface StudentMove {
+  from: string;
+  to: string;
+  promotion?: string;
+}
+
+export interface Drill {
+  getState(): DrillState;
+  /** Starts (or restarts) a round. */
+  start(rating?: number): void;
+  setRating(rating: number): void;
+  /** Plays the student's move. Resolves once the whole cycle (judging, Black's reply) is done.
+   *  Resolves false if the move was ignored (not the student's turn, or illegal). */
+  play(move: StudentMove): Promise<boolean>;
+  resign(): void;
+  /** Legal destinations for the student, keyed by origin square. Empty unless it is their turn. */
+  dests(): Map<string, string[]>;
+  /** The prep move at the current position, while still in prep. */
+  prepHint(): PrepMove | undefined;
+  /** Shows the prep move to the student. Looking costs the rep at this position. */
+  revealPrep(): PrepMove | undefined;
+  /** Subscribe to events. Returns an unsubscribe function. */
+  on(listener: (e: DrillEvent) => void): () => void;
+}
+
+const uciOf = (m: { from: string; to: string; promotion?: string }) => m.from + m.to + (m.promotion ?? '');
+const defaultDelay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+export function createDrill(deps: DrillDeps): Drill {
+  const { tree, engine, maia } = deps;
+  const rand = deps.rand ?? Math.random;
+  const delay = deps.delay ?? defaultDelay;
+  const listeners = new Set<(e: DrillEvent) => void>();
+
+  let chess = new Chess();
+  let phase: Phase = 'idle';
+  let rating = DEFAULT_RATING;
+  let offBook = false;
+  let missed = false;
+  let prepMoves = 0;
+  let reps = 0;
+  let mistakes = 0;
+  let result: Result | null = null;
+  // Bumped on every start() so that work left over from a previous round is dropped.
+  let round = 0;
+
+  const emit = (e: DrillEvent) => listeners.forEach((l) => l(e));
+  const isOver = () => phase === 'over';
+
+  function getState(): DrillState {
+    return {
+      phase,
+      fen: chess.fen(),
+      history: chess.history(),
+      rating,
+      offBook,
+      prepMoves,
+      reps,
+      mistakes,
+      missed,
+      result,
+    };
+  }
+
+  function start(r?: number) {
+    round++;
+    if (r !== undefined) rating = r;
+    chess = new Chess();
+    phase = 'student';
+    offBook = false;
+    missed = false;
+    prepMoves = 0;
+    reps = 0;
+    mistakes = 0;
+    result = null;
+    emit({ type: 'start', state: getState() });
+  }
+
+  function endGame(reason: EndReason) {
+    phase = 'over';
+    if (reason === 'resign') result = 'resigned';
+    else if (reason === 'checkmate') result = chess.turn() === 'b' ? 'won' : 'lost';
+    else result = 'draw';
+    emit({ type: 'game-over', result, reason, prepMoves, reps, mistakes });
+  }
+
+  /** Ends the game if the position is terminal. */
+  function checkOver(): boolean {
+    if (chess.isCheckmate()) endGame('checkmate');
+    else if (chess.isDraw() || chess.isStalemate()) endGame('draw');
+    return isOver();
+  }
+
+  /** Stockfish score for the position after the student's move. A checkmate cannot be searched, so score it directly. */
+  async function evalAfter(): Promise<Judgement> {
+    if (chess.isCheckmate()) return { cp: 100000, best: '' }; // student is White, so Black is the one mated
+    return engine.evaluate(chess.fen(), JUDGE_MS);
+  }
+
+  async function blackReply(myRound: number): Promise<void> {
+    phase = 'black';
+    const moves = await maia(new Chess(chess.fen()), rating);
+    if (myRound !== round || isOver()) return;
+    const pick = sample(moves, rand);
+    await delay(BLACK_DELAY_MS);
+    if (myRound !== round || isOver()) return;
+    chess.move(pick.san);
+    // Settle the state before emitting, so a listener that renders from getState() sees the student's turn.
+    const leftBook = !offBook && !tree.has(posKey(chess.fen()));
+    if (leftBook) offBook = true;
+    phase = 'student';
+    emit({
+      type: 'black-move',
+      san: pick.san,
+      uci: pick.uci,
+      p: pick.p,
+      top: moves.slice(0, 4).map((m) => ({ san: m.san, p: m.p })),
+      rating,
+    });
+    if (checkOver()) return;
+    if (leftBook) emit({ type: 'off-book', san: pick.san });
+  }
+
+  // Off book: any move is allowed; Stockfish only speaks up for a real mistake.
+  async function playOn(myRound: number, before: string, played: { from: string; to: string; promotion?: string; san: string }) {
+    phase = 'judging';
+    emit({ type: 'judging', kind: 'offbook' });
+    const [a, b] = await Promise.all([engine.evaluate(before, JUDGE_MS), evalAfter()]);
+    if (myRound !== round || isOver()) return;
+    const loss = a.cp - b.cp;
+    if (loss >= MISTAKE && a.best !== uciOf(played)) {
+      mistakes++;
+      const better = new Chess(before).move({ from: a.best.slice(0, 2), to: a.best.slice(2, 4), promotion: a.best[4] });
+      phase = 'black';
+      emit({ type: 'offbook-mistake', played: played.san, better: better.san, betterUci: uciOf(better), loss, depth: a.depth, nodes: a.nodes });
+      await delay(MISTAKE_PAUSE_MS);
+      if (myRound !== round || isOver()) return;
+    }
+    if (checkOver()) return;
+    return blackReply(myRound);
+  }
+
+  async function play(move: StudentMove): Promise<boolean> {
+    if (phase !== 'student') return false;
+    const myRound = round;
+    const before = chess.fen();
+    let played;
+    try {
+      played = chess.move({ from: move.from, to: move.to, promotion: move.promotion ?? 'q' });
+    } catch {
+      return false;
+    }
+
+    if (!offBook) {
+      const prep = tree.get(posKey(before));
+      if (!prep) {
+        // Cannot happen while the tree covers every position we sent the student to.
+        offBook = true;
+        emit({ type: 'off-book', san: played.san });
+      } else if (played.san === prep.san) {
+        prepMoves++;
+        const counted = !missed;
+        if (counted) reps++;
+        missed = false;
+        phase = 'black';
+        emit({ type: 'prep-correct', san: played.san, counted, prepMoves, reps });
+        if (checkOver()) return true;
+        await blackReply(myRound);
+        return true;
+      } else {
+        // Not prep: Stockfish compares it with the prep move, then the student retries.
+        phase = 'judging';
+        emit({ type: 'judging', kind: 'prep' });
+        const prepChess = new Chess(before);
+        prepChess.move(prep.san);
+        const [a, b] = await Promise.all([engine.evaluate(prepChess.fen(), JUDGE_MS), evalAfter()]);
+        if (myRound !== round) return true;
+        chess.undo();
+        if (isOver()) return true; // resigned mid-judgement: leave the board as it was
+        const loss = a.cp - b.cp;
+        missed = true;
+        phase = 'student';
+        emit({
+          type: 'prep-miss',
+          played: played.san,
+          prep: prep.san,
+          prepUci: prep.uci,
+          loss,
+          verdict: loss < PLAYABLE ? 'playable' : 'mistake',
+          depth: a.depth,
+          nodes: a.nodes,
+        });
+        return true;
+      }
+    }
+    await playOn(myRound, before, played);
+    return true;
+  }
+
+  function resign() {
+    if (phase === 'idle' || phase === 'over') return;
+    endGame('resign');
+  }
+
+  function prepHint(): PrepMove | undefined {
+    return offBook || phase === 'idle' ? undefined : tree.get(posKey(chess.fen()));
+  }
+
+  function dests(): Map<string, string[]> {
+    const d = new Map<string, string[]>();
+    if (phase !== 'student') return d;
+    for (const m of chess.moves({ verbose: true })) d.set(m.from, [...(d.get(m.from) ?? []), m.to]);
+    return d;
+  }
+
+  return {
+    getState,
+    start,
+    setRating: (r) => {
+      rating = r;
+    },
+    play,
+    resign,
+    dests,
+    prepHint,
+    revealPrep: () => {
+      const hint = phase === 'student' ? prepHint() : undefined;
+      if (hint) missed = true;
+      return hint;
+    },
+    on: (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+  };
+}

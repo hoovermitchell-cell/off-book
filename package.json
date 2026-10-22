@@ -1,0 +1,27 @@
+{
+  "name": "off-book",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "assets": "node scripts/assets.mjs",
+    "predev": "node scripts/assets.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/assets.mjs",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "chess.js": "1.4.0",
+    "chessground": "9.2.1",
+    "onnxruntime-web": "1.30.0",
+    "stockfish": "19.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "typescript": "6.0.3",
+    "vite": "8.2.4",
+    "vitest": "5.0.3"
+  }
+}

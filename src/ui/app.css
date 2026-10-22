@@ -1,0 +1,128 @@
+/* Drill screen. Canon: ../../DESIGN.md. Only tokens from design/tokens.css. */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--text-md) / 1.45 var(--font-ui);
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--pen); outline-offset: 2px; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ---- Masthead ---- */
+.masthead {
+  display: flex; align-items: center; gap: var(--space-3);
+  height: 56px; padding: 0 var(--space-6);
+  border-bottom: 1px solid var(--rule);
+}
+.masthead img { width: 32px; height: 32px; }
+.masthead h1 { margin: 0; font-size: var(--text-lg); font-weight: 700; letter-spacing: 0.01em; }
+.masthead p { margin: 0; color: var(--ink-soft); font-size: var(--text-sm); }
+
+/* ---- Board and sheet: board first, the sheet is its margin ---- */
+.drill {
+  --board: min(calc(100dvh - 56px - 2 * var(--space-6)), calc(100vw - 520px - 3 * var(--space-6)), 720px);
+  display: grid;
+  grid-template-columns: var(--board) minmax(340px, 520px);
+  gap: var(--space-6);
+  padding: var(--space-6);
+  justify-content: center;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .drill { --board: min(calc(100vw - 2 * var(--space-4)), 560px); grid-template-columns: var(--board); padding: var(--space-4); }
+}
+.board { width: var(--board); height: var(--board); }
+
+.sheet {
+  background: var(--paper-sheet);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+  height: var(--board);
+  min-height: 0;
+}
+@media (max-width: 900px) { .sheet { height: auto; } }
+
+/* What to do now: the first thing on the sheet, always. */
+.now { margin: 0; font-size: var(--text-xl); font-weight: 700; line-height: 1.25; }
+.now small { display: block; margin-top: var(--space-1); font-size: var(--text-sm); font-weight: 400; color: var(--ink-soft); }
+
+/* Verdict row: glyph, words, the number behind it. */
+.fb { display: grid; grid-template-columns: 3.5ch minmax(0, 1fr) auto; gap: var(--space-3); align-items: baseline; margin: 0; }
+.fb[hidden] { display: none; }
+.fb b { font: 700 var(--text-lg) var(--font-notation); }
+.fb .num { font: var(--text-sm) var(--font-notation); color: var(--ink-soft); white-space: nowrap; }
+.fb, .moves .glyph { animation: ink var(--dur-mark) var(--ease-out); }
+@keyframes ink { from { opacity: 0; } to { opacity: 1; } }
+.good { color: var(--mark-good); }
+.dubious { color: var(--mark-dubious); }
+.mistake { color: var(--mark-mistake); }
+.blunder { color: var(--mark-blunder); }
+
+/* Coach's margin note: the only handwritten text. */
+.note { margin: 0; display: flex; gap: var(--space-2); align-items: start; font: var(--text-lg) / 1.3 var(--font-hand); color: var(--pen); }
+.note[hidden] { display: none; }
+.note svg { flex: none; width: 22px; height: 22px; margin-top: 2px; }
+
+/* Scoresheet */
+.scoresheet { flex: 1; min-height: calc(3 * var(--rule-height)); overflow-y: auto; border-top: 1px solid var(--rule); }
+.moves {
+  list-style: none; margin: 0; padding: 0;
+  font: var(--text-md) / var(--rule-height) var(--font-notation);
+  font-variant-numeric: tabular-nums;
+  background: repeating-linear-gradient(transparent 0 calc(var(--rule-height) - 1px), var(--rule) calc(var(--rule-height) - 1px) var(--rule-height));
+}
+.moves li { display: grid; grid-template-columns: 4ch 10ch 10ch; }
+.moves .n { color: var(--ink-soft); }
+.moves .book { background: var(--highlighter); padding: 0 2px; justify-self: start; }
+.moves .glyph { font-weight: 700; margin-left: 1px; }
+.moves:empty::before { content: "Your moves go here."; color: var(--ink-soft); font-family: var(--font-ui); }
+
+/* How did it know? Takes the scoresheet's place while open. */
+.know { flex: 1; overflow-y: auto; border-top: 1px solid var(--rule); padding-top: var(--space-2); display: grid; gap: var(--space-2); align-content: start; }
+.know[hidden] { display: none; }
+.know h2 { margin: 0; font-size: var(--text-md); }
+.know p { margin: 0; }
+.know table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.know td { padding: var(--space-1) var(--space-3) var(--space-1) 0; border-bottom: 1px solid var(--rule); }
+.know .mv { font-family: var(--font-notation); }
+.bar { display: block; width: 120px; height: 10px; border: 1px solid var(--ink); border-radius: 2px;
+  background: linear-gradient(90deg, var(--ink) var(--w), transparent var(--w)); }
+.soft { color: var(--ink-soft); font-size: var(--text-sm); }
+
+/* Level: tally marks, never a progress bar. */
+.level { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.badge-level {
+  font: 700 var(--text-sm) var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mark-good); border: 2px solid currentColor; border-radius: var(--radius);
+  padding: 2px var(--space-2); transform: rotate(-4deg); white-space: nowrap;
+}
+.badge-level.stamp { animation: stamp var(--dur-stamp) var(--ease-stamp); }
+@keyframes stamp { from { transform: rotate(-4deg) scale(1.6); opacity: 0; } to { transform: rotate(-4deg) scale(1); opacity: 1; } }
+.tally svg { display: block; }
+
+/* Controls */
+.row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+label { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--target-min); }
+select, input[type="text"] {
+  min-height: var(--target-min); padding: 0 var(--space-2);
+  background: var(--paper-sheet); border: 1px solid var(--ink-soft); border-radius: var(--radius);
+}
+input[type="text"] { width: 9ch; font-family: var(--font-notation); }
+button {
+  font-weight: 600; min-height: var(--target-min); padding: 0 var(--space-4);
+  border-radius: var(--radius); cursor: pointer;
+  background: var(--pen); color: var(--paper-sheet); border: 1px solid var(--pen);
+}
+button.quiet { background: transparent; color: var(--pen); }
+button[aria-expanded="true"] { background: color-mix(in srgb, var(--pen) 12%, transparent); }
+button:disabled { cursor: default; opacity: 0.45; }
+button[hidden] { display: none; }
+.typed-error { color: var(--mark-mistake); font-size: var(--text-sm); margin: 0; min-height: 1.2em; }

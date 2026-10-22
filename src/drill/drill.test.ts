@@ -1,0 +1,225 @@
+import { Chess } from 'chess.js';
+import { describe, expect, it, vi } from 'vitest';
+import { buildTree, posKey, type PrepTree } from '../data/london';
+import type { MaiaMove } from '../chess/maia';
+import { createDrill, JUDGE_MS, MISTAKE, PLAYABLE, type DrillEvent } from './drill';
+
+type Eval = { cp: number; best: string };
+
+const START = posKey(new Chess().fen());
+/** Tree that covers only the start position, so any Black reply leaves book. */
+const tinyTree = (): PrepTree => new Map([[START, { san: 'd4', uci: 'd2d4' }]]);
+
+/** Maia stand-in that plays the given SANs in order. */
+function scriptedMaia(sans: string[]) {
+  const queue = [...sans];
+  return async (chess: Chess): Promise<MaiaMove[]> => {
+    const want = queue.shift();
+    const moves = chess.moves({ verbose: true }).map((m) => ({
+      uci: m.from + m.to + (m.promotion ?? ''),
+      san: m.san,
+      logit: 0,
+      p: m.san === want ? 0.9 : 0.1 / 19,
+    }));
+    return moves.sort((a, b) => b.p - a.p);
+  };
+}
+
+/** Engine stand-in that answers from a queue, then falls back to a flat score. */
+function queuedEngine(queue: Eval[] = []) {
+  const q = [...queue];
+  return { evaluate: vi.fn(async (_fen: string, _ms: number): Promise<Eval> => q.shift() ?? { cp: 0, best: 'a1a1' }) };
+}
+
+function setup(opts: { tree?: PrepTree; maia?: string[]; engine?: Eval[] } = {}) {
+  const engine = queuedEngine(opts.engine);
+  const drill = createDrill({
+    tree: opts.tree ?? tinyTree(),
+    engine,
+    maia: scriptedMaia(opts.maia ?? []),
+    rand: () => 0,
+    delay: async () => {},
+  });
+  const events: DrillEvent[] = [];
+  drill.on((e) => events.push(e));
+  drill.start(1000);
+  const of = <T extends DrillEvent['type']>(t: T) => events.filter((e): e is Extract<DrillEvent, { type: T }> => e.type === t);
+  return { drill, engine, events, of };
+}
+
+const mv = (from: string, to: string) => ({ from, to });
+
+describe('drill: prep', () => {
+  it('counts a rep for a correct first-try prep move, then Black replies', async () => {
+    const { drill, of } = setup({ tree: buildTree(), maia: ['d5'] });
+    expect(await drill.play(mv('d2', 'd4'))).toBe(true);
+    const s = drill.getState();
+    expect(s.reps).toBe(1);
+    expect(s.prepMoves).toBe(1);
+    expect(s.history).toEqual(['d4', 'd5']);
+    expect(s.phase).toBe('student');
+    expect(s.offBook).toBe(false);
+    expect(of('prep-correct')[0]).toMatchObject({ san: 'd4', counted: true });
+    expect(of('black-move')[0]).toMatchObject({ san: 'd5' });
+  });
+
+  it('a miss then a retry counts the prep move but no rep', async () => {
+    const { drill, engine, of } = setup({
+      tree: buildTree(),
+      maia: ['d5'],
+      engine: [
+        { cp: 30, best: 'x' },
+        { cp: -50, best: 'x' },
+      ],
+    });
+    await drill.play(mv('e2', 'e4'));
+    expect(of('prep-miss')[0]).toMatchObject({ played: 'e4', prep: 'd4', prepUci: 'd2d4', loss: 80, verdict: 'mistake' });
+    expect(drill.getState().history).toEqual([]); // taken back
+    expect(drill.getState().missed).toBe(true);
+    expect(engine.evaluate).toHaveBeenCalledTimes(2);
+    expect(engine.evaluate.mock.calls.every(([, ms]) => ms === JUDGE_MS)).toBe(true);
+
+    await drill.play(mv('d2', 'd4'));
+    const s = drill.getState();
+    expect(s.reps).toBe(0);
+    expect(s.prepMoves).toBe(1);
+    expect(s.missed).toBe(false);
+    expect(of('prep-correct')[0]).toMatchObject({ counted: false });
+  });
+
+  it('calls a small loss playable and a loss at the threshold a mistake', async () => {
+    const a = setup({
+      engine: [
+        { cp: 30, best: 'x' },
+        { cp: 30 - (PLAYABLE - 1), best: 'x' },
+      ],
+    });
+    await a.drill.play(mv('e2', 'e4'));
+    expect(a.of('prep-miss')[0].verdict).toBe('playable');
+    const b = setup({
+      engine: [
+        { cp: 30, best: 'x' },
+        { cp: 30 - PLAYABLE, best: 'x' },
+      ],
+    });
+    await b.drill.play(mv('e2', 'e4'));
+    expect(b.of('prep-miss')[0].verdict).toBe('mistake');
+  });
+
+  it('ignores illegal moves and moves outside the student turn', async () => {
+    const { drill } = setup({ maia: ['d5'] });
+    expect(await drill.play(mv('e2', 'e5'))).toBe(false);
+    const pending = drill.play(mv('d2', 'd4'));
+    expect(await drill.play(mv('e2', 'e4'))).toBe(false); // Black is thinking
+    await pending;
+  });
+});
+
+describe('drill: state at emit time', () => {
+  it('a listener sees the student to move (with legal moves) when Black has moved', async () => {
+    const { drill, events } = setup({ tree: buildTree(), maia: ['d5'] });
+    const seen: { phase: string; dests: number }[] = [];
+    drill.on((e) => { if (e.type === 'black-move' || e.type === 'prep-correct') seen.push({ phase: drill.getState().phase, dests: drill.dests().size }); });
+    await drill.play(mv('d2', 'd4'));
+    expect(events.map((e) => e.type)).toContain('black-move');
+    expect(seen).toEqual([{ phase: 'black', dests: 0 }, { phase: 'student', dests: expect.any(Number) }]);
+    expect(seen[1].dests).toBeGreaterThan(0);
+  });
+});
+
+describe('drill: show my prep', () => {
+  it('reveals the prep move and the next correct move earns no rep', async () => {
+    const { drill } = setup({ tree: buildTree(), maia: ['d5'] });
+    expect(drill.revealPrep()?.san).toBe('d4');
+    await drill.play(mv('d2', 'd4'));
+    expect(drill.getState().prepMoves).toBe(1);
+    expect(drill.getState().reps).toBe(0);
+  });
+});
+
+describe('drill: off book', () => {
+  it('goes off book when Black leaves the tree', async () => {
+    const { drill, of } = setup({ maia: ['d5'] });
+    await drill.play(mv('d2', 'd4'));
+    expect(drill.getState().offBook).toBe(true);
+    expect(of('off-book')).toHaveLength(1);
+    expect(drill.prepHint()).toBeUndefined();
+  });
+
+  async function offBookMove(engine: Eval[]) {
+    const t = setup({ maia: ['d5', 'e6'], engine });
+    await t.drill.play(mv('d2', 'd4')); // prep move; Black replies d5 and leaves the tiny tree
+    await t.drill.play(mv('c1', 'f4')); // off book: judged before and after
+    return t;
+  }
+
+  it('flags a mistake at a loss of exactly MISTAKE when the move is not Stockfish best', async () => {
+    const { drill, of } = await offBookMove([
+      { cp: 50, best: 'e2e3' },
+      { cp: 50 - MISTAKE, best: 'x' },
+    ]);
+    expect(of('offbook-mistake')).toEqual([{ type: 'offbook-mistake', played: 'Bf4', better: 'e3', betterUci: 'e2e3', loss: MISTAKE }]);
+    expect(drill.getState().mistakes).toBe(1);
+    expect(drill.getState().phase).toBe('student'); // play continues
+    expect(drill.getState().history).toHaveLength(4);
+  });
+
+  it('does not flag a loss just under MISTAKE', async () => {
+    const { drill, of } = await offBookMove([
+      { cp: 50, best: 'e2e3' },
+      { cp: 50 - MISTAKE + 1, best: 'x' },
+    ]);
+    expect(of('offbook-mistake')).toHaveLength(0);
+    expect(drill.getState().mistakes).toBe(0);
+  });
+
+  it('does not flag a big drop when the student played the engine best move', async () => {
+    const { of } = await offBookMove([
+      { cp: 300, best: 'c1f4' },
+      { cp: 0, best: 'x' },
+    ]);
+    expect(of('offbook-mistake')).toHaveLength(0);
+  });
+});
+
+describe('drill: game end', () => {
+  it('resign ends the game with result resigned', async () => {
+    const { drill, of } = setup({ maia: ['d5'] });
+    await drill.play(mv('d2', 'd4'));
+    drill.resign();
+    expect(drill.getState()).toMatchObject({ phase: 'over', result: 'resigned' });
+    expect(of('game-over')).toEqual([{ type: 'game-over', result: 'resigned', reason: 'resign', prepMoves: 1, reps: 1, mistakes: 0 }]);
+    expect(await drill.play(mv('c1', 'f4'))).toBe(false);
+    drill.resign(); // a second call is a no-op
+    expect(of('game-over')).toHaveLength(1);
+  });
+
+  it('a checkmate against the student ends the game as lost', async () => {
+    const tree: PrepTree = new Map([[START, { san: 'f3', uci: 'f2f3' }]]);
+    const { drill, of } = setup({ tree, maia: ['e5', 'Qh4#'] });
+    await drill.play(mv('f2', 'f3'));
+    await drill.play(mv('g2', 'g4'));
+    expect(drill.getState()).toMatchObject({ phase: 'over', result: 'lost' });
+    expect(of('game-over')[0]).toMatchObject({ result: 'lost', reason: 'checkmate' });
+  });
+
+  it('a checkmate by the student ends the game as won and is never flagged as a mistake', async () => {
+    const tree: PrepTree = new Map([[START, { san: 'e4', uci: 'e2e4' }]]);
+    const { drill, of } = setup({ tree, maia: ['e5', 'Nc6', 'Nf6'] });
+    await drill.play(mv('e2', 'e4'));
+    await drill.play(mv('f1', 'c4'));
+    await drill.play(mv('d1', 'h5'));
+    await drill.play(mv('h5', 'f7'));
+    expect(drill.getState()).toMatchObject({ phase: 'over', result: 'won' });
+    expect(of('game-over')[0]).toMatchObject({ result: 'won', reason: 'checkmate' });
+    expect(of('offbook-mistake')).toHaveLength(0);
+  });
+
+  it('start() begins a fresh round after the game is over', async () => {
+    const { drill } = setup({ maia: ['d5'] });
+    await drill.play(mv('d2', 'd4'));
+    drill.resign();
+    drill.start();
+    expect(drill.getState()).toMatchObject({ phase: 'student', history: [], prepMoves: 0, reps: 0, result: null, offBook: false });
+  });
+});

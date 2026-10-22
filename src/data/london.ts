@@ -1,0 +1,73 @@
+// London System prep for White. DRAFT by Claude, pending Mitch's review (decision 4b).
+// Policy (Mitch, 2026-10-21): system first, plus two traps; cover Black's common replies widely.
+// LINES are hand-pinned. AUTO (london-auto.ts, from build-tree.mjs) fills the rest of the
+// common replies with system moves; a pinned line always wins over AUTO.
+import { Chess } from 'chess.js';
+import { AUTO } from './london-auto';
+
+/** The prep move White should play at a position. */
+export interface PrepMove {
+  san: string;
+  uci: string;
+  /** Hand-pinned in LINES (absent on AUTO entries). */
+  pinned?: boolean;
+  /** Generation metadata, AUTO entries only. */
+  loss?: number;
+  how?: 'system' | 'stockfish';
+  p?: number;
+  line?: string;
+}
+
+/** Position key (first four FEN fields) to White's prep move. */
+export type PrepTree = Map<string, PrepMove>;
+
+export const LINES: string[] = [
+  // Core setup vs ...d5 / ...Nf6 / ...e6
+  'd4 d5 Bf4 Nf6 e3 e6 Nf3 c5 c3 Nc6 Nbd2 Bd6 Bg3 O-O Bd3',
+  'd4 d5 Bf4 Nf6 e3 c5 c3 Nc6 Nd2 e6 Ngf3 Bd6 Bg3 O-O Bd3',
+  'd4 d5 Bf4 Nf6 e3 e6 Nf3 Bd6 Bg3 O-O Bd3 c5 c3 Nc6 Nbd2',
+  'd4 d5 Bf4 e6 e3 Nf6 Nf3',
+  'd4 Nf6 Bf4 d5 e3',
+  'd4 Nf6 Bf4 e6 e3 c5 c3 d5 Nd2',
+  'd4 e6 Bf4 d5 e3',
+  'd4 e6 Bf4 Nf6 e3',
+  // Early ...Bf5: trade it off with Bd3 instead of chasing b7
+  'd4 d5 Bf4 Nf6 e3 Bf5 Bd3 Bxd3 Qxd3',
+  'd4 d5 Bf4 Bf5 e3 e6 Bd3 Bxd3 Qxd3',
+  // Early ...c5 / ...Qb6: keep the setup, guard b2 with Qc1
+  'd4 d5 Bf4 c5 e3 Nc6 c3',
+  'd4 Nf6 Bf4 c5 e3 Qb6 Qc1',
+  'd4 c5 c3',
+  // ...Nc6 setups
+  'd4 d5 Bf4 Nc6 e3 e6 Nf3 Nf6 Bd3',
+  'd4 Nc6 Bf4 d5 e3',
+  // King's Indian setups
+  'd4 Nf6 Bf4 g6 e3 Bg7 Nf3 O-O Be2 d6 h3',
+  'd4 d6 Bf4 Nf6 e3 g6 Nf3 Bg7 Be2',
+  'd4 g6 Bf4 Bg7 e3 d6 Nf3',
+  'd4 f5 Bf4 Nf6 e3 e6 Nf3',
+  // The two traps
+  'd4 d5 Bf4 f6 e3 e5 dxe5 fxe5 Qh5+ g6 Qxe5+',
+  // Englund: the trap is for White. 6.Bc3?? Bb4 7.Qd2 Bxc3 8.Qxc3?? Qc1#. Learn 6.Nc3 instead.
+  'd4 e5 dxe5 Nc6 Nf3 Qe7 Bf4 Qb4+ Bd2 Qxb2 Nc3',
+  'd4 d5 Bf4 e5 Bxe5',
+];
+
+export const posKey = (fen: string): string => fen.split(' ').slice(0, 4).join(' ');
+
+export function buildTree({ auto = true }: { auto?: boolean } = {}): PrepTree {
+  const tree: PrepTree = new Map();
+  for (const line of LINES) {
+    const chess = new Chess();
+    for (const san of line.split(' ')) {
+      const key = posKey(chess.fen());
+      const m = chess.move(san); // throws on an illegal move
+      if (m.color !== 'w') continue;
+      const prev = tree.get(key);
+      if (prev && prev.san !== m.san) throw new Error(`conflict at ${key}: ${prev.san} vs ${m.san}`);
+      tree.set(key, { san: m.san, uci: m.from + m.to + (m.promotion ?? ''), pinned: true });
+    }
+  }
+  if (auto) for (const [key, v] of Object.entries(AUTO)) if (!tree.has(key)) tree.set(key, v);
+  return tree;
+}
