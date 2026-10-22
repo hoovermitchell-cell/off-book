@@ -1,5 +1,5 @@
 // The one-line idea shown with each new London move (decisions 13 and 13b).
-// DRAFT by Claude, pending Mitch's review (decision 13b). Students shouldn't see these until he signs off.
+// Drafted by Claude; approved by Mitch as drafted on 2026-10-22 (decision 13b). New or changed texts need his review again.
 // One idea per kind of move, not per position: the London is one plan, so most of the 218 positions
 // share a dozen ideas. Traps and key moments get their own notes, keyed by the moves before them.
 import { Chess } from 'chess.js';

@@ -34,7 +34,7 @@ for my own personal growth."
 | 12 | When prep ends | "When prep ends, keep playing vs Maia; Stockfish flags only real mistakes; round ends at a set move." Spike uses move 12 and a 100-point Stockfish drop as "real mistake"; both are tuning knobs. Whether play after prep counts toward the line's level is still open. |
 | 12b | How long play continues | Replaces the set move in 12: "Play the game out to mate or resign; add a Resign button." Draws also end it. |
 | 13 | Learning before testing | "Show-then-test per position: new moves are shown with their idea, you play them, then they're drilled hidden." Mitch: "we need an instructive mode before we're forcing 'prep'." |
-| 13b | What the ideas say | "One idea per move idea (~25 texts): you draft, I review. Specific notes for the traps." Drafts live in `src/data/london-ideas.ts`, unreviewed until Mitch signs off. |
+| 13b | What the ideas say | "One idea per move idea (~25 texts): you draft, I review. Specific notes for the traps." Texts in `src/data/london-ideas.ts`. Mitch, 2026-10-22: "The idea texts are approved as drafted." |
 
 ## v1 scope
 
