@@ -14,6 +14,10 @@ import { createStockfish } from '../chess/stockfish-worker';
 import { levelOf, loadSaved, REPS_PER_LEVEL, updateSaved, type Saved } from '../storage';
 import markUrl from '../../design/brand/off-the-page/favicon.svg';
 import prepEndsSvg from '../../design/icons/prep-ends.svg?raw';
+import badgeBook from '../../design/icons/badges/book.svg?raw';
+import badgeGood from '../../design/icons/badges/good.svg?raw';
+import badgeMistake from '../../design/icons/badges/mistake.svg?raw';
+import badgeBlunder from '../../design/icons/badges/blunder.svg?raw';
 
 // ponytail: display-only split of a "mistake" into ? and ??; the drill only knows MISTAKE.
 const BLUNDER = 300;
@@ -102,6 +106,17 @@ export function mountDrill(root: HTMLElement) {
   let bookPlies: number | null = null; // plies played inside prep; null while still in prep
   let marks = new Map<number, { g: string; cls: string }>(); // ply -> glyph on the scoresheet
   let announced = 0;
+  // Arrows on the board, plus a move-quality badge on the square of the student's last judged move
+  // (design/icons/BRIEF.md: badges sit on a square's top-right corner).
+  let arrows: DrawShape[] = [];
+  let badge: { sq: Key; svg: string } | null = null;
+  function drawShapes() {
+    // customSvg draws in the square's 100x100 box; nest the 32x32 badge in its top-right corner.
+    const b = badge && { orig: badge.sq, customSvg: { html: badge.svg.replace(/<svg[^>]*>/, '<svg x="60" y="2" width="38" height="38" viewBox="0 0 32 32">') } };
+    ground.setAutoShapes(b ? [...arrows, b] : arrows);
+  }
+  /** Destination square of the last move on the board, for the badge. */
+  const lastTo = () => { const c = new Chess(); drill.getState().history.forEach((m) => c.move(m)); return c.history({ verbose: true }).at(-1)?.to as Key; };
   let know: { kind: 'maia'; san: string; ply: number; top: TopMove[]; rating: number; p: number }
     | { kind: 'stockfish'; text: string; depth?: number; nodes?: number } | null = null;
 
@@ -229,12 +244,14 @@ export function mountDrill(root: HTMLElement) {
       movable: { color: 'white', dests: drill.dests() as Map<Key, Key[]> },
     });
     // A new move being taught always shows its arrow and says so (decision 13).
+    if (shapes) arrows = shapes;
     if (s.teach) {
-      ground.setAutoShapes([{ orig: s.teach.uci.slice(0, 2) as Key, dest: s.teach.uci.slice(2, 4) as Key, brush: 'prep' }]);
+      arrows = [{ orig: s.teach.uci.slice(0, 2) as Key, dest: s.teach.uci.slice(2, 4) as Key, brush: 'prep' }];
       const lastBlack = verbose.length && verbose.length % 2 === 0 ? `Black played ${label(verbose.length - 1, verbose.at(-1)!.san)}. ` : '';
       setNow(`New move: play ${label(verbose.length, s.teach.san)}.`, `${lastBlack}Follow the arrow. Next time you reach this position, you'll play it from memory.`);
       setNote(ideaFor(s.fen, s.teach) ?? '');
-    } else if (shapes) ground.setAutoShapes(shapes);
+    }
+    drawShapes();
     renderMoves(s.history, !s.offBook);
     // Announce new moves for screen readers.
     if (verbose.length < announced) announced = 0;
@@ -254,13 +271,14 @@ export function mountDrill(root: HTMLElement) {
     const ply = s.history.length - 1;
     switch (e.type) {
       case 'start':
-        bookPlies = null; marks = new Map(); know = null; announced = 0;
+        bookPlies = null; marks = new Map(); know = null; announced = 0; badge = null;
         els.verdict.hidden = true;
         setNow('Play your London as White.', `Black answers like a ${s.rating}-rated player. Moves you've learned, you play from memory.`);
         setNote('New moves get an arrow. Learned ones are up to you.');
         sync([]);
         break;
       case 'judging':
+        badge = null;
         setNow('Checking with Stockfish…');
         sync();
         break;
@@ -268,6 +286,7 @@ export function mountDrill(root: HTMLElement) {
         if (e.learnedNow) setVerdict('!', 'good', `${label(ply, e.san)}. Learned.`, 'new move');
         else setVerdict('!', 'good', `${label(ply, e.san)}. Your prep, from memory.`, e.counted ? '+1 tally' : 'no tally, you looked');
         if (e.learnedNow) renderLevel();
+        badge = { sq: lastTo(), svg: e.learnedNow ? badgeBook : badgeGood };
         if (e.counted) {
           persist((s) => ({ ...s, correct: s.correct + 1 }));
           renderLevel(levelOf(saved.correct).progress === 0);
@@ -301,6 +320,7 @@ export function mountDrill(root: HTMLElement) {
       case 'offbook-mistake': {
         const m = glyphFor(e.loss);
         marks.set(ply, m);
+        badge = { sq: lastTo(), svg: m.g === '??' ? badgeBlunder : badgeMistake };
         setVerdict(m.g, m.cls, `${label(ply, e.played)}. ${m.word}. ${label(ply, e.better)} was better.`, `${pts(e.loss)} lower`);
         know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${pts(e.loss)} lower than its choice, ${e.better}. A drop of 1.0 or more counts as a mistake; 3.0 or more as a blunder.`, depth: e.depth, nodes: e.nodes };
         setNow('Black is thinking…');
@@ -364,7 +384,8 @@ export function mountDrill(root: HTMLElement) {
     const hint = drill?.revealPrep();
     if (!hint) return;
     setNow(`Your prep here is ${hint.san}.`, 'Play it. Looking means this move won\'t add a tally.');
-    ground.setAutoShapes([{ orig: hint.uci.slice(0, 2) as Key, dest: hint.uci.slice(2, 4) as Key, brush: 'prep' }]);
+    arrows = [{ orig: hint.uci.slice(0, 2) as Key, dest: hint.uci.slice(2, 4) as Key, brush: 'prep' }];
+    drawShapes();
   });
   els.knowBtn.addEventListener('click', () => {
     const open = els.know.hidden;
