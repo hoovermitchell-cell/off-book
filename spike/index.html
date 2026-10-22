@@ -55,6 +55,8 @@ import { buildTree, posKey } from './london.js';
 
 const $ = (id) => document.getElementById(id);
 const PER_LEVEL = 10;
+const END_MOVE = 12;     // round ends after Black's reply on this move
+const MISTAKE = 100;     // Stockfish 19 points lost that count as a real mistake (100 = about 50% win chance)
 const times = { load: null, maia: [], sf: [] };
 const tree = buildTree(Chess);
 let correct = 0;
@@ -72,8 +74,9 @@ const [session] = await Promise.all([
 ]);
 times.load = performance.now();
 
-let chess, missed;
-const ground = Chessground($('board'), { orientation: 'white', movable: { free: false, color: 'white', events: { after: onUserMove } } });
+let chess, missed, offBook, prepMoves, mistakes;
+// trustAllEvents: spike only, so scripted checks can click the board.
+const ground = Chessground($('board'), { orientation: 'white', trustAllEvents: true, movable: { free: false, color: 'white', events: { after: onUserMove } } });
 
 function dests() {
   const d = new Map();
@@ -102,7 +105,8 @@ function renderTiming() {
 async function timed(list, p) { const t = performance.now(); const r = await p; list.push(performance.now() - t); renderTiming(); return r; }
 
 function newRound() {
-  chess = new Chess(); missed = false;
+  chess = new Chess(); missed = false; offBook = false; prepMoves = 0; mistakes = 0;
+  $('next').disabled = true;
   $('maia').textContent = ''; $('levelup').style.visibility = 'hidden';
   sync({ drawable: { autoShapes: [] } });
   say('Your move. Play your London.');
@@ -110,10 +114,12 @@ function newRound() {
 
 async function onUserMove(orig, dest) {
   const before = chess.fen();
+  if (offBook) return playOn(before, chess.move({ from: orig, to: dest, promotion: 'q' }));
   const prep = tree.get(posKey(before));
   const played = chess.move({ from: orig, to: dest, promotion: 'q' });
   if (played.san === prep.san) {
     let levelled = false;
+    prepMoves++;
     if (!missed) { correct++; levelled = correct % PER_LEVEL === 0; }
     missed = false;
     renderLevel(levelled);
@@ -141,19 +147,40 @@ async function blackReply() {
   chess.move(pick.san);
   const pct = (m) => `${m.san} ${Math.round(m.p * 100)}%`;
   $('maia').textContent = `Maia at ${rating()}: played ${pct(pick)}. Top choices here: ${moves.slice(0, 4).map(pct).join(', ')}.`;
-  if (tree.has(posKey(chess.fen()))) { sync(); say(`Black played ${pick.san}. Your move.`); return; }
+  if (chess.isGameOver() || chess.moveNumber() > END_MOVE) return endRound();
+  if (!offBook && tree.has(posKey(chess.fen()))) { sync(); say(`Black played ${pick.san}. Your move.`); return; }
+  sync();
+  if (!offBook) { offBook = true; say(`Black played ${pick.san}. Your prep ends here: you're off book. Keep playing to move ${END_MOVE}.`); }
+  else say(`Black played ${pick.san}. Your move.`);
+}
+
+// Off book: any move is allowed; Stockfish only speaks up for a real mistake.
+async function playOn(before, played) {
+  sync({ movable: { color: 'white', dests: new Map() }, drawable: { autoShapes: [] } });
+  const [a, b] = await timed(times.sf, Promise.all([engine.evaluate(before, 300), engine.evaluate(chess.fen(), 300)]));
+  const loss = a.cp - b.cp;
+  if (loss >= MISTAKE && a.best !== played.from + played.to + (played.promotion ?? '')) {
+    mistakes++;
+    const better = new Chess(before).move({ from: a.best.slice(0, 2), to: a.best.slice(2, 4), promotion: a.best[4] });
+    ground.setAutoShapes([{ orig: better.from, dest: better.to, brush: 'red' }]);
+    say(`${played.san} is a mistake (${(loss / 100).toFixed(1)} lower). ${better.san} was better. Play continues.`);
+    await new Promise((r) => setTimeout(r, 1200));
+  }
+  if (chess.isGameOver()) return endRound();
+  return blackReply();
+}
+
+function endRound() {
   sync({ movable: { color: 'white', dests: new Map() } });
-  say(`Black played ${pick.san}. Your prep ends here. Asking Stockfish…`);
-  const r = await timed(times.sf, engine.evaluate(chess.fen(), 800));
-  const sug = new Chess(chess.fen()).move({ from: r.best.slice(0, 2), to: r.best.slice(2, 4), promotion: r.best[4] });
-  ground.setAutoShapes([{ orig: sug.from, dest: sug.to, brush: 'blue' }]);
-  say(`Black played ${pick.san}. Your prep ends here. Stockfish suggests ${sug.san} (looked ${r.depth} moves deep, ${r.nodes.toLocaleString()} positions).`);
+  const result = chess.isCheckmate() ? (chess.turn() === 'b' ? 'You won by checkmate. ' : 'Checkmated. ') : '';
+  say(`${result}Round over. Prep lasted ${prepMoves} move${prepMoves === 1 ? '' : 's'}; off book you made ${mistakes} mistake${mistakes === 1 ? '' : 's'}.`);
   $('next').disabled = false;
 }
 
 $('rating').oninput = () => { $('ratingOut').textContent = rating(); };
 $('next').onclick = newRound;
 renderLevel(false); renderTiming(); newRound();
+window.spike = { get chess() { return chess; }, tree, get offBook() { return offBook; } }; // debug hook for automated checks
 </script>
 </body>
 </html>

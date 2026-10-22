@@ -30,6 +30,8 @@ for my own personal growth."
 | 8b | Own-game puzzles | "Own-game puzzles are later; v1 puzzles are the opening filter only." |
 | 9 | First spike | "Combined spike: one London line, Maia likely-replies + Stockfish judge, level meter, run on a school Chromebook with those pass bars." Plan: [plans/2026-10-21-spike-london-drill.md](plans/2026-10-21-spike-london-drill.md). |
 | 10 | Name | "Off Book. Repo slug off-book." GitHub search found no chess projects with that name; trademark and app-store check still to do before going public. |
+| 11 | London repertoire policy | "Cover Black's common replies widely; White stays system-first plus the two traps." The ...f6 trap (Qh5+, Qxe5+) and the Englund, where the lesson is 6.Nc3, not 6.Bc3?? |
+| 12 | When prep ends | "When prep ends, keep playing vs Maia; Stockfish flags only real mistakes; round ends at a set move." Spike uses move 12 and a 100-point Stockfish drop as "real mistake"; both are tuning knobs. Whether play after prep counts toward the line's level is still open. |
 
 ## v1 scope
 
