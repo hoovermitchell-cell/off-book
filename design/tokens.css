@@ -4,23 +4,24 @@
    names under [data-theme="dark"]; components never use raw values. */
 
 /* Self-hosted, OFL (licenses beside the files). No third-party font calls.
-   ponytail: TTF, unsubset. WOFF2 + Latin subset would roughly halve Kalam;
-   do it in the app build once fontTools is available. */
+   WOFF2, subset to Latin plus common punctuation and arrows (596 KB of TTF down
+   to 72 KB). The TTFs stay as masters; regenerate with fontTools.subset if a
+   glyph is missing. */
 @font-face {
   font-family: "Atkinson Hyperlegible Next";
-  src: url("fonts/AtkinsonHyperlegibleNext-Variable.ttf") format("truetype");
+  src: url("fonts/AtkinsonHyperlegibleNext-Variable.woff2") format("woff2");
   font-weight: 200 800;
   font-display: swap;
 }
 @font-face {
   font-family: "Atkinson Hyperlegible Mono";
-  src: url("fonts/AtkinsonHyperlegibleMono-Variable.ttf") format("truetype");
+  src: url("fonts/AtkinsonHyperlegibleMono-Variable.woff2") format("woff2");
   font-weight: 200 800;
   font-display: swap;
 }
 @font-face {
   font-family: "Kalam";
-  src: url("fonts/Kalam-Regular.ttf") format("truetype");
+  src: url("fonts/Kalam-Regular.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
