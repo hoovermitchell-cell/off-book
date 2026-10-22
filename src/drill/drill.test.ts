@@ -31,10 +31,14 @@ function queuedEngine(queue: Eval[] = []) {
   return { evaluate: vi.fn(async (_fen: string, _ms: number): Promise<Eval> => q.shift() ?? { cp: 0, best: 'a1a1' }) };
 }
 
-function setup(opts: { tree?: PrepTree; maia?: string[]; engine?: Eval[] } = {}) {
+/** Everything already learned, so tests exercise the testing step unless they pass their own set. */
+const allLearned = { has: () => true, add: () => {} };
+
+function setup(opts: { tree?: PrepTree; maia?: string[]; engine?: Eval[]; learned?: Set<string> } = {}) {
   const engine = queuedEngine(opts.engine);
   const drill = createDrill({
     tree: opts.tree ?? tinyTree(),
+    learned: opts.learned ?? allLearned,
     engine,
     maia: scriptedMaia(opts.maia ?? []),
     rand: () => 0,
@@ -124,6 +128,30 @@ describe('drill: state at emit time', () => {
     expect(events.map((e) => e.type)).toContain('black-move');
     expect(seen).toEqual([{ phase: 'black', dests: 0 }, { phase: 'student', dests: expect.any(Number) }]);
     expect(seen[1].dests).toBeGreaterThan(0);
+  });
+});
+
+describe('drill: learning step (decision 13)', () => {
+  it('shows a new position, accepts only the shown move, and counts no rep', async () => {
+    const learned = new Set<string>();
+    const { drill, of } = setup({ tree: buildTree(), maia: ['d5'], learned });
+    expect(drill.getState().teach?.san).toBe('d4');
+    expect([...drill.dests()]).toEqual([['d2', ['d4']]]);
+    expect(await drill.play(mv('e2', 'e4'))).toBe(false);
+    expect(drill.getState().history).toEqual([]);
+    await drill.play(mv('d2', 'd4'));
+    expect(of('prep-correct')[0]).toMatchObject({ learnedNow: true, counted: false });
+    expect(drill.getState().reps).toBe(0);
+    expect(learned.has(START)).toBe(true);
+  });
+
+  it('a learned position is tested: hidden, and a first-try correct move earns a rep', async () => {
+    const learned = new Set<string>([START]);
+    const { drill, of } = setup({ tree: buildTree(), maia: ['d5'], learned });
+    expect(drill.getState().teach).toBeNull();
+    await drill.play(mv('d2', 'd4'));
+    expect(of('prep-correct')[0]).toMatchObject({ learnedNow: false, counted: true });
+    expect(drill.getState().reps).toBe(1);
   });
 });
 

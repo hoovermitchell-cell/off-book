@@ -6,6 +6,8 @@ export const REPS_PER_LEVEL = 10;
 export interface Saved {
   /** Lifetime count of prep moves played correctly on the first try. */
   correct: number;
+  /** Prep positions (posKey) the student has been shown and played (decision 13). */
+  learned: string[];
 }
 
 function safeStorage(): Storage | undefined {
@@ -19,12 +21,13 @@ function safeStorage(): Storage | undefined {
 export function loadSaved(store: Pick<Storage, 'getItem'> | undefined = safeStorage()): Saved {
   try {
     const raw = store?.getItem(STORAGE_KEY);
-    if (!raw) return { correct: 0 };
-    const parsed: unknown = JSON.parse(raw);
-    const n = typeof parsed === 'object' && parsed !== null ? Number((parsed as Partial<Saved>).correct) : NaN;
-    return { correct: Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0 };
+    if (!raw) return { correct: 0, learned: [] };
+    const parsed = JSON.parse(raw) as Partial<Saved> | null;
+    const n = Number(parsed?.correct);
+    const learned = Array.isArray(parsed?.learned) ? parsed.learned.filter((k): k is string => typeof k === 'string') : [];
+    return { correct: Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0, learned };
   } catch {
-    return { correct: 0 };
+    return { correct: 0, learned: [] };
   }
 }
 

@@ -3,6 +3,8 @@
 // render purely from `getState()` and the events passed to `on()`.
 //
 // Flow of one round:
+//   learning:  a prep position the student has never played correctly is shown first (decision 13):
+//              state.teach holds the move, only that move is legal, and playing it marks it learned.
 //   in prep:   student move == prep move -> correct (a rep, unless they missed here first)
 //              otherwise Stockfish compares it with the prep move (verdict "playable" or "mistake"),
 //              the move is taken back and the student retries.
@@ -37,6 +39,8 @@ export interface DrillDeps {
   engine: { evaluate(fen: string, ms: number): Promise<Judgement> };
   /** Legal moves for the side to move with probabilities, sorted high to low. */
   maia: (chess: Chess, elo: number) => Promise<MaiaMove[]>;
+  /** Prep positions (posKey) the student has already learned. Defaults to an in-memory set. */
+  learned?: { has(key: string): boolean; add(key: string): void };
   rand?: () => number;
   delay?: (ms: number) => Promise<void>;
 }
@@ -57,6 +61,8 @@ export interface DrillState {
   mistakes: number;
   /** The student has missed at the current prep position and has not yet played it correctly. */
   missed: boolean;
+  /** A new prep move being shown to the student (learning step), or null when they are being tested. */
+  teach: PrepMove | null;
   result: Result | null;
 }
 
@@ -76,7 +82,7 @@ export interface TopMove {
 export type DrillEvent =
   | { type: 'start'; state: DrillState }
   | { type: 'judging'; kind: 'prep' | 'offbook' }
-  | { type: 'prep-correct'; san: string; counted: boolean; prepMoves: number; reps: number }
+  | { type: 'prep-correct'; san: string; counted: boolean; prepMoves: number; reps: number; learnedNow: boolean }
   | { type: 'prep-miss'; played: string; prep: string; prepUci: string; loss: number; verdict: 'playable' | 'mistake'; depth?: number; nodes?: number }
   | { type: 'black-move'; san: string; uci: string; p: number; top: TopMove[]; rating: number }
   | { type: 'off-book'; san: string }
@@ -113,6 +119,7 @@ const defaultDelay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 export function createDrill(deps: DrillDeps): Drill {
   const { tree, engine, maia } = deps;
+  const learned = deps.learned ?? new Set<string>();
   const rand = deps.rand ?? Math.random;
   const delay = deps.delay ?? defaultDelay;
   const listeners = new Set<(e: DrillEvent) => void>();
@@ -143,8 +150,17 @@ export function createDrill(deps: DrillDeps): Drill {
       reps,
       mistakes,
       missed,
+      teach: teaching(),
       result,
     };
+  }
+
+  /** The prep move to show, if the student is at a prep position they have not learned yet. */
+  function teaching(): PrepMove | null {
+    if (phase !== 'student' || offBook) return null;
+    const key = posKey(chess.fen());
+    const prep = tree.get(key);
+    return prep && !learned.has(key) ? prep : null;
   }
 
   function start(r?: number) {
@@ -238,6 +254,21 @@ export function createDrill(deps: DrillDeps): Drill {
 
     if (!offBook) {
       const prep = tree.get(posKey(before));
+      if (prep && !learned.has(posKey(before))) {
+        // Learning step: only the shown move is accepted.
+        if (played.san !== prep.san) {
+          chess.undo();
+          return false;
+        }
+        learned.add(posKey(before));
+        prepMoves++;
+        missed = false;
+        phase = 'black';
+        emit({ type: 'prep-correct', san: played.san, counted: false, prepMoves, reps, learnedNow: true });
+        if (checkOver()) return true;
+        await blackReply(myRound);
+        return true;
+      }
       if (!prep) {
         // Cannot happen while the tree covers every position we sent the student to.
         offBook = true;
@@ -248,7 +279,7 @@ export function createDrill(deps: DrillDeps): Drill {
         if (counted) reps++;
         missed = false;
         phase = 'black';
-        emit({ type: 'prep-correct', san: played.san, counted, prepMoves, reps });
+        emit({ type: 'prep-correct', san: played.san, counted, prepMoves, reps, learnedNow: false });
         if (checkOver()) return true;
         await blackReply(myRound);
         return true;
@@ -294,6 +325,8 @@ export function createDrill(deps: DrillDeps): Drill {
   function dests(): Map<string, string[]> {
     const d = new Map<string, string[]>();
     if (phase !== 'student') return d;
+    const teach = teaching();
+    if (teach) return new Map([[teach.uci.slice(0, 2), [teach.uci.slice(2, 4)]]]);
     for (const m of chess.moves({ verbose: true })) d.set(m.from, [...(d.get(m.from) ?? []), m.to]);
     return d;
   }
@@ -309,7 +342,7 @@ export function createDrill(deps: DrillDeps): Drill {
     dests,
     prepHint,
     revealPrep: () => {
-      const hint = phase === 'student' ? prepHint() : undefined;
+      const hint = phase === 'student' && !teaching() ? prepHint() : undefined;
       if (hint) missed = true;
       return hint;
     },

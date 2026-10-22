@@ -33,6 +33,7 @@ for my own personal growth."
 | 11 | London repertoire policy | "Cover Black's common replies widely; White stays system-first plus the two traps." The ...f6 trap (Qh5+, Qxe5+) and the Englund, where the lesson is 6.Nc3, not 6.Bc3?? |
 | 12 | When prep ends | "When prep ends, keep playing vs Maia; Stockfish flags only real mistakes; round ends at a set move." Spike uses move 12 and a 100-point Stockfish drop as "real mistake"; both are tuning knobs. Whether play after prep counts toward the line's level is still open. |
 | 12b | How long play continues | Replaces the set move in 12: "Play the game out to mate or resign; add a Resign button." Draws also end it. |
+| 13 | Learning before testing | "Show-then-test per position: new moves are shown with their idea, you play them, then they're drilled hidden." Mitch: "we need an instructive mode before we're forcing 'prep'." |
 
 ## v1 scope
 

@@ -108,8 +108,15 @@ export function mountDrill(root: HTMLElement) {
   const tree = buildTree();
   let drill: ReturnType<typeof createDrill>;
 
+  // Learned positions live on the device with the tally (decisions 3 and 13).
+  const learnedSet = new Set(saved.learned);
+  const learned = {
+    has: (k: string) => learnedSet.has(k),
+    add: (k: string) => { learnedSet.add(k); saved = { ...saved, learned: [...learnedSet] }; save(saved); },
+  };
+
   ready.then(([sf, run]) => {
-    drill = createDrill({ tree, engine: sf.engine, maia: (chess, elo) => maiaMoves(run, chess, elo, elo) });
+    drill = createDrill({ tree, learned, engine: sf.engine, maia: (chess, elo) => maiaMoves(run, chess, elo, elo) });
     drill.on(onEvent);
     newGame();
   }).catch((err: unknown) => {
@@ -170,7 +177,7 @@ export function mountDrill(root: HTMLElement) {
       <span class="badge-level${stamp ? ' stamp' : ''}">Level ${level}</span>
       <span class="tally" role="img" aria-label="${progress} of ${REPS_PER_LEVEL} first-try prep moves toward level ${level + 1}">
         <svg width="88" height="30" viewBox="0 0 88 30" aria-hidden="true">${s}</svg></span>
-      <span class="soft">${progress} of ${REPS_PER_LEVEL} to level ${level + 1}</span>`;
+      <span class="soft">${progress} of ${REPS_PER_LEVEL} to level ${level + 1} · ${learnedSet.size} move${learnedSet.size === 1 ? '' : 's'} learned</span>`;
   }
 
   function renderKnow() {
@@ -204,7 +211,12 @@ export function mountDrill(root: HTMLElement) {
       check: c.inCheck(),
       movable: { color: 'white', dests: drill.dests() as Map<Key, Key[]> },
     });
-    if (shapes) ground.setAutoShapes(shapes);
+    // A new move being taught always shows its arrow and says so (decision 13).
+    if (s.teach) {
+      ground.setAutoShapes([{ orig: s.teach.uci.slice(0, 2) as Key, dest: s.teach.uci.slice(2, 4) as Key, brush: 'prep' }]);
+      const lastBlack = verbose.length && verbose.length % 2 === 0 ? `Black played ${label(verbose.length - 1, verbose.at(-1)!.san)}. ` : '';
+      setNow(`New move: play ${label(verbose.length, s.teach.san)}.`, `${lastBlack}Follow the arrow. Next time you reach this position, you'll play it from memory.`);
+    } else if (shapes) ground.setAutoShapes(shapes);
     renderMoves(s.history, !s.offBook);
     // Announce new moves for screen readers.
     if (verbose.length < announced) announced = 0;
@@ -214,7 +226,7 @@ export function mountDrill(root: HTMLElement) {
     const over = s.phase === 'over';
     els.resign.hidden = over;
     els.newGame.hidden = !over;
-    els.showPrep.disabled = s.offBook || s.phase !== 'student';
+    els.showPrep.disabled = s.offBook || s.phase !== 'student' || !!s.teach;
     els.typed.disabled = s.phase !== 'student';
   }
 
@@ -226,8 +238,8 @@ export function mountDrill(root: HTMLElement) {
       case 'start':
         bookPlies = null; marks = new Map(); know = null; announced = 0;
         els.verdict.hidden = true;
-        setNow('Play your London as White.', `Black answers like a ${s.rating}-rated player. Stay in your prep as long as you can.`);
-        setNote('Your prep moves get highlighted on the scoresheet.');
+        setNow('Play your London as White.', `Black answers like a ${s.rating}-rated player. Moves you've learned, you play from memory.`);
+        setNote('New moves get an arrow. Learned ones are up to you.');
         sync([]);
         break;
       case 'judging':
@@ -235,9 +247,11 @@ export function mountDrill(root: HTMLElement) {
         sync();
         break;
       case 'prep-correct': {
-        setVerdict('!', 'good', `${label(ply, e.san)}. Your prep.`, e.counted ? '+1 tally' : 'no tally, you looked');
+        if (e.learnedNow) setVerdict('!', 'good', `${label(ply, e.san)}. Learned.`, 'new move');
+        else setVerdict('!', 'good', `${label(ply, e.san)}. Your prep, from memory.`, e.counted ? '+1 tally' : 'no tally, you looked');
+        if (e.learnedNow) renderLevel();
         if (e.counted) {
-          saved = { correct: saved.correct + 1 };
+          saved = { ...saved, correct: saved.correct + 1 };
           save(saved);
           renderLevel(levelOf(saved.correct).progress === 0);
         }
@@ -305,6 +319,11 @@ export function mountDrill(root: HTMLElement) {
     if (!text || !drill) return;
     let m: Move | undefined;
     try { m = new Chess(drill.getState().fen).move(text); } catch { m = undefined; }
+    const teach = drill.getState().teach;
+    if (m && teach && m.san !== teach.san) {
+      els.typedError.textContent = `This one's new. Play the shown move: ${teach.san}.`;
+      return;
+    }
     if (!m || m.color !== 'w') {
       els.typedError.textContent = `"${text}" isn't a legal move for White here. Try a move like Nf3 or e2e4.`;
       return;
