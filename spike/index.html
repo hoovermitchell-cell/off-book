@@ -32,7 +32,7 @@
     <div class="bar"><div id="fill" style="width:0%"></div></div>
     <p><label>Opponent rating <b id="ratingOut">1000</b><br>
       <input id="rating" type="range" min="600" max="1800" step="100" value="1000"></label></p>
-    <p><button id="next" disabled>New round</button></p>
+    <p><button id="next" disabled>New round</button> <button id="resign" disabled>Resign</button></p>
     <p id="maia"></p>
     <p id="moves"></p>
     <div id="timing"></div>
@@ -55,7 +55,6 @@ import { buildTree, posKey } from './london.js';
 
 const $ = (id) => document.getElementById(id);
 const PER_LEVEL = 10;
-const END_MOVE = 12;     // round ends after Black's reply on this move
 const MISTAKE = 100;     // Stockfish 19 points lost that count as a real mistake (100 = about 50% win chance)
 const times = { load: null, maia: [], sf: [] };
 const tree = buildTree(Chess);
@@ -74,7 +73,7 @@ const [session] = await Promise.all([
 ]);
 times.load = performance.now();
 
-let chess, missed, offBook, prepMoves, mistakes;
+let chess, missed, offBook, prepMoves, mistakes, resigned;
 // trustAllEvents: spike only, so scripted checks can click the board.
 const ground = Chessground($('board'), { orientation: 'white', trustAllEvents: true, movable: { free: false, color: 'white', events: { after: onUserMove } } });
 
@@ -106,13 +105,14 @@ async function timed(list, p) { const t = performance.now(); const r = await p; 
 
 function newRound() {
   chess = new Chess(); missed = false; offBook = false; prepMoves = 0; mistakes = 0;
-  $('next').disabled = true;
+  $('next').disabled = true; $('resign').disabled = false; resigned = false;
   $('maia').textContent = ''; $('levelup').style.visibility = 'hidden';
   sync({ drawable: { autoShapes: [] } });
   say('Your move. Play your London.');
 }
 
 async function onUserMove(orig, dest) {
+  if (resigned) return sync();
   const before = chess.fen();
   if (offBook) return playOn(before, chess.move({ from: orig, to: dest, promotion: 'q' }));
   const prep = tree.get(posKey(before));
@@ -141,16 +141,18 @@ async function onUserMove(orig, dest) {
 }
 
 async function blackReply() {
+  if (resigned) return;
   const moves = await timed(times.maia, maiaMoves(ort, session, chess, rating(), rating()));
   const pick = sample(moves);
   await new Promise((r) => setTimeout(r, 350));
   chess.move(pick.san);
   const pct = (m) => `${m.san} ${Math.round(m.p * 100)}%`;
   $('maia').textContent = `Maia at ${rating()}: played ${pct(pick)}. Top choices here: ${moves.slice(0, 4).map(pct).join(', ')}.`;
-  if (chess.isGameOver() || chess.moveNumber() > END_MOVE) return endRound();
+  if (resigned) return;
+  if (chess.isGameOver()) return endRound();
   if (!offBook && tree.has(posKey(chess.fen()))) { sync(); say(`Black played ${pick.san}. Your move.`); return; }
   sync();
-  if (!offBook) { offBook = true; say(`Black played ${pick.san}. Your prep ends here: you're off book. Keep playing to move ${END_MOVE}.`); }
+  if (!offBook) { offBook = true; say(`Black played ${pick.san}. Your prep ends here: you're off book. Play it out, or resign.`); }
   else say(`Black played ${pick.san}. Your move.`);
 }
 
@@ -172,13 +174,17 @@ async function playOn(before, played) {
 
 function endRound() {
   sync({ movable: { color: 'white', dests: new Map() } });
-  const result = chess.isCheckmate() ? (chess.turn() === 'b' ? 'You won by checkmate. ' : 'Checkmated. ') : '';
-  say(`${result}Round over. Prep lasted ${prepMoves} move${prepMoves === 1 ? '' : 's'}; off book you made ${mistakes} mistake${mistakes === 1 ? '' : 's'}.`);
+  $('resign').disabled = true;
+  const result = resigned ? 'You resigned. '
+    : chess.isCheckmate() ? (chess.turn() === 'b' ? 'You won by checkmate. ' : 'Checkmated. ')
+    : chess.isDraw() || chess.isStalemate() ? 'Draw. ' : '';
+  say(`${result}Game over. Prep lasted ${prepMoves} move${prepMoves === 1 ? '' : 's'}; off book you made ${mistakes} mistake${mistakes === 1 ? '' : 's'}.`);
   $('next').disabled = false;
 }
 
 $('rating').oninput = () => { $('ratingOut').textContent = rating(); };
 $('next').onclick = newRound;
+$('resign').onclick = () => { resigned = true; endRound(); };
 renderLevel(false); renderTiming(); newRound();
 window.spike = { get chess() { return chess; }, tree, get offBook() { return offBook; } }; // debug hook for automated checks
 </script>
