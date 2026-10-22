@@ -36,6 +36,7 @@ for my own personal growth."
 | 13 | Learning before testing | "Show-then-test per position: new moves are shown with their idea, you play them, then they're drilled hidden." Mitch: "we need an instructive mode before we're forcing 'prep'." |
 | 13b | What the ideas say | "One idea per move idea (~25 texts): you draft, I review. Specific notes for the traps." Texts in `src/data/london-ideas.ts`. Mitch, 2026-10-22: "The idea texts are approved as drafted." |
 | 14 | Levelling | "Off book doesn't count towards levelling." Progression, in Mitch's words: "can execute the main line without fail" then "can execute the alternative lines without fail" then "doing the same in real matches would be the final stage." Refines decision 5. Open: what counts as the main line, what "without fail" means, how Black's replies change per stage, what replaces the tally. |
+| 14b | Line progression | Main line "literally be staged moves": Black plays fixed moves. Mitch: "introduce the lines that are likely to be encountered, and then maia kicks in once you've reached the end of the line progression." Order: "Textbook line first, then the likely alternatives in order of how often they're met." Textbook line: 1.d4 d5 2.Bf4 Nf6 3.e3 e6 4.Nf3 c5 5.c3 Nc6 6.Nbd2 Bd6 7.Bg3 O-O 8.Bd3. The staged alternatives list goes to Mitch for review. |
 
 ## v1 scope
 
