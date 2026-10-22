@@ -10,7 +10,9 @@
     "dev": "vite",
     "prebuild": "node scripts/assets.mjs",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy:setup": "npx --yes wrangler@4.151.3 pages project create off-book --production-branch main",
+    "deploy": "npm run build && npx --yes wrangler@4.151.3 pages deploy dist --project-name off-book --branch preview"
   },
   "dependencies": {
     "chess.js": "1.4.0",
