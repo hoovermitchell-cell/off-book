@@ -41,6 +41,16 @@ export function save(data: Saved, store: Pick<Storage, 'setItem'> | undefined = 
   }
 }
 
+/** Applies `fn` to the latest saved progress, not a stale copy, so two open tabs don't erase each
+ *  other's gains. `ok` is false when the browser won't store anything (private window, blocked). */
+export function updateSaved(
+  fn: (latest: Saved) => Saved,
+  store: Pick<Storage, 'getItem' | 'setItem'> | undefined = safeStorage(),
+): { saved: Saved; ok: boolean } {
+  const saved = fn(loadSaved(store));
+  return { saved, ok: save(saved, store) };
+}
+
 /** Level (from 1) and progress through it (0 to REPS_PER_LEVEL - 1) for a rep count. */
 export function levelOf(correct: number): { level: number; progress: number } {
   return { level: Math.floor(correct / REPS_PER_LEVEL) + 1, progress: correct % REPS_PER_LEVEL };

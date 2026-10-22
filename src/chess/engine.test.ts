@@ -30,3 +30,13 @@ describe('engine (real Stockfish)', () => {
     expect(b.cp).toBeLessThan(-90000);
   });
 });
+
+describe('engine failure', () => {
+  it('fail() rejects the pending search and every later one', async () => {
+    const dead = createEngine(() => {}); // never answers
+    const pending = dead.evaluate('8/8/8/8/8/8/8/K6k w - - 0 1', 100);
+    dead.fail(new Error('gone'));
+    await expect(pending).rejects.toThrow('gone');
+    await expect(dead.ready()).rejects.toThrow('gone');
+  });
+});

@@ -19,7 +19,7 @@ import { sample, type MaiaMove } from '../chess/maia';
 
 /** Centipawns a non-prep move may lose against the prep move and still be called "playable". */
 export const PLAYABLE = 50;
-/** Centipawns lost off book that count as a real mistake (100 = about 50% win chance). */
+/** Score drop off book that counts as a real mistake. Stockfish 19 normalizes scores so a position at +1.00 wins about half the time. */
 export const MISTAKE = 100;
 /** Stockfish think time per judgement, in ms. */
 export const JUDGE_MS = 300;
@@ -87,7 +87,9 @@ export type DrillEvent =
   | { type: 'black-move'; san: string; uci: string; p: number; top: TopMove[]; rating: number }
   | { type: 'off-book'; san: string }
   | { type: 'offbook-mistake'; played: string; better: string; betterUci: string; loss: number; depth?: number; nodes?: number }
-  | { type: 'game-over'; result: Result; reason: EndReason; prepMoves: number; reps: number; mistakes: number };
+  | { type: 'game-over'; result: Result; reason: EndReason; prepMoves: number; reps: number; mistakes: number }
+  /** Stockfish or Maia failed mid-game. The round is over; start() begins a fresh one. */
+  | { type: 'engine-error'; message: string };
 
 export interface StudentMove {
   from: string;
@@ -135,6 +137,8 @@ export function createDrill(deps: DrillDeps): Drill {
   let result: Result | null = null;
   // Bumped on every start() so that work left over from a previous round is dropped.
   let round = 0;
+  // A wrong prep move is on the board while Stockfish judges it; resign() must take it back.
+  let pendingMiss = false;
 
   const emit = (e: DrillEvent) => listeners.forEach((l) => l(e));
   const isOver = () => phase === 'over';
@@ -174,6 +178,7 @@ export function createDrill(deps: DrillDeps): Drill {
     reps = 0;
     mistakes = 0;
     result = null;
+    pendingMiss = false;
     emit({ type: 'start', state: getState() });
   }
 
@@ -200,7 +205,8 @@ export function createDrill(deps: DrillDeps): Drill {
 
   async function blackReply(myRound: number): Promise<void> {
     phase = 'black';
-    const moves = await maia(new Chess(chess.fen()), rating);
+    const elo = rating; // a rating change mid-search applies to the next reply, not this one
+    const moves = await maia(new Chess(chess.fen()), elo);
     if (myRound !== round || isOver()) return;
     const pick = sample(moves, rand);
     await delay(BLACK_DELAY_MS);
@@ -216,7 +222,7 @@ export function createDrill(deps: DrillDeps): Drill {
       uci: pick.uci,
       p: pick.p,
       top: moves.slice(0, 4).map((m) => ({ san: m.san, p: m.p })),
-      rating,
+      rating: elo,
     });
     if (checkOver()) return;
     if (leftBook) emit({ type: 'off-book', san: pick.san });
@@ -244,6 +250,20 @@ export function createDrill(deps: DrillDeps): Drill {
   async function play(move: StudentMove): Promise<boolean> {
     if (phase !== 'student') return false;
     const myRound = round;
+    try {
+      return await runPlay(move, myRound);
+    } catch (err) {
+      // An engine failed. End this round in a state the student can recover from with start().
+      if (myRound !== round || isOver()) return true;
+      if (pendingMiss) chess.undo();
+      pendingMiss = false;
+      phase = 'over';
+      emit({ type: 'engine-error', message: String(err) });
+      return true;
+    }
+  }
+
+  async function runPlay(move: StudentMove, myRound: number): Promise<boolean> {
     const before = chess.fen();
     let played;
     try {
@@ -286,13 +306,14 @@ export function createDrill(deps: DrillDeps): Drill {
       } else {
         // Not prep: Stockfish compares it with the prep move, then the student retries.
         phase = 'judging';
+        pendingMiss = true;
         emit({ type: 'judging', kind: 'prep' });
         const prepChess = new Chess(before);
         prepChess.move(prep.san);
         const [a, b] = await Promise.all([engine.evaluate(prepChess.fen(), JUDGE_MS), evalAfter()]);
-        if (myRound !== round) return true;
+        if (myRound !== round || isOver()) return true; // resign() already took the move back
+        pendingMiss = false;
         chess.undo();
-        if (isOver()) return true; // resigned mid-judgement: leave the board as it was
         const loss = a.cp - b.cp;
         missed = true;
         phase = 'student';
@@ -315,6 +336,9 @@ export function createDrill(deps: DrillDeps): Drill {
 
   function resign() {
     if (phase === 'idle' || phase === 'over') return;
+    // Take back a wrong prep move still being judged, so game-over renders the settled board.
+    if (pendingMiss) chess.undo();
+    pendingMiss = false;
     endGame('resign');
   }
 

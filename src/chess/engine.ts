@@ -16,17 +16,21 @@ export interface Engine {
   onLine(line: string): void;
   ready(): Promise<string[]>;
   evaluate(fen: string, ms: number): Promise<Evaluation>;
+  /** The engine died: rejects the pending request and every later one. */
+  fail(err: Error): void;
 }
 
 interface Waiter {
   test: (line: string) => boolean;
   resolve: (lines: string[]) => void;
+  reject: (err: Error) => void;
   lines: string[];
 }
 
 export function createEngine(post: (cmd: string) => void): Engine {
   let waiter: Waiter | null = null;
   let chain: Promise<unknown> = Promise.resolve();
+  let dead: Error | null = null;
 
   function onLine(line: string) {
     if (!waiter) return;
@@ -40,8 +44,9 @@ export function createEngine(post: (cmd: string) => void): Engine {
 
   function request(cmds: string[], test: (line: string) => boolean): Promise<string[]> {
     const run = () =>
-      new Promise<string[]>((resolve) => {
-        waiter = { test, resolve, lines: [] };
+      new Promise<string[]>((resolve, reject) => {
+        if (dead) return reject(dead);
+        waiter = { test, resolve, reject, lines: [] };
         cmds.forEach(post);
       });
     const next = chain.then(run, run);
@@ -66,5 +71,12 @@ export function createEngine(post: (cmd: string) => void): Engine {
     };
   }
 
-  return { onLine, ready, evaluate };
+  function fail(err: Error) {
+    dead = err;
+    const w = waiter;
+    waiter = null;
+    w?.reject(err);
+  }
+
+  return { onLine, ready, evaluate, fail };
 }
