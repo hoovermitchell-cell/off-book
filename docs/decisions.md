@@ -35,6 +35,7 @@ for my own personal growth."
 | 12b | How long play continues | Replaces the set move in 12: "Play the game out to mate or resign; add a Resign button." Draws also end it. |
 | 13 | Learning before testing | "Show-then-test per position: new moves are shown with their idea, you play them, then they're drilled hidden." Mitch: "we need an instructive mode before we're forcing 'prep'." |
 | 13b | What the ideas say | "One idea per move idea (~25 texts): you draft, I review. Specific notes for the traps." Texts in `src/data/london-ideas.ts`. Mitch, 2026-10-22: "The idea texts are approved as drafted." |
+| 14 | Levelling | "Off book doesn't count towards levelling." Progression, in Mitch's words: "can execute the main line without fail" then "can execute the alternative lines without fail" then "doing the same in real matches would be the final stage." Refines decision 5. Open: what counts as the main line, what "without fail" means, how Black's replies change per stage, what replaces the tally. |
 
 ## v1 scope
 

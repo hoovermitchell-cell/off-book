@@ -12,7 +12,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 
 - Chromebook run of the real drill screen: load time on school Wi-Fi (about 15 MB gzipped: Maia model 10.8 MB, onnxruntime wasm 3.7 MB), Maia and Stockfish ms per move. Needs a public URL
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
-- Decide whether off-book play counts toward a line's level
+- Design the three-stage levelling from decision 14 (main line, alternatives, real matches)
 - Fonts ship as TTF (Kalam 427 KB); subset to WOFF2
 - Check "Off Book" for trademark and app-store conflicts, then publish as public GitHub repo `off-book` with an AGPL-3.0 LICENSE file and a source link in the app footer
 - Ask the school: club size, grades, devices, which students have Lichess/Chess.com accounts, and whether a school Chromebook can be borrowed for the spike
