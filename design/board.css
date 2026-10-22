@@ -47,11 +47,15 @@ cg-board {
 .cg-wrap piece.black.knight { background-image: url("pieces/offbook/bN.webp"); }
 .cg-wrap piece.black.pawn   { background-image: url("pieces/offbook/bP.webp"); }
 
-/* Dragged piece: a touch bigger, lifted off the board. The inline transform
-   chessground writes while dragging is a translate, so use the independent
-   `scale` property to avoid fighting it. */
+/* Dragged piece: a touch bigger, lifted off the board. Chessground positions it
+   with a translate, and `scale` would multiply that translate too, pulling the
+   piece away from the cursor (50px off near h1 on a 560px board). So grow the
+   box instead: 12.5% -> 14% of the board (1.12x), recentered with negative
+   margins. Margin percentages use the board's width, and the board is square. */
 cg-board piece.dragging {
-  scale: 1.12;
+  width: 14%;
+  height: 14%;
+  margin: -0.75% 0 0 -0.75%;
   filter: drop-shadow(0 6px 6px color-mix(in srgb, var(--ink) 40%, transparent));
 }
 /* The piece's origin square while dragging */
