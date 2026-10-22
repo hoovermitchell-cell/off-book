@@ -11,7 +11,7 @@ import { ideaFor } from '../data/london-ideas';
 import { maiaMoves } from '../chess/maia';
 import { createMaiaRunner } from '../chess/maia-ort';
 import { createStockfish } from '../chess/stockfish-worker';
-import { levelOf, loadSaved, save, REPS_PER_LEVEL } from '../storage';
+import { levelOf, loadSaved, REPS_PER_LEVEL, updateSaved, type Saved } from '../storage';
 import markUrl from '../../design/brand/off-the-page/favicon.svg';
 import prepEndsSvg from '../../design/icons/prep-ends.svg?raw';
 
@@ -66,6 +66,7 @@ export function mountDrill(root: HTMLElement) {
           <button type="button" id="new-game" hidden>New game</button>
         </form>
         <p class="typed-error" id="typed-error" aria-live="polite"></p>
+        <p class="soft" id="storage-note" role="status" hidden>This browser isn't saving your progress (a private window can do this). Your tallies and learned moves will reset when you close it.</p>
       </section>
     </main>
     <p class="visually-hidden" id="announce" aria-live="polite"></p>`;
@@ -75,7 +76,7 @@ export function mountDrill(root: HTMLElement) {
     now: $('now'), verdict: $('verdict'), note: $('note'), moves: $('moves'), scoresheet: $('scoresheet'),
     know: $('know'), knowBtn: $('know-btn'), level: $('level'), rating: $<HTMLSelectElement>('rating'),
     showPrep: $<HTMLButtonElement>('show-prep'), resign: $<HTMLButtonElement>('resign'), newGame: $<HTMLButtonElement>('new-game'),
-    typedForm: $<HTMLFormElement>('typed-form'), typed: $<HTMLInputElement>('typed'), typedError: $('typed-error'), announce: $('announce'),
+    typedForm: $<HTMLFormElement>('typed-form'), typed: $<HTMLInputElement>('typed'), typedError: $('typed-error'), announce: $('announce'), storageNote: $('storage-note'),
   };
 
   const css = getComputedStyle(document.documentElement);
@@ -87,7 +88,7 @@ export function mountDrill(root: HTMLElement) {
     coordinates: true,
     animation: { enabled: durPiece > 0, duration: durPiece },
     highlight: { lastMove: true, check: true },
-    movable: { free: false, color: 'white', showDests: true, events: { after: (from, to) => void play(from, to) } },
+    movable: { free: false, color: 'white', showDests: true, events: { after: (from, to) => { typedLast = false; void play(from, to); } } },
     premovable: { enabled: false },
     drawable: {
       brushes: {
@@ -105,16 +106,28 @@ export function mountDrill(root: HTMLElement) {
     | { kind: 'stockfish'; text: string; depth?: number; nodes?: number } | null = null;
 
   // ---- engines ---------------------------------------------------------------------------------
-  const ready = Promise.all([createStockfish(), createMaiaRunner()]);
+  const ready = Promise.all([
+    createStockfish(),
+    createMaiaRunner(undefined, (f) => setNow('Loading the engines…', `Black's engine: ${Math.round(f * 100)}% of about 11 MB`)),
+  ]);
   const tree = buildTree();
   let drill: ReturnType<typeof createDrill>;
 
   // Learned positions live on the device with the tally (decisions 3 and 13).
-  const learnedSet = new Set(saved.learned);
+  let learnedSet = new Set(saved.learned);
+  /** Writes against the latest save, so another open tab's progress isn't overwritten. */
+  function persist(fn: (latest: Saved) => Saved) {
+    const r = updateSaved(fn);
+    saved = r.saved;
+    learnedSet = new Set(saved.learned);
+    if (!r.ok) els.storageNote.hidden = false;
+  }
   const learned = {
     has: (k: string) => learnedSet.has(k),
-    add: (k: string) => { learnedSet.add(k); saved = { ...saved, learned: [...learnedSet] }; save(saved); },
+    add: (k: string) => persist((s) => ({ ...s, learned: [...new Set([...s.learned, k])] })),
   };
+  // Progress made in another tab shows up here too.
+  window.addEventListener('storage', () => { saved = loadSaved(); learnedSet = new Set(saved.learned); renderLevel(); });
 
   ready.then(([sf, run]) => {
     drill = createDrill({ tree, learned, engine: sf.engine, maia: (chess, elo) => maiaMoves(run, chess, elo, elo) });
@@ -154,7 +167,10 @@ export function mountDrill(root: HTMLElement) {
       if (san === undefined) return '<span></span>';
       const m = marks.get(ply);
       const glyph = m ? `<span class="glyph ${m.cls}">${m.g}</span>` : '';
-      return `<span${ply < book ? ' class="book"' : ''}>${san}${glyph}</span>`;
+      if (ply >= book) return `<span>${san}${glyph}</span>`;
+      // Never color alone: the highlighter is backed by hidden text, and the prep boundary by an icon.
+      const end = !inPrep && ply === book - 1 ? `<span class="prep-end" title="Prep ends here">${prepEndsSvg}</span>` : '';
+      return `<span><span class="book">${san}<span class="visually-hidden"> (prep)</span></span>${glyph}${end}</span>`;
     };
     let html = '';
     for (let ply = 0; ply < history.length; ply += 2) {
@@ -183,7 +199,7 @@ export function mountDrill(root: HTMLElement) {
 
   function renderKnow() {
     if (els.know.hidden) return;
-    const unit = '<p class="soft">Stockfish scores are from White\'s side. A drop of 1.0 is about a 50% swing in winning chances.</p>';
+    const unit = '<p class="soft">Scores are from White\'s side: higher is better for White. The number shown is how far your move\'s score fell below the better move.</p>';
     if (!know) {
       els.know.innerHTML = '<h2 id="know-h">How did it know?</h2><p>Play a move. Here you\'ll see why Black chose its reply and how Stockfish judged yours.</p>';
       return;
@@ -195,7 +211,7 @@ export function mountDrill(root: HTMLElement) {
         <p>It played <b>${label(know.ply, know.san)}</b>. Maia estimates ${pct(know.p)} of ${know.rating}-rated players would play that here. Its top choices:</p>
         <table><tbody>${rows}</tbody></table>`;
     } else {
-      const depth = know.depth ? ` It looked ${know.depth} moves ahead and checked ${know.nodes?.toLocaleString()} positions in 0.3 seconds.` : '';
+      const depth = know.depth ? ` It searched to depth ${know.depth} (counted in single moves, and deeper on forcing lines) and checked ${know.nodes?.toLocaleString()} positions in 0.3 seconds.` : '';
       els.know.innerHTML = `<h2 id="know-h">How did it know?</h2><p>${know.text}${depth}</p>${unit}`;
     }
   }
@@ -253,8 +269,7 @@ export function mountDrill(root: HTMLElement) {
         else setVerdict('!', 'good', `${label(ply, e.san)}. Your prep, from memory.`, e.counted ? '+1 tally' : 'no tally, you looked');
         if (e.learnedNow) renderLevel();
         if (e.counted) {
-          saved = { ...saved, correct: saved.correct + 1 };
-          save(saved);
+          persist((s) => ({ ...s, correct: s.correct + 1 }));
           renderLevel(levelOf(saved.correct).progress === 0);
         }
         setNow('Black is thinking…');
@@ -292,6 +307,11 @@ export function mountDrill(root: HTMLElement) {
         sync([{ orig: e.betterUci.slice(0, 2) as Key, dest: e.betterUci.slice(2, 4) as Key, brush: 'better' }]);
         break;
       }
+      case 'engine-error':
+        setNow('The engine stopped, so this game is over.', 'Start a new game. If it keeps happening, reload the page.');
+        sync();
+        els.newGame.focus();
+        break;
       case 'game-over': {
         const head = { won: 'You won by checkmate.', lost: 'Checkmate. Black wins.', draw: 'Draw.', resigned: 'You resigned.' }[e.result];
         setNow(head, `Prep lasted ${e.prepMoves} move${e.prepMoves === 1 ? '' : 's'}. Off book: ${e.mistakes} mistake${e.mistakes === 1 ? '' : 's'} flagged.`);
@@ -304,10 +324,12 @@ export function mountDrill(root: HTMLElement) {
   }
 
   // ---- input -----------------------------------------------------------------------------------
-  async function play(from: string, to: string) {
+  let typedLast = false; // the student is moving by keyboard: give the move box focus back each turn
+  async function play(from: string, to: string, promotion?: string) {
     els.typedError.textContent = '';
-    const ok = await drill.play({ from, to });
+    const ok = await drill.play({ from, to, promotion });
     if (!ok) sync();
+    if (typedLast && !els.typed.disabled) els.typed.focus();
   }
 
   function newGame() {
@@ -331,12 +353,13 @@ export function mountDrill(root: HTMLElement) {
       return;
     }
     els.typed.value = '';
-    void play(m.from, m.to);
+    typedLast = true;
+    void play(m.from, m.to, m.promotion);
   });
 
   els.rating.addEventListener('change', () => drill?.setRating(Number(els.rating.value)));
   els.resign.addEventListener('click', () => drill?.resign());
-  els.newGame.addEventListener('click', () => drill && newGame());
+  els.newGame.addEventListener('click', () => { if (!drill) return; newGame(); els.typed.focus(); });
   els.showPrep.addEventListener('click', () => {
     const hint = drill?.revealPrep();
     if (!hint) return;

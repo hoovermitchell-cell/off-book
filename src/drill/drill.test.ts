@@ -210,6 +210,54 @@ describe('drill: off book', () => {
   });
 });
 
+describe('drill: races and failures', () => {
+  it('resigning while a wrong prep move is judged takes it back before game over', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const engine = { evaluate: async () => { await gate; return { cp: 0, best: 'a1a1' }; } };
+    const drill = createDrill({ tree: tinyTree(), learned: allLearned, engine, maia: scriptedMaia([]), delay: async () => {} });
+    const seen: string[][] = [];
+    drill.on((e) => { if (e.type === 'game-over') seen.push(drill.getState().history); });
+    drill.start();
+    const pending = drill.play(mv('e2', 'e4')); // not the prep move d4
+    drill.resign();
+    release();
+    await pending;
+    expect(seen).toEqual([[]]);
+    expect(drill.getState().history).toEqual([]);
+  });
+
+  it('an engine failure ends the round with engine-error instead of locking the board', async () => {
+    const drill = createDrill({
+      tree: buildTree(), learned: allLearned, engine: queuedEngine(),
+      maia: async () => { throw new Error('model failed'); }, delay: async () => {},
+    });
+    const events: DrillEvent[] = [];
+    drill.on((e) => events.push(e));
+    drill.start();
+    expect(await drill.play(mv('d2', 'd4'))).toBe(true);
+    expect(events.at(-1)).toMatchObject({ type: 'engine-error' });
+    expect(drill.getState().phase).toBe('over');
+    drill.start();
+    expect(drill.getState().phase).toBe('student');
+  });
+
+  it("labels Black's reply with the rating Maia was asked for, not one changed mid-search", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const maia = scriptedMaia(['d5']);
+    const drill = createDrill({ tree: buildTree(), learned: allLearned, engine: queuedEngine(), maia: async (c) => { await gate; return maia(c); }, delay: async () => {} });
+    const ratings: number[] = [];
+    drill.on((e) => { if (e.type === 'black-move') ratings.push(e.rating); });
+    drill.start(1000);
+    const pending = drill.play(mv('d2', 'd4'));
+    drill.setRating(1800);
+    release();
+    await pending;
+    expect(ratings).toEqual([1000]);
+  });
+});
+
 describe('drill: game end', () => {
   it('resign ends the game with result resigned', async () => {
     const { drill, of } = setup({ maia: ['d5'] });

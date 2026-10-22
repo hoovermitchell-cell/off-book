@@ -83,6 +83,8 @@ button, input, select { font: inherit; color: inherit; }
 .moves .n { color: var(--ink-soft); }
 .moves .book { background: var(--highlighter); padding: 0 2px; justify-self: start; }
 .moves .glyph { font-weight: 700; margin-left: 1px; }
+.moves .prep-end { display: inline-flex; vertical-align: -3px; margin-left: var(--space-1); color: var(--ink-soft); }
+.moves .prep-end svg { width: 16px; height: 16px; }
 .moves:empty::before { content: "Your moves go here."; color: var(--ink-soft); font-family: var(--font-ui); }
 
 /* How did it know? Takes the scoresheet's place while open. */
