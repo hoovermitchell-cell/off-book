@@ -7,6 +7,7 @@ import type { Key } from 'chessground/types';
 import { Chess, type Move } from 'chess.js';
 import { createDrill, PLAYABLE, type DrillEvent, type TopMove } from '../drill/drill';
 import { buildTree } from '../data/london';
+import { ideaFor } from '../data/london-ideas';
 import { maiaMoves } from '../chess/maia';
 import { createMaiaRunner } from '../chess/maia-ort';
 import { createStockfish } from '../chess/stockfish-worker';
@@ -216,6 +217,7 @@ export function mountDrill(root: HTMLElement) {
       ground.setAutoShapes([{ orig: s.teach.uci.slice(0, 2) as Key, dest: s.teach.uci.slice(2, 4) as Key, brush: 'prep' }]);
       const lastBlack = verbose.length && verbose.length % 2 === 0 ? `Black played ${label(verbose.length - 1, verbose.at(-1)!.san)}. ` : '';
       setNow(`New move: play ${label(verbose.length, s.teach.san)}.`, `${lastBlack}Follow the arrow. Next time you reach this position, you'll play it from memory.`);
+      setNote(ideaFor(s.fen, s.teach) ?? '');
     } else if (shapes) ground.setAutoShapes(shapes);
     renderMoves(s.history, !s.offBook);
     // Announce new moves for screen readers.
