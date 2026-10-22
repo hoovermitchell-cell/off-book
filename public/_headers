@@ -1,0 +1,5 @@
+# Cloudflare Pages. The Maia model and engine files never change for a given URL; let phones cache them.
+/models/*
+  Cache-Control: public, max-age=604800
+/vendor/*
+  Cache-Control: public, max-age=604800

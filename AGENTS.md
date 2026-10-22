@@ -22,6 +22,9 @@ Visual and interface canon: [DESIGN.md](DESIGN.md), tokens in
 - Run it: `npm install`, then `npm run dev` (fetches engine files and the Maia model
   into `public/` first), `npm test`, `npm run build`. The app is the repo root; `spike/`
   is the throwaway reference.
+- Deploy (Cloudflare Pages): Mitch runs `npx wrangler login` once, then `npm run deploy:setup`
+  once, then `npm run deploy` for each preview at `preview.off-book.pages.dev`. Test URL only:
+  before students get the link, the source must be public (AGPL), per decision 6.
 - Stack default: TypeScript + Vite, static hosting (Cloudflare Pages). Spikes may
   be a single `index.html`.
 
