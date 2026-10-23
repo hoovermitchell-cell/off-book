@@ -26,3 +26,4 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 - On review branches, 2026-10-23: game import and prep-boundary review, backup/restore, LICENSE and footer, centered pieces, Caro-Kann draft data, name check (`docs/review/branches-2026-10-23.md`)
 - Caro-Kann in the drill as Black, next to the London, with an opening picker, 2026-10-23 (`feat/caro-kann-drill`)
 - Review tab handles Black games and the Caro-Kann, 2026-10-23 (`feat/review-black`)
+- Layout: notes under the board, tools in a rail, for drill and review (Codex studies, Mitch's pick), 2026-10-23 (`feat/layout-notes-under`)
