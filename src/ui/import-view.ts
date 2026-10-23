@@ -92,7 +92,7 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
     for (let i = 0; i < g.sans.length; i += 2) moves += `<li><span class="n">${i / 2 + 1}.</span><span>${g.sans[i]}</span><span>${g.sans[i + 1] ?? ''}</span></li>`;
     els.confirm.innerHTML = `
       <h2 tabindex="-1">Is this the game as you played it?</h2>
-      <p>${esc(g.white)} vs ${esc(g.black)}${g.date ? `, ${esc(g.date)}` : ''}, result ${esc(g.result)}. ${g.sans.length} half-moves, ending ${esc(plyLabel(g.sans.length - 1, g.sans.at(-1)!))}.</p>
+      <p>${esc(g.white)} vs ${esc(g.black)}${g.date ? `, ${esc(g.date)}` : ''}${g.result && g.result !== '*' ? `, ${esc(g.result)}` : ''}. ${Math.ceil(g.sans.length / 2)} moves, ending ${esc(plyLabel(g.sans.length - 1, g.sans.at(-1)!))}.</p>
       <p class="soft">Check it against your scoresheet. A move that is legal but mistyped would give an analysis that looks right and isn't. Off Book reviews the White side.</p>
       <div class="scoresheet"><ol class="moves" aria-label="Moves of the game">${moves}</ol></div>
       <div class="row"><button type="button" id="im-yes">Yes, review this game</button><button type="button" class="quiet" id="im-no">No, go back</button></div>`;
