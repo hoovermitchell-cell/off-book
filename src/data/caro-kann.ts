@@ -26,7 +26,7 @@ export const LINES: string[] = [
   // 5.Bd3, what club White plays (decision 15): trade White's good bishop, then hit d4
   'e4 c6 d4 d5 e5 Bf5 Nf3 e6 Bd3 Bxd3 Qxd3 c5',
   'e4 c6 d4 d5 e5 Bf5 h4 h5',
-  'e4 c6 d4 d5 e5 Bf5 g4 Bg6',
+  'e4 c6 d4 d5 e5 Bf5 g4 Be4 f3 Bg6', // 4...Be4 hits h1 first (Mitch, 2026-10-23)
   'e4 c6 d4 d5 e5 Bf5 Nc3 e6',
   'e4 c6 Nf3 d5 e5 Bf5 d4 e6',
   // Exchange, and the Panov attack (4.c4); 2.c4 d5 3.exd5 cxd5 4.d4 reaches the same position

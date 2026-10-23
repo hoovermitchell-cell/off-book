@@ -22,11 +22,12 @@ describe('Caro-Kann ideas', () => {
     expect(n).toBeLessThanOrEqual(50);
   });
 
-  it('the traps are noted: Nd6 mate, the Fantasy rook, Bxf7+ after ...Bxf3', () => {
+  it('the traps are noted: Nd6 mate, the Fantasy rook, f7 after ...Bxf3, Qxf7 mate in setup A', () => {
     const all = ALL_IDEAS.join('\n');
     expect(all).toMatch(/Ngf6\?\? loses to Nd6/);
     expect(all).toMatch(/takes the rook on h1/);
-    expect(all).toMatch(/Bxf7\+/);
+    expect(all).toMatch(/both hit f7/);
+    expect(all).toMatch(/Qxf7 is mate/);
     expect(all).toMatch(/Qxd4 wins the pawn/);
   });
 
