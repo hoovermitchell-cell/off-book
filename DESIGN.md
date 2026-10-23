@@ -1,6 +1,6 @@
 # Off Book — Design Brief
 **Status:** Canonical. All design decisions defer to this document.
-**Last updated:** 2026-10-21
+**Last updated:** 2026-10-23
 
 Decided by Mitch in a design grill on 2026-10-21 (Claude Code session), one
 topic at a time. Token values live in [design/tokens.css](design/tokens.css)
@@ -109,6 +109,24 @@ license file beside its font. `tokens.css` declares the `@font-face` rules.
 
 Scale is a 1.2 ratio from 16px (13, 14, 16, 19, 23, 28), sized so the board and
 move list both fit a 1366x768 Chromebook screen.
+
+## Layout
+Decided by Mitch on 2026-10-23, after seeing three layouts Codex built
+([design/layouts/](design/layouts/), renders in `renders/`). Mitch: "I don't
+like having to look to the right for all the info." He chose **notes under the
+board**, with the board grown into the empty left margin.
+
+- **Drill.** What to do now sits directly above the board. The verdict on the
+  last move and the Kalam idea sit directly below it, in a space with a fixed
+  height so the board never moves between moves. A right rail holds the
+  opening and rating, the scoresheet, the level, the buttons and typed moves.
+- **Review.** The "you left prep" headline sits above the board and the
+  per-step line below it. The lesson card, which is read once, sits at the top
+  of the rail, above the scoresheet and the step buttons. Mitch: "keep the
+  step line under the board." Both screens size the board the same way: 480px
+  at 1366x768.
+- **Narrow screens** stack the elements in reading order: status, board, the
+  note under it, then the rail.
 
 ## Motion
 Each duration has one job; nothing else moves.

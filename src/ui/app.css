@@ -49,19 +49,16 @@ button, input, select { font: inherit; color: inherit; }
   justify-content: center;
   align-items: start;
 }
-/* The lesson text needs room to read, so the review's column stays at least 32rem wide even when the board is smaller. */
-.review {
-  --status-h: 4.6rem;
-  --under-h: 14.25rem;
-  grid-template-columns: max(var(--board), min(32rem, calc(100vw - var(--rail-w) - var(--space-8) - 2 * var(--space-6)))) var(--rail-w);
-}
+/* The review's headline runs a line longer and its step line a line shorter; the two still add up
+   to the drill's, so both boards are the same size. The lesson card lives in the rail. */
+.review { --status-h: 4.6rem; --under-h: 7.65rem; }
 @media (max-width: 900px) {
   .drill, .review { --board: min(calc(100vw - 2 * var(--space-4)), 560px); grid-template-columns: var(--board); padding: var(--space-4); gap: var(--space-6); }
 }
 /* Phone width wraps the lines more, so reserve more of them. */
 @media (max-width: 600px) {
   .drill, .review { --status-h: 6.5rem; --under-h: 9rem; }
-  .review { --under-h: 20rem; }
+  .review { --under-h: 4.5rem; }
 }
 .play { display: grid; gap: var(--space-2); }
 .board { width: var(--board); height: var(--board); }
@@ -189,9 +186,10 @@ textarea {
 .prep-tag { background: var(--highlighter); color: var(--ink); padding: 0 var(--space-2); border-radius: 2px; font: 600 var(--text-xs) var(--font-ui); }
 #im-confirm .scoresheet { max-height: 40vh; background: var(--paper-sheet); border: 1px solid var(--rule); padding: 0 var(--space-3); }
 
-/* ---- Review: lesson card under the board, stepping in the rail ---- */
+/* ---- Review: step line under the board; lesson card and stepping in the rail ---- */
 .review .now small.num, .lesson .fb .num { font: var(--text-sm) var(--font-notation); color: var(--ink-soft); }
-.lesson { border-top: 1px solid var(--rule); padding-top: var(--space-1); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-3); align-items: center; }
+.lesson:empty { display: none; }
+.lesson { display: grid;grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-3); align-items: center; }
 .lesson h3 { grid-column: 1; grid-row: 1; font-size: var(--text-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
 .lesson button { grid-column: 2; grid-row: 1; }
 .lesson > :not(h3, button) { grid-column: 1 / -1; margin: 0; }

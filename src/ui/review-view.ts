@@ -81,10 +81,10 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
         <div class="board" id="rv-board"></div>
         <div class="under">
           <p class="fb" id="rv-step" role="status"></p>
-          <section class="lesson" id="rv-lesson" aria-labelledby="rv-lesson-h"></section>
         </div>
       </section>
-      <aside class="rail" aria-label="Moves and steps">
+      <aside class="rail" aria-label="Lesson, moves and steps">
+        <section class="lesson rail-section" id="rv-lesson" aria-labelledby="rv-lesson-h"></section>
         <div class="rail-section">
           <div class="scoresheet"><ol class="moves rv-moves" id="rv-moves" aria-label="Moves of the game"></ol></div>
           <div class="row">
