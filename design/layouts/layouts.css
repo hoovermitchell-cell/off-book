@@ -1,0 +1,108 @@
+/* Static layout studies. Color, type and spacing inherit the project canon. */
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--paper); color: var(--ink); font: var(--text-md)/1.35 var(--font-ui); }
+h1, h2, p, figure { margin: 0; }
+h1 { font-size: var(--text-xl); line-height: 1.2; }
+h2 { font-size: var(--text-md); }
+button, select, input { font: inherit; color: var(--pen); background: var(--paper-sheet); border: 1px solid var(--pen); border-radius: var(--radius); min-height: var(--target-min); padding: var(--space-2) var(--space-3); }
+button { cursor: pointer; white-space: nowrap; }
+input { color: var(--ink); min-width: 0; width: 100%; }
+button:hover, a:hover { background: var(--paper); }
+:focus-visible { outline: 2px solid var(--pen); outline-offset: var(--space-1); }
+a { color: var(--pen); min-height: var(--target-min); display: inline-flex; align-items: center; padding: 0 var(--space-2); }
+label { display: grid; gap: var(--space-1); font-size: var(--text-sm); color: var(--ink-soft); }
+select { width: 100%; }
+.soft { color: var(--ink-soft); }
+.mono { font-family: var(--font-notation); }
+.app-header { min-height: calc(var(--space-8) * 2); padding: 0 var(--space-8); border-bottom: 1px solid var(--rule); display: flex; align-items: center; gap: var(--space-8); background: var(--paper-sheet); }
+.brand { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xl); white-space: nowrap; }
+.brand img { width: calc(var(--space-6) * 2); height: calc(var(--space-6) * 2); object-fit: contain; }
+.tabs { align-self: stretch; display: flex; gap: var(--space-2); align-items: stretch; }
+.tabs button { border: 0; border-radius: 0; padding: 0 var(--space-4); }
+.tabs [aria-current] { color: var(--ink); border-bottom: var(--space-1) solid var(--pen); font-weight: 700; }
+.header-note { margin-left: auto; color: var(--ink-soft); font-size: var(--text-sm); }
+main { flex: 1; margin: 0 auto; padding: var(--space-2) 0; }
+.app-footer { min-height: calc(var(--space-6) * 2); margin: 0 var(--space-8); border-top: 1px solid var(--rule); display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--ink-soft); }
+.app-footer button { border: 0; background: none; font-size: var(--text-sm); }
+.app-footer .source { margin-left: auto; }
+.status { display: grid; align-content: center; gap: var(--space-1); }
+.status p { color: var(--ink-soft); font-size: var(--text-sm); }
+.verdict { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-md); }
+.verdict .glyph { color: var(--mark-good); font: 700 var(--text-2xl)/1 var(--font-notation); }
+.verdict .gain { margin-left: auto; color: var(--ink-soft); font-size: var(--text-sm); white-space: nowrap; }
+.idea { font: var(--text-lg)/1.3 var(--font-hand); color: var(--ink); }
+.level { display: grid; gap: var(--space-1); }
+.level-title { display: flex; align-items: center; gap: var(--space-3); }
+.level p { font-size: var(--text-sm); color: var(--ink-soft); }
+.tallies { width: var(--space-6); height: var(--space-6); stroke: var(--ink); stroke-width: 2; fill: none; }
+.rail { display: flex; flex-direction: column; gap: var(--space-6); }
+.rail-section { display: grid; gap: var(--space-3); }
+.rail-section + .rail-section { border-top: 1px solid var(--rule); padding-top: var(--space-4); }
+.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.actions .quiet { border-color: var(--ink-soft); color: var(--pen); }
+.entry { display: flex; align-items: end; gap: var(--space-2); }
+.entry label { flex: 1; }
+.entry button { flex: none; }
+.scoresheet { width: 100%; border-collapse: collapse; background: var(--paper-sheet); font: var(--text-md)/var(--rule-height) var(--font-notation); text-align: left; }
+.scoresheet caption { text-align: left; font: 700 var(--text-md)/1.35 var(--font-ui); padding-bottom: var(--space-2); }
+.scoresheet th { font-weight: 400; color: var(--ink-soft); width: 20%; }
+.scoresheet td, .scoresheet th { padding: 0 var(--space-2); border-bottom: 1px solid var(--rule); height: var(--rule-height); }
+mark { background: var(--highlighter); color: var(--ink); padding: 0 var(--space-1); }
+.prep-key { font-size: var(--text-xs); color: var(--ink-soft); margin-top: var(--space-2); }
+.board { width: 100%; aspect-ratio: 1; position: relative; display: grid; grid-template: repeat(8, 1fr) / repeat(8, 1fr); outline: 1px solid var(--ink); }
+.square { position: relative; background: var(--board-light); min-width: var(--target-min); min-height: var(--target-min); }
+.square.dark { background: var(--board-dark); }
+.square.target { box-shadow: inset 0 0 0 var(--space-1) var(--board-ring); background: var(--highlighter); }
+.square img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.coord { position: absolute; font: 600 var(--text-xs)/1 var(--font-notation); color: var(--ink); z-index: 1; }
+.dark .coord { color: var(--paper-sheet); }
+.rank { left: var(--space-1); top: var(--space-1); }
+.file { right: var(--space-1); bottom: var(--space-1); }
+.learn-arrow { position: absolute; width: 100%; height: 100%; inset: 0; pointer-events: none; }
+.arrow-outline { fill: var(--ink); }
+.arrow-fill { fill: var(--highlighter); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* 1: a board with a caption above and coaching below; occasional tools in a rail. */
+.layout-1 main { display: grid; grid-template-columns: calc(var(--space-8) * 14) calc(var(--space-8) * 9); gap: var(--space-8); align-content: start; }
+.layout-1 .play-area { display: grid; gap: var(--space-2); }
+.layout-1 .status { min-height: calc(var(--space-8) * 2 + var(--space-2)); }
+.layout-1 .below-board { display: grid; gap: var(--space-2); padding-top: var(--space-1); }
+.layout-1 .idea { padding-left: var(--space-6); }
+.layout-1 .rail { padding-top: var(--space-4); }
+/* 2: the coaching note occupies empty squares on the f, g and h files.
+   This is deliberately position-specific, not a reusable live-board overlay. */
+.layout-2 main { display: grid; grid-template-columns: calc(var(--space-8) * 8) calc(var(--space-8) * 15); gap: calc(var(--space-8) * 2); align-content: start; }
+.layout-2 .play-area { display: grid; gap: var(--space-2); }
+.layout-2 .status { min-height: calc(var(--space-8) * 2 + var(--space-4)); }
+.layout-2 .rail { padding-top: var(--space-4); }
+.board-wrap { position: relative; }
+.pencil-note { position: absolute; top: 37.5%; left: var(--space-2); width: 35%; padding: var(--space-2); background: var(--paper-sheet); border: 1px solid var(--ink-soft); }
+.note-leader { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.note-leader path { fill: none; stroke: var(--ink); stroke-width: 2; }
+.note-leader circle { fill: var(--ink); }
+/* 3: one column. Horizontal bands carry setup, response, and notation. */
+.layout-3 .app-header { min-height: calc(var(--space-8) + var(--space-6)); }
+.layout-3 .header-note { display: none; }
+.layout-3 .level { margin-left: auto; grid-template-columns: auto auto; gap: var(--space-4); align-items: center; }
+.layout-3 main { width: calc(var(--space-8) * 34); display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding-top: var(--space-2); padding-bottom: var(--space-2); }
+.setup-band { width: 100%; display: flex; align-items: end; justify-content: center; gap: var(--space-3); }
+.setup-band .opening { width: calc(var(--space-8) * 9); }
+.setup-band .rating { width: calc(var(--space-8) * 4); }
+.layout-3 .status { width: 100%; text-align: center; min-height: calc(var(--space-8) * 2); }
+.layout-3 .board-wrap { width: calc(var(--space-8) * 12); }
+.layout-3 .below-board { width: 100%; display: grid; gap: var(--space-1); text-align: center; }
+.layout-3 .verdict { justify-content: center; }
+.layout-3 .verdict .gain { margin-left: var(--space-2); }
+.record-band { width: 100%; display: flex; align-items: center; justify-content: center; gap: var(--space-6); }
+.inline-score { display: flex; gap: var(--space-4); align-items: center; font-family: var(--font-notation); }
+.inline-score h2 { font-family: var(--font-ui); }
+.inline-score .prep-key { margin: 0; font-family: var(--font-ui); }
+.record-band .entry label { display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+.record-band input { width: calc(var(--space-8) * 3); }
+@media (max-width: 1100px) {
+  .app-header, .app-footer { padding-left: var(--space-3); padding-right: var(--space-3); }
+  .layout-3 main { width: calc(100% - var(--space-6)); }
+  .layout-3 .level { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .setup-band { flex-wrap: wrap; }
+}
+
