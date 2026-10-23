@@ -112,7 +112,10 @@ Fixes, all at 44px:
   to 44px (about 2% of the canvas width).
 - **Placement:** every piece horizontally centered, with the bottom of its
   base ellipse on the same line, about 94% down the canvas. Height fill as in
-  round 2 (tall pieces about 85%, pawn at least 70%).
+  round 2 (tall pieces about 85%, pawn at least 70%). The masters keep this
+  baseline; the runtime `offbook/*.webp` files are re-exported with each
+  piece's visible art centered vertically on its square instead (Mitch,
+  2026-10-23: "it bugs me that the pieces don't get centered on the squares").
 
 Deliverables, in `design/pieces/offbook/`:
 
