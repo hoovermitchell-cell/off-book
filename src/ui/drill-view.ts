@@ -239,7 +239,7 @@ export function mountDrill(root: HTMLElement) {
       ? '<p class="soft">Scores are from White\'s side: higher is better for White. The number shown is how far your move\'s score fell below the better move.</p>'
       : '<p class="soft">Stockfish scores positions from White\'s side: higher is better for White. You play Black, so the number shown is flipped to your side: how far your move\'s score fell below the better move.</p>';
     if (!know) {
-      els.know.innerHTML = '<h2 id="know-h">How did it know?</h2><p>Play a move. Here you\'ll see why ${opp()} chose its reply and how Stockfish judged yours.</p>';
+      els.know.innerHTML = `<h2 id="know-h">How did it know?</h2><p>Play a move. Here you'll see why ${opp()} chose its reply and how Stockfish judged yours.</p>`;
       return;
     }
     if (know.kind === 'maia') {
