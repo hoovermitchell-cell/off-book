@@ -17,6 +17,7 @@ const drop = (cp: number) => (cp > 1000 ? 'more than 10.0' : pts(cp));
 
 /** "+0.4", "-1.3", "mate in 3", "mated in 2": a score as the student reads it. */
 export function fmtEval(cp: number): string {
+  if (cp === 100000) return 'checkmate'; // the move itself mated, not 'mate in 0'
   if (Math.abs(cp) >= 90000) return cp > 0 ? `mate in ${100000 - cp}` : `mated in ${100000 + cp}`;
   return `${cp > 0 ? '+' : ''}${pts(cp)}`;
 }
