@@ -20,6 +20,12 @@ const MOMENTS: [string, string][] = [
   ['e4 c6 d4 d5 e5 Bf5 Nf3 e6 Be2 c5 Be3', 'Take on d4. White has to recapture with a knight, and the c-file opens for you.'],
   ['e4 c6 d4 d5 e5 Bf5 h4', "White's h-pawn wants to run to h5 and chase your bishop. h5 stops it."],
   ['e4 c6 d4 d5 e5 Bf5 g4', "g4 chases the bishop but weakens White's own kingside. Step back to g6 and stay calm."],
+  ['e4 c6 d4 d5 e5 Bf5 Nf3 e6 Bd3', "White offers to trade the light-squared bishops. Take: White's bishop was its good one, and ...c5 comes next."],
+  ['e4 c6 d4 d5 e5 Bf5 Nf3 e6 Bd3 Bxd3 Qxd3', 'c5 attacks d4, the base of the pawn chain, the same plan as against Be2.'],
+  // Exchange with Nf3: Bb5 and Ne5 both hit c6
+  ['e4 c6 d4 d5 exd5 cxd5 Nf3 Nc6 Bb5 Bf5 Ne5', 'Bb5 and Ne5 both attack c6. Rc8 guards it a second time.'],
+  ['e4 c6 d4 d5 exd5 cxd5 Nf3 Nc6 Bb5 Bf5 Ne5 Rc8 Qf3', 'Qf3 hits your bishop. e6 guards it. Your bishop also blocks the f-file, which keeps the queen off f7.'],
+  ['e4 c6 d4 d5 exd5 cxd5 Nf3 Nc6 Bb5 Bf5 Ne5 Rc8 Qf3 e6 g4', 'Trap: only Bg6 is safe. It still guards f7. After Be4??, Qxf7 is mate, because Ne5 covers d7.'],
   // Fantasy
   ['e4 c6 d4 d5 f3', 'White offers a gambit. Take the pawn: if fxe4, you hit d4 with ...e5.'],
   ['e4 c6 d4 d5 f3 dxe4 fxe4', 'e5 strikes at d4 at once. If White takes with dxe5??, Qh4+ is coming.'],

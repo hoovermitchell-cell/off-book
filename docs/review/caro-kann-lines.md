@@ -2,7 +2,8 @@
 
 Decision 8 puts the Caro-Kann in v1 for Black. You haven't set a repertoire policy for it, so
 this proposes one, then the staged lines under decision 14b (textbook line first, then the
-likely alternatives, Maia takes over at the end). Nothing here is decided. The draft data is in
+likely alternatives, Maia takes over at the end). Mitch answered the questions below on
+2026-10-23; the answers are decision 15 in `docs/decisions.md`. The draft data is in
 `src/data/caro-kann.ts`, `caro-kann-auto.ts` and `caro-kann-ideas.ts`; none of it is wired into
 the app or the drill.
 
@@ -21,8 +22,8 @@ covers 1.e4. After any other first move the student is out of book on move one.
 | 2.Nc3 and 3.Nf3 (Two Knights) | ...Bg4, trade it for the knight, ...e6, ...Nf6 |
 | 2.d3, 2.c4, 2.Nf3 | The same setup. Most of these transpose into the lines above |
 
-Pinned lines (`LINES`, 16 of them, 62 positions) cover one answer per row. The generator fills
-in the likelier White deviations, 291 more positions, 353 in all. Every Black move in the tree
+Pinned lines (`LINES`, 20 of them after decision 15) cover one answer per row. The generator fills
+in the likelier White deviations, 358 positions in all. Every Black move in the tree
 is within 60 centipawns of Stockfish's best (checked with `spike/check-caro-kann.mjs`, Stockfish
 lite at 400 ms a position). That is a short search. It is not a check against opening theory.
 
@@ -56,7 +57,8 @@ London, different move orders reach the same position, which I checked: the 2.Nf
    1.e4 c6 2.Nf3 d5 3.exd5 cxd5 4.d4 Nc6 5.Bb5 Bf5 6.Ne5 Rc8 7.Qf3 e6 8.g4
 3. **Setup B, 2.Bc4.** About 16%. 1.e4 c6 2.Bc4 d5 3.exd5 cxd5 4.Bb3 Bf5 5.Nf3 e6 6.O-O Nd7 7.d4 Ngf6 8.Bg5
 4. **Setup C, 2.Nc3 and exd5.** About 15%. 1.e4 c6 2.Nc3 d5 3.exd5 cxd5 4.d4 Bf5 5.Nf3 e6 6.Bb5+ Nc6 7.Ne5 Ne7 8.O-O
-5. **Advance.** About 9% (3.e5 after 2.d4 is 8%, 2.Nf3 d5 3.e5 adds 1%). 1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nf3 e6 5.Bd3 Ne7 6.O-O Nd7
+5. **Advance.** About 9% (3.e5 after 2.d4 is 8%, 2.Nf3 d5 3.e5 adds 1%). 1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nf3 e6 5.Bd3 Bxd3 6.Qxd3 c5
+   (was 5...Ne7 from the generator; changed by decision 15)
 6. **Classical sideline, 5.Bd3.** About 2%, with the Qxd4 point. 1.e4 c6 2.d4 d5 3.Nc3 dxe4 4.Nxe4 Bf5 5.Bd3 Qxd4 6.Nf3 Qd8 7.O-O Bxe4 8.Bxe4 Qxd1
 7. **2.d3.** About 4%. The generator stops at 2.d3 d5: 3.exd5 is 35% of the replies, but the path
    falls under its cutoff. The pinned answer is 3.Nd2 e5 4.Ngf3 Bd6 5.g3 Nf6, which Maia's White rarely plays.
@@ -66,20 +68,14 @@ the Two Knights (about 1% counting both move orders), 5.f3 in the Classical (1.2
 5.Nc5 (0.8%). Say if you want any of them staged anyway; the Fantasy has a trap and the others
 are cheap.
 
-## Questions for you
+## Answers (decision 15, 2026-10-23)
 
-1. **Which line is the textbook?** The Classical is the theory main line and has the clearest
-   plan, but it is about 8% of what a club student meets. The Exchange with Nf3 is about 31%.
-   London's textbook was its theory line, so I kept the Classical first. Switch it?
-2. **Is this the repertoire?** The calls most open to taste: ...Bf5 and ...e6 against the Advance
-   (rather than ...Nd7 or ...c5 first), ...Nc6 and ...Bf5 against the Exchange (rather than
-   ...Nf6 and ...e6), and 3...dxe4 against the Fantasy (a pawn back at once, rather than the
-   quiet 3...e6).
-3. **Advance: stage Maia's line or the pinned one?** Maia's White plays 5.Bd3, and the generator
-   answers ...Ne7 (the stage-5 line above). The pinned line is the textbook 5.Be2 c5 6.Be3 cxd4
-   7.Nxd4 Ne7. Which should the student drill first?
-4. **Moves to check by eye.** These come from the generator, not a hand-pinned line: 6...Rc8
-   in setup A (guards c6 against Nxc6), 5.Bd3 Ne7 rather than ...Bxd3 in the Advance, and
-   5...Qxd4 in the Classical sideline. All three pass the 60 centipawn check.
-5. **How deep for the rarer tries?** 2.d3, 2.Bc4 and the 2.Nf3 setups reach move 8 only through
-   the generator, and 2.d3 stops at move 2. Hand-pin them further, or let Maia's stage cover them?
+1. **Textbook line:** the Classical stays first; the Exchange with Nf3 is stage 2.
+2. **Repertoire:** approved as drafted (...Bf5 and ...e6 against the Advance; ...Nc6, ...Nf6 and the
+   bishop out against the Exchange; 3...dxe4 and ...e5 against the Fantasy).
+3. **Advance:** stage Maia's 5.Bd3; 5.Be2 stays in the tree.
+4. **Moves checked:** setup A's 6...Rc8 stays, pinned through 8.g4 Bg6 with a trap note
+   (8...Be4?? 9.Qxf7#). Against 5.Bd3 in the Advance, 5...Bxd3 6.Qxd3 c5 replaces 5...Ne7.
+   5.Bd3 Qxd4 in the Classical stays.
+5. **Depth:** 2.d3 is hand-pinned to about move 6 (3.exd5 cxd5 4.Nf3 Nc6 5.Be2 Nf6 6.O-O Bg4, and
+   3.Nd2 e5 through 6.Bg2 O-O). 2.Nf3 and 2.Bc4 stay generated to move 8, then Maia.
