@@ -18,6 +18,27 @@ export function safeStorage(): Storage | undefined {
   }
 }
 
+/** The drill's last-picked opening, kept apart from `Saved` so the progress and backup formats don't change. */
+export const OPENING_KEY = 'offbook.opening';
+
+export function loadOpening(store: Pick<Storage, 'getItem'> | undefined = safeStorage()): string | null {
+  try {
+    return store?.getItem(OPENING_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveOpening(id: string, store: Pick<Storage, 'setItem'> | undefined = safeStorage()): boolean {
+  try {
+    if (!store) return false;
+    store.setItem(OPENING_KEY, id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** The one place raw stored or uploaded data becomes a `Saved`: junk fields fall back to empty. */
 function sanitize(parsed: unknown): Saved {
   const p = parsed as Partial<Saved> | null;

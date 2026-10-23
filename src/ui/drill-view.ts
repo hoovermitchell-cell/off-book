@@ -6,12 +6,11 @@ import type { DrawBrushes, DrawShape } from 'chessground/draw';
 import type { Key } from 'chessground/types';
 import { Chess, type Move } from 'chess.js';
 import { createDrill, PLAYABLE, type DrillEvent, type TopMove } from '../drill/drill';
-import { buildTree } from '../data/london';
-import { ideaFor } from '../data/london-ideas';
+import { DEFAULT_OPENING, OPENINGS } from '../data/openings';
 import { maiaMoves } from '../chess/maia';
 import { createMaiaRunner } from '../chess/maia-ort';
 import { createStockfish } from '../chess/stockfish-worker';
-import { levelOf, loadSaved, REPS_PER_LEVEL, updateSaved, type Saved } from '../storage';
+import { levelOf, loadOpening, loadSaved, REPS_PER_LEVEL, saveOpening, updateSaved, type Saved } from '../storage';
 import prepEndsSvg from '../../design/icons/prep-ends.svg?raw';
 import badgeBook from '../../design/icons/badges/book.svg?raw';
 import badgeGood from '../../design/icons/badges/good.svg?raw';
@@ -23,6 +22,7 @@ const BLUNDER = 300;
 const RATINGS = [600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800];
 const NAMES: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
 
+const sideName = (side: 'w' | 'b') => (side === 'w' ? 'White' : 'Black');
 const pts = (cp: number) => (cp / 100).toFixed(1);
 const pct = (p: number) => `${Math.round(p * 100)}%`;
 /** "6. Nbd2" for White's ply, "5...Nc6" for Black's. */
@@ -40,6 +40,12 @@ function describe(m: Move): string {
 }
 
 export function mountDrill(root: HTMLElement) {
+  // The picked opening decides the student's side; everything below reads it through these.
+  let opening = OPENINGS.find((o) => o.id === loadOpening()) ?? DEFAULT_OPENING;
+  const color = () => (opening.side === 'w' ? 'white' : 'black');
+  const me = () => sideName(opening.side);
+  const opp = () => sideName(opening.side === 'w' ? 'b' : 'w');
+
   root.innerHTML = `
     <main class="drill">
       <div class="board" id="board"></div>
@@ -51,6 +57,9 @@ export function mountDrill(root: HTMLElement) {
         <section class="know" id="know" hidden aria-labelledby="know-h"></section>
         <div class="level" id="level"></div>
         <div class="row">
+          <label>Opening
+            <select id="opening">${OPENINGS.map((o) => `<option value="${o.id}"${o === opening ? ' selected' : ''}>${o.name} (you play ${sideName(o.side)})</option>`).join('')}</select>
+          </label>
           <label>Opponent rating
             <select id="rating">${RATINGS.map((r) => `<option${r === 1000 ? ' selected' : ''}>${r}</option>`).join('')}</select>
           </label>
@@ -72,7 +81,7 @@ export function mountDrill(root: HTMLElement) {
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
   const els = {
     now: $('now'), verdict: $('verdict'), note: $('note'), moves: $('moves'), scoresheet: $('scoresheet'),
-    know: $('know'), knowBtn: $('know-btn'), level: $('level'), rating: $<HTMLSelectElement>('rating'),
+    know: $('know'), knowBtn: $('know-btn'), level: $('level'), rating: $<HTMLSelectElement>('rating'), opening: $<HTMLSelectElement>('opening'),
     showPrep: $<HTMLButtonElement>('show-prep'), resign: $<HTMLButtonElement>('resign'), newGame: $<HTMLButtonElement>('new-game'),
     typedForm: $<HTMLFormElement>('typed-form'), typed: $<HTMLInputElement>('typed'), typedError: $('typed-error'), announce: $('announce'), storageNote: $('storage-note'),
   };
@@ -82,11 +91,11 @@ export function mountDrill(root: HTMLElement) {
   const durPiece = parseFloat(token('--dur-piece')) || 0;
 
   const ground: Api = Chessground($('board'), {
-    orientation: 'white',
+    orientation: color(),
     coordinates: true,
     animation: { enabled: durPiece > 0, duration: durPiece },
     highlight: { lastMove: true, check: true },
-    movable: { free: false, color: 'white', showDests: true, events: { after: (from, to) => { typedLast = false; void play(from, to); } } },
+    movable: { free: false, color: color(), showDests: true, events: { after: (from, to) => { typedLast = false; void play(from, to); } } },
     premovable: { enabled: false },
     drawable: {
       brushes: {
@@ -117,12 +126,14 @@ export function mountDrill(root: HTMLElement) {
   // ---- engines ---------------------------------------------------------------------------------
   const ready = Promise.all([
     createStockfish(),
-    createMaiaRunner(undefined, (f) => setNow('Loading the engines…', `Black's engine: ${Math.round(f * 100)}% of about 11 MB`)),
+    createMaiaRunner(undefined, (f) => setNow('Loading the engines…', `${opp()}'s engine: ${Math.round(f * 100)}% of about 11 MB`)),
   ]);
-  const tree = buildTree();
+  // One drill per opening, so each keeps its own side and tree; only the current one drives the screen.
+  let drills: Map<string, ReturnType<typeof createDrill>> | null = null;
   let drill: ReturnType<typeof createDrill>;
 
   // Learned positions live on the device with the tally (decisions 3 and 13).
+  // ponytail: one shared learned set and tally for every opening; the per-opening tally waits for decision 14.
   let learnedSet = new Set(saved.learned);
   /** Writes against the latest save, so another open tab's progress isn't overwritten. */
   function persist(fn: (latest: Saved) => Saved) {
@@ -139,8 +150,12 @@ export function mountDrill(root: HTMLElement) {
   window.addEventListener('storage', () => { saved = loadSaved(); learnedSet = new Set(saved.learned); renderLevel(); });
 
   ready.then(([sf, run]) => {
-    drill = createDrill({ tree, learned, engine: sf.engine, maia: (chess, elo) => maiaMoves(run, chess, elo, elo) });
-    drill.on(onEvent);
+    drills = new Map(OPENINGS.map((o) => {
+      const d = createDrill({ tree: o.tree, side: o.side, openingMoves: o.openingMoves, learned, engine: sf.engine, maia: (chess, elo) => maiaMoves(run, chess, elo, elo) });
+      d.on((e) => { if (d === drill) onEvent(e); });
+      return [o.id, d];
+    }));
+    drill = drills.get(opening.id)!;
     newGame();
   }).catch((err: unknown) => {
     setNow('The engines did not load.', `Reload the page. If it keeps happening, the school network may be blocking files. (${String(err)})`);
@@ -208,15 +223,17 @@ export function mountDrill(root: HTMLElement) {
 
   function renderKnow() {
     if (els.know.hidden) return;
-    const unit = '<p class="soft">Scores are from White\'s side: higher is better for White. The number shown is how far your move\'s score fell below the better move.</p>';
+    const unit = opening.side === 'w'
+      ? '<p class="soft">Scores are from White\'s side: higher is better for White. The number shown is how far your move\'s score fell below the better move.</p>'
+      : '<p class="soft">Stockfish scores positions from White\'s side: higher is better for White. You play Black, so the number shown is flipped to your side: how far your move\'s score fell below the better move.</p>';
     if (!know) {
-      els.know.innerHTML = '<h2 id="know-h">How did it know?</h2><p>Play a move. Here you\'ll see why Black chose its reply and how Stockfish judged yours.</p>';
+      els.know.innerHTML = '<h2 id="know-h">How did it know?</h2><p>Play a move. Here you\'ll see why ${opp()} chose its reply and how Stockfish judged yours.</p>';
       return;
     }
     if (know.kind === 'maia') {
       const rows = know.top.map((m) => `<tr><td class="mv">${m.san}</td><td><span class="bar" style="--w:${Math.round(m.p * 100)}%"></span></td><td>${pct(m.p)}</td></tr>`).join('');
       els.know.innerHTML = `<h2 id="know-h">How did it know?</h2>
-        <p>Black is Maia, an engine trained on millions of human games. It plays the way a ${know.rating}-rated player does, not the best move.</p>
+        <p>${opp()} is Maia, an engine trained on millions of human games. It plays the way a ${know.rating}-rated player does, not the best move.</p>
         <p>It played <b>${label(know.ply, know.san)}</b>. Maia estimates ${pct(know.p)} of ${know.rating}-rated players would play that here. Its top choices:</p>
         <table><tbody>${rows}</tbody></table>`;
     } else {
@@ -235,15 +252,15 @@ export function mountDrill(root: HTMLElement) {
       turnColor: s.fen.split(' ')[1] === 'w' ? 'white' : 'black',
       lastMove: last ? [last.from as Key, last.to as Key] : undefined,
       check: c.inCheck(),
-      movable: { color: 'white', dests: drill.dests() as Map<Key, Key[]> },
+      movable: { color: color(), dests: drill.dests() as Map<Key, Key[]> },
     });
     // A new move being taught always shows its arrow and says so (decision 13).
     if (shapes) arrows = shapes;
     if (s.teach) {
       arrows = [{ orig: s.teach.uci.slice(0, 2) as Key, dest: s.teach.uci.slice(2, 4) as Key, brush: 'prep' }];
-      const lastBlack = verbose.length && verbose.length % 2 === 0 ? `Black played ${label(verbose.length - 1, verbose.at(-1)!.san)}. ` : '';
-      setNow(`New move: play ${label(verbose.length, s.teach.san)}.`, `${lastBlack}Follow the arrow. Next time you reach this position, you'll play it from memory.`);
-      setNote(ideaFor(s.fen, s.teach) ?? '');
+      const lastOpp = verbose.length ? `${opp()} played ${label(verbose.length - 1, verbose.at(-1)!.san)}. ` : '';
+      setNow(`New move: play ${label(verbose.length, s.teach.san)}.`, `${lastOpp}Follow the arrow. Next time you reach this position, you'll play it from memory.`);
+      setNote(opening.ideaFor(s.fen, s.teach) ?? '');
     }
     drawShapes();
     renderMoves(s.history, !s.offBook);
@@ -267,7 +284,7 @@ export function mountDrill(root: HTMLElement) {
       case 'start':
         bookPlies = null; marks = new Map(); know = null; announced = 0; badge = null;
         els.verdict.hidden = true;
-        setNow('Play your London as White.', `Black answers like a ${s.rating}-rated player. Moves you've learned, you play from memory.`);
+        setNow(opening.heading, `${opening.opponentLine(s.rating)} Moves you've learned, you play from memory.`);
         setNote('New moves get an arrow. Learned ones are up to you.');
         sync([]);
         break;
@@ -285,7 +302,7 @@ export function mountDrill(root: HTMLElement) {
           persist((s) => ({ ...s, correct: s.correct + 1 }));
           renderLevel(levelOf(saved.correct).progress === 0);
         }
-        setNow('Black is thinking…');
+        setNow(`${opp()} is thinking…`);
         setNote('');
         sync([]);
         break;
@@ -300,14 +317,14 @@ export function mountDrill(root: HTMLElement) {
         sync([{ orig: e.prepUci.slice(0, 2) as Key, dest: e.prepUci.slice(2, 4) as Key, brush: 'prep' }]);
         break;
       }
-      case 'black-move':
+      case 'opponent-move':
         know = { kind: 'maia', san: e.san, ply, top: e.top, rating: e.rating, p: e.p };
-        setNow(s.offBook ? 'Your move. You\'re off book: play it out.' : 'Your move. Stay in your prep.', `Black played ${label(ply, e.san)}.`);
+        setNow(s.offBook ? 'Your move. You\'re off book: play it out.' : 'Your move. Stay in your prep.', `${opp()} played ${label(ply, e.san)}.`);
         sync([]);
         break;
       case 'off-book':
         bookPlies = s.history.length - 1;
-        setNow('Your prep ends here. Play it out.', `Black played ${label(ply, e.san)}, which isn't in your prep. Stockfish only speaks up for real mistakes now.`);
+        setNow('Your prep ends here. Play it out.', `${opp()} played ${label(ply, e.san)}, which isn't in your prep. Stockfish only speaks up for real mistakes now.`);
         setNote(`They left your prep with ${label(ply, e.san)}. From here it's your own chess.`, prepEndsSvg);
         sync([]);
         break;
@@ -317,7 +334,7 @@ export function mountDrill(root: HTMLElement) {
         badge = { sq: lastTo(), svg: m.g === '??' ? badgeBlunder : badgeMistake };
         setVerdict(m.g, m.cls, `${label(ply, e.played)}. ${m.word}. ${label(ply, e.better)} was better.`, `${pts(e.loss)} lower`);
         know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${pts(e.loss)} lower than its choice, ${e.better}. A drop of 1.0 or more counts as a mistake; 3.0 or more as a blunder.`, depth: e.depth, nodes: e.nodes };
-        setNow('Black is thinking…');
+        setNow(`${opp()} is thinking…`);
         sync([{ orig: e.betterUci.slice(0, 2) as Key, dest: e.betterUci.slice(2, 4) as Key, brush: 'better' }]);
         break;
       }
@@ -327,7 +344,7 @@ export function mountDrill(root: HTMLElement) {
         els.newGame.focus();
         break;
       case 'game-over': {
-        const head = { won: 'You won by checkmate.', lost: 'Checkmate. Black wins.', draw: 'Draw.', resigned: 'You resigned.' }[e.result];
+        const head = { won: 'You won by checkmate.', lost: `Checkmate. ${opp()} wins.`, draw: 'Draw.', resigned: 'You resigned.' }[e.result];
         setNow(head, `Prep lasted ${e.prepMoves} move${e.prepMoves === 1 ? '' : 's'}. Off book: ${e.mistakes} mistake${e.mistakes === 1 ? '' : 's'} flagged.`);
         sync();
         els.newGame.focus();
@@ -347,6 +364,8 @@ export function mountDrill(root: HTMLElement) {
   }
 
   function newGame() {
+    ground.set({ orientation: color() });
+    els.typed.placeholder = opening.example[0];
     drill.start(Number(els.rating.value));
     renderLevel();
   }
@@ -362,8 +381,8 @@ export function mountDrill(root: HTMLElement) {
       els.typedError.textContent = `This one's new. Play the shown move: ${teach.san}.`;
       return;
     }
-    if (!m || m.color !== 'w') {
-      els.typedError.textContent = `"${text}" isn't a legal move for White here. Try a move like Nf3 or e2e4.`;
+    if (!m || m.color !== opening.side) {
+      els.typedError.textContent = `"${text}" isn't a legal move for ${me()} here. Try a move like ${opening.example[0]} or ${opening.example[1]}.`;
       return;
     }
     els.typed.value = '';
@@ -371,6 +390,13 @@ export function mountDrill(root: HTMLElement) {
     void play(m.from, m.to, m.promotion);
   });
 
+  els.opening.addEventListener('change', () => {
+    opening = OPENINGS.find((o) => o.id === els.opening.value) ?? DEFAULT_OPENING;
+    saveOpening(opening.id);
+    if (!drills) return; // the engines are still loading; they start the picked opening when ready
+    drill = drills.get(opening.id)!;
+    newGame();
+  });
   els.rating.addEventListener('change', () => drill?.setRating(Number(els.rating.value)));
   els.resign.addEventListener('click', () => drill?.resign());
   els.newGame.addEventListener('click', () => { if (!drill) return; newGame(); els.typed.focus(); });

@@ -1,5 +1,6 @@
-// The London drill as a DOM-free state machine, extracted from the spike's index.html.
-// The student plays White. Dependencies are injected so tests can fake the engines and a UI can
+// The opening drill as a DOM-free state machine, extracted from the spike's index.html.
+// The student plays White or Black (deps.side, White by default); "the opponent" is the other side.
+// Dependencies are injected so tests can fake the engines and a UI can
 // render purely from `getState()` and the events passed to `on()`.
 //
 // Flow of one round:
@@ -8,13 +9,14 @@
 //   in prep:   student move == prep move -> correct (a rep, unless they missed here first)
 //              otherwise Stockfish compares it with the prep move (verdict "playable" or "mistake"),
 //              the move is taken back and the student retries.
-//   Black:     replies by sampling Maia at the chosen rating. A position outside the tree means
-//              the student is off book.
+//   opponent:  replies by sampling Maia at the chosen rating. A position outside the tree means
+//              the student is off book. As Black, the opponent's first move is not sampled: the
+//              opening config plays it (deps.openingMoves) before the student's first turn.
 //   off book:  any legal move. Stockfish judges before/after; a drop of MISTAKE or more that is not
 //              Stockfish's own best move is flagged, and play continues.
 //   the game is played out to checkmate, a draw, or resign() (decision 12b).
 import { Chess } from 'chess.js';
-import { posKey, type PrepMove, type PrepTree } from '../data/london';
+import { posKey, type PrepMove, type PrepTree } from '../data/prep';
 import { sample, type MaiaMove } from '../chess/maia';
 
 /** Centipawns a non-prep move may lose against the prep move and still be called "playable". */
@@ -23,18 +25,22 @@ export const PLAYABLE = 50;
 export const MISTAKE = 100;
 /** Stockfish think time per judgement, in ms. */
 export const JUDGE_MS = 300;
-/** Pause before Black's reply appears, in ms. */
-export const BLACK_DELAY_MS = 350;
+/** Pause before the opponent's reply appears, in ms. */
+export const OPPONENT_DELAY_MS = 350;
 /** Pause after an off-book mistake is flagged, so the student can read it, in ms. */
 export const MISTAKE_PAUSE_MS = 1200;
 export const DEFAULT_RATING = 1000;
 
 export type Result = 'won' | 'lost' | 'draw' | 'resigned';
 export type EndReason = 'checkmate' | 'draw' | 'resign';
-export type Phase = 'idle' | 'student' | 'judging' | 'black' | 'over';
+export type Phase = 'idle' | 'student' | 'judging' | 'opponent' | 'over';
 
 export interface DrillDeps {
   tree: PrepTree;
+  /** The student's colour. Defaults to White. */
+  side?: 'w' | 'b';
+  /** SAN moves played before the student's first turn, without Maia (the opening config's forced first move). */
+  openingMoves?: string[];
   /** Scores are centipawns from White's point of view. */
   engine: { evaluate(fen: string, ms: number): Promise<Judgement> };
   /** Legal moves for the side to move with probabilities, sorted high to low. */
@@ -84,7 +90,7 @@ export type DrillEvent =
   | { type: 'judging'; kind: 'prep' | 'offbook' }
   | { type: 'prep-correct'; san: string; counted: boolean; prepMoves: number; reps: number; learnedNow: boolean }
   | { type: 'prep-miss'; played: string; prep: string; prepUci: string; loss: number; verdict: 'playable' | 'mistake'; depth?: number; nodes?: number }
-  | { type: 'black-move'; san: string; uci: string; p: number; top: TopMove[]; rating: number }
+  | { type: 'opponent-move'; san: string; uci: string; p: number; top: TopMove[]; rating: number }
   | { type: 'off-book'; san: string }
   | { type: 'offbook-mistake'; played: string; better: string; betterUci: string; loss: number; depth?: number; nodes?: number }
   | { type: 'game-over'; result: Result; reason: EndReason; prepMoves: number; reps: number; mistakes: number }
@@ -99,10 +105,10 @@ export interface StudentMove {
 
 export interface Drill {
   getState(): DrillState;
-  /** Starts (or restarts) a round. */
+  /** Starts (or restarts) a round. As Black, the opponent has moved when this returns, or is about to. */
   start(rating?: number): void;
   setRating(rating: number): void;
-  /** Plays the student's move. Resolves once the whole cycle (judging, Black's reply) is done.
+  /** Plays the student's move. Resolves once the whole cycle (judging, the opponent's reply) is done.
    *  Resolves false if the move was ignored (not the student's turn, or illegal). */
   play(move: StudentMove): Promise<boolean>;
   resign(): void;
@@ -121,6 +127,8 @@ const defaultDelay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 export function createDrill(deps: DrillDeps): Drill {
   const { tree, engine, maia } = deps;
+  const student = deps.side ?? 'w';
+  const openingMoves = deps.openingMoves ?? [];
   const learned = deps.learned ?? new Set<string>();
   const rand = deps.rand ?? Math.random;
   const delay = deps.delay ?? defaultDelay;
@@ -171,7 +179,8 @@ export function createDrill(deps: DrillDeps): Drill {
     round++;
     if (r !== undefined) rating = r;
     chess = new Chess();
-    phase = 'student';
+    for (const san of openingMoves) chess.move(san);
+    phase = chess.turn() === student ? 'student' : 'opponent';
     offBook = false;
     missed = false;
     prepMoves = 0;
@@ -180,12 +189,17 @@ export function createDrill(deps: DrillDeps): Drill {
     result = null;
     pendingMiss = false;
     emit({ type: 'start', state: getState() });
+    // The opponent moves first and the config has not said how: Maia picks.
+    if (phase === 'opponent') {
+      const myRound = round;
+      void guard(myRound, async () => { await opponentReply(myRound); return true; });
+    }
   }
 
   function endGame(reason: EndReason) {
     phase = 'over';
     if (reason === 'resign') result = 'resigned';
-    else if (reason === 'checkmate') result = chess.turn() === 'b' ? 'won' : 'lost';
+    else if (reason === 'checkmate') result = chess.turn() === student ? 'lost' : 'won';
     else result = 'draw';
     emit({ type: 'game-over', result, reason, prepMoves, reps, mistakes });
   }
@@ -199,17 +213,22 @@ export function createDrill(deps: DrillDeps): Drill {
 
   /** Stockfish score for the position after the student's move. A checkmate cannot be searched, so score it directly. */
   async function evalAfter(): Promise<Judgement> {
-    if (chess.isCheckmate()) return { cp: 100000, best: '' }; // student is White, so Black is the one mated
+    // The opponent is the one mated. Scores are White's point of view, so Black mating is -100000.
+    if (chess.isCheckmate()) return { cp: student === 'w' ? 100000 : -100000, best: '' };
     return engine.evaluate(chess.fen(), JUDGE_MS);
   }
 
-  async function blackReply(myRound: number): Promise<void> {
-    phase = 'black';
+  /** Centipawns the student's move lost against the better one. Scores are White's point of view,
+   *  so a Black student loses when the score goes up. */
+  const lossOf = (better: Judgement, played: Judgement) => (student === 'w' ? better.cp - played.cp : played.cp - better.cp);
+
+  async function opponentReply(myRound: number): Promise<void> {
+    phase = 'opponent';
     const elo = rating; // a rating change mid-search applies to the next reply, not this one
     const moves = await maia(new Chess(chess.fen()), elo);
     if (myRound !== round || isOver()) return;
     const pick = sample(moves, rand);
-    await delay(BLACK_DELAY_MS);
+    await delay(OPPONENT_DELAY_MS);
     if (myRound !== round || isOver()) return;
     chess.move(pick.san);
     // Settle the state before emitting, so a listener that renders from getState() sees the student's turn.
@@ -217,7 +236,7 @@ export function createDrill(deps: DrillDeps): Drill {
     if (leftBook) offBook = true;
     phase = 'student';
     emit({
-      type: 'black-move',
+      type: 'opponent-move',
       san: pick.san,
       uci: pick.uci,
       p: pick.p,
@@ -234,26 +253,24 @@ export function createDrill(deps: DrillDeps): Drill {
     emit({ type: 'judging', kind: 'offbook' });
     const [a, b] = await Promise.all([engine.evaluate(before, JUDGE_MS), evalAfter()]);
     if (myRound !== round || isOver()) return;
-    const loss = a.cp - b.cp;
+    const loss = lossOf(a, b);
     if (loss >= MISTAKE && a.best !== uciOf(played)) {
       mistakes++;
       const better = new Chess(before).move({ from: a.best.slice(0, 2), to: a.best.slice(2, 4), promotion: a.best[4] });
-      phase = 'black';
+      phase = 'opponent';
       emit({ type: 'offbook-mistake', played: played.san, better: better.san, betterUci: uciOf(better), loss, depth: a.depth, nodes: a.nodes });
       await delay(MISTAKE_PAUSE_MS);
       if (myRound !== round || isOver()) return;
     }
     if (checkOver()) return;
-    return blackReply(myRound);
+    return opponentReply(myRound);
   }
 
-  async function play(move: StudentMove): Promise<boolean> {
-    if (phase !== 'student') return false;
-    const myRound = round;
+  /** Runs one cycle. If an engine fails, the round ends in a state the student can recover from with start(). */
+  async function guard(myRound: number, run: () => Promise<boolean>): Promise<boolean> {
     try {
-      return await runPlay(move, myRound);
+      return await run();
     } catch (err) {
-      // An engine failed. End this round in a state the student can recover from with start().
       if (myRound !== round || isOver()) return true;
       if (pendingMiss) chess.undo();
       pendingMiss = false;
@@ -261,6 +278,12 @@ export function createDrill(deps: DrillDeps): Drill {
       emit({ type: 'engine-error', message: String(err) });
       return true;
     }
+  }
+
+  async function play(move: StudentMove): Promise<boolean> {
+    if (phase !== 'student') return false;
+    const myRound = round;
+    return guard(myRound, () => runPlay(move, myRound));
   }
 
   async function runPlay(move: StudentMove, myRound: number): Promise<boolean> {
@@ -283,10 +306,10 @@ export function createDrill(deps: DrillDeps): Drill {
         learned.add(posKey(before));
         prepMoves++;
         missed = false;
-        phase = 'black';
+        phase = 'opponent';
         emit({ type: 'prep-correct', san: played.san, counted: false, prepMoves, reps, learnedNow: true });
         if (checkOver()) return true;
-        await blackReply(myRound);
+        await opponentReply(myRound);
         return true;
       }
       if (!prep) {
@@ -298,10 +321,10 @@ export function createDrill(deps: DrillDeps): Drill {
         const counted = !missed;
         if (counted) reps++;
         missed = false;
-        phase = 'black';
+        phase = 'opponent';
         emit({ type: 'prep-correct', san: played.san, counted, prepMoves, reps, learnedNow: false });
         if (checkOver()) return true;
-        await blackReply(myRound);
+        await opponentReply(myRound);
         return true;
       } else {
         // Not prep: Stockfish compares it with the prep move, then the student retries.
@@ -314,7 +337,7 @@ export function createDrill(deps: DrillDeps): Drill {
         if (myRound !== round || isOver()) return true; // resign() already took the move back
         pendingMiss = false;
         chess.undo();
-        const loss = a.cp - b.cp;
+        const loss = lossOf(a, b);
         missed = true;
         phase = 'student';
         emit({

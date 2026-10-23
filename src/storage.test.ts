@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BACKUP_APP, BACKUP_VERSION, exportBackup, loadSaved, parseBackup, save, STORAGE_KEY, updateSaved } from './storage';
+import { BACKUP_APP, BACKUP_VERSION, exportBackup, loadOpening, loadSaved, OPENING_KEY, parseBackup, save, saveOpening, STORAGE_KEY, updateSaved } from './storage';
 
 const memory = () => {
   const m = new Map<string, string>();
@@ -86,5 +86,22 @@ describe('storage', () => {
       expect(reason(file({}, { correct: 1, learned: 'a' }))).toMatch(/learned moves/);
       expect(reason(file({}, { correct: 1, learned: ['a', 2] }))).toMatch(/learned moves/);
     });
+  });
+});
+
+describe('last-picked opening', () => {
+  it('round-trips under its own key, apart from progress', () => {
+    const store = memory();
+    expect(loadOpening(store)).toBeNull();
+    expect(saveOpening('caro-kann', store)).toBe(true);
+    expect(loadOpening(store)).toBe('caro-kann');
+    expect(store.getItem(OPENING_KEY)).toBe('caro-kann');
+    expect(store.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('survives storage that throws', () => {
+    const broken = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('full'); } };
+    expect(loadOpening(broken)).toBeNull();
+    expect(saveOpening('london', broken)).toBe(false);
   });
 });
