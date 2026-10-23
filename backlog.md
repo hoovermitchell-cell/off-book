@@ -11,7 +11,6 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 ## Needs shaping
 
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
-- Review Black games too (the Caro-Kann): the Review tab is still White and London only
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
 - Design the three-stage levelling from decision 14 (main line, alternatives, real matches)
 - Publish as public GitHub repo `off-book` (LICENSE and footer link are on `feat/backup-license`). Name check done: fine for GitHub; an app-store listing would hit a live US mark, see `docs/research/2026-10-23-name-check.md`
@@ -26,3 +25,4 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 - On review branches, 2026-10-22: staged-lines fix, drill polish, WOFF2 fonts, Cloudflare deploy script (`docs/review/branches-2026-10-22.md`)
 - On review branches, 2026-10-23: game import and prep-boundary review, backup/restore, LICENSE and footer, centered pieces, Caro-Kann draft data, name check (`docs/review/branches-2026-10-23.md`)
 - Caro-Kann in the drill as Black, next to the London, with an opening picker, 2026-10-23 (`feat/caro-kann-drill`)
+- Review tab handles Black games and the Caro-Kann, 2026-10-23 (`feat/review-black`)

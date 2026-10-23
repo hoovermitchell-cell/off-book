@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isLondonAsWhite, parseGame, parsePgn, PgnError, splitPgn } from './pgn';
+import { detectPrep, guessSide, isLondonAsWhite, parseGame, parsePgn, PgnError, splitPgn } from './pgn';
 import { loadRecent, RECENT_KEY, saveRecent, type RecentImport } from './recent';
 import { fetchChessCom, fetchLichess, ImportError, validateUsername } from './sources';
 
@@ -26,7 +26,19 @@ const LICHESS_KINGS_PAWN = `[Event "Rated Rapid game"]
 
 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 0-1
 `;
+// The student's Black game: the Caro-Kann against 1.e4.
+const LICHESS_CARO_KANN = `[Event "Rated Blitz game"]
+[Site "https://lichess.org/IjKl9012"]
+[White "rival"]
+[Black "Student1"]
+[Result "0-1"]
+[UTCDate "2026.10.18"]
+[Opening "Caro-Kann Defense"]
+
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 0-1
+`;
 const lichessBody = `${LICHESS_LONDON}\n\n${LICHESS_KINGS_PAWN}\n`;
+const lichessBothBody = `${lichessBody}\n${LICHESS_CARO_KANN}`;
 
 const res = (body: string | object, status = 200) =>
   new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
@@ -34,7 +46,7 @@ const res = (body: string | object, status = 200) =>
 describe('PGN parsing', () => {
   it('reads tags and moves, ignoring clock comments', () => {
     const g = parseGame(LICHESS_LONDON, 'lichess', 'x');
-    expect(g).toMatchObject({ white: 'student1', black: 'rival', result: '1-0', date: '2026-10-20', opening: 'London System', london: true, url: 'https://lichess.org/AbCd1234' });
+    expect(g).toMatchObject({ white: 'student1', black: 'rival', result: '1-0', date: '2026-10-20', opening: 'London System', side: 'w', prep: 'london', url: 'https://lichess.org/AbCd1234' });
     expect(g.sans).toHaveLength(15);
     expect(g.sans.slice(0, 4)).toEqual(['d4', 'd5', 'Bf4', 'Nf6']);
   });
@@ -43,7 +55,7 @@ describe('PGN parsing', () => {
     expect(splitPgn(lichessBody)).toHaveLength(2);
     const { games, errors } = parsePgn(lichessBody, 'paste');
     expect(errors).toEqual([]);
-    expect(games.map((g) => g.london)).toEqual([true, false]);
+    expect(games.map((g) => g.prep)).toEqual(['london', null]);
   });
 
   it('accepts bare movetext, comments, variations and annotation glyphs', () => {
@@ -87,6 +99,41 @@ describe('PGN parsing', () => {
   });
 });
 
+describe('opening and side', () => {
+  const sans = (s: string) => parsePgn(s, 'paste').games[0].sans;
+
+  it('detects the Caro-Kann as 1.e4 c6 for Black only', () => {
+    const caro = sans('1. e4 c6 2. d4 d5');
+    expect(guessSide(caro)).toBe('b');
+    expect(detectPrep(caro, 'b')).toBe('caro-kann');
+    expect(detectPrep(caro, 'w')).toBeNull(); // White playing 1.e4 against ...c6 is not the student's prep
+    expect(detectPrep(sans('1. e4 e5 2. Nf3'), 'b')).toBeNull();
+    expect(detectPrep(sans('1. d4 c6'), 'b')).toBeNull();
+  });
+
+  it('detects the London for White only', () => {
+    const london = sans('1. d4 d5 2. Bf4 Nf6');
+    expect(guessSide(london)).toBe('w');
+    expect(detectPrep(london, 'w')).toBe('london');
+    expect(detectPrep(london, 'b')).toBeNull();
+  });
+
+  it('a paste has no username: the side is guessed, and White when nothing is recognised', () => {
+    expect(parsePgn('1. e4 c6 2. d4 d5', 'paste').games[0]).toMatchObject({ side: 'b', prep: 'caro-kann' });
+    expect(parsePgn('1. d4 d5 2. Bf4 Nf6', 'paste').games[0]).toMatchObject({ side: 'w', prep: 'london' });
+    expect(parsePgn('1. e4 e5 2. Nf3 Nc6', 'paste').games[0]).toMatchObject({ side: 'w', prep: null });
+  });
+
+  it('a username fixes the side as the colour that name played, whatever the moves', () => {
+    const pgn = (white: string, black: string, moves: string) => `[White "${white}"]\n[Black "${black}"]\n\n${moves} *`;
+    // The student as White plays 1.e4 and meets ...c6: still White, and no prep to show.
+    expect(parseGame(pgn('Student1', 'rival', '1. e4 c6 2. d4 d5'), 'lichess', 'x', 'student1')).toMatchObject({ side: 'w', prep: null });
+    expect(parseGame(pgn('rival', 'student1', '1. e4 c6 2. d4 d5'), 'lichess', 'x', 'STUDENT1')).toMatchObject({ side: 'b', prep: 'caro-kann' });
+    expect(parseGame(pgn('rival', 'Student1', '1. d4 d5 2. Bf4 Nf6'), 'chesscom', 'x', 'student1')).toMatchObject({ side: 'b', prep: null });
+    expect(parseGame(pgn('Student1', 'rival', '1. d4 d5 2. Bf4 Nf6'), 'chesscom', 'x', 'student1')).toMatchObject({ side: 'w', prep: 'london' });
+  });
+});
+
 describe('usernames', () => {
   it('accepts normal names and rejects anything that could change the URL', () => {
     expect(validateUsername('  Mr_Chess-99 ')).toBe('Mr_Chess-99');
@@ -97,12 +144,13 @@ describe('usernames', () => {
 });
 
 describe('Lichess import', () => {
-  it('requests White games from the public export API without credentials, and parses the PGN', async () => {
-    const fetch = vi.fn(async () => res(lichessBody));
+  it('requests both colours from the public export API without credentials, and parses the PGN', async () => {
+    const fetch = vi.fn(async () => res(lichessBothBody));
     const games = await fetchLichess('student1', { fetch });
-    expect(games.map((g) => [g.black, g.london])).toEqual([['rival', true], ['other', false]]);
+    expect(games.map((g) => [g.side, g.prep])).toEqual([['w', 'london'], ['w', null], ['b', 'caro-kann']]);
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toMatch(/^https:\/\/lichess\.org\/api\/games\/user\/student1\?max=50&color=white&opening=true&perfType=/);
+    expect(url).toMatch(/^https:\/\/lichess\.org\/api\/games\/user\/student1\?max=50&opening=true&perfType=ultraBullet,bullet,blitz,rapid,classical,correspondence$/);
+    expect(url).not.toMatch(/color=/);
     expect(init.headers).toEqual({ Accept: 'application/x-chess-pgn' });
     expect(JSON.stringify(init)).not.toMatch(/Authorization|Bearer/i);
   });
@@ -159,10 +207,20 @@ describe('Chess.com import', () => {
     });
     const games = await fetchChessCom('Student1', { fetch });
     expect(games).toHaveLength(3); // Oct has none usable, Sep has two, Aug has one
-    expect(games[0].london).toBe(true); // the later game in September comes first
-    expect(games[1].london).toBe(false);
+    expect(games[0].prep).toBe('london'); // the later game in September comes first
+    expect(games[1].prep).toBeNull();
     expect(games[0]).toMatchObject({ source: 'chesscom', white: 'Student1', date: '2026-09-08', url: 'https://www.chess.com/game/live/123' });
     expect(fetch.mock.calls[0][0]).toBe('https://api.chess.com/pub/player/student1/games/archives');
+  });
+
+  it('keeps games from either colour, and records which one the user played', async () => {
+    const asBlack = chessComPgn.replace('[White "Student1"]', '[White "rival"]').replace('[Black "rival"]', '[Black "Student1"]').replace('1. d4', '1. e4').replace('1... d5', '1... c6').replace(/2\. Bf4 .*$/, '2. d4 d5 0-1');
+    const fetch = mock({
+      'https://api.chess.com/pub/player/student1/games/2026/10': { games: [{ pgn: asBlack, rules: 'chess', white: { username: 'rival' }, black: { username: 'Student1' } }, entry(chessComPgn, 'student1'), entry(chessComPgn, 'rival')] },
+    });
+    const games = await fetchChessCom('student1', { fetch });
+    // The third entry has the user on neither side, so it is left out. (The mock's black player is always "rival".)
+    expect(games.map((g) => [g.side, g.prep])).toEqual([['w', 'london'], ['b', 'caro-kann']]);
   });
 
   it('does not follow archive links that point anywhere else', async () => {
@@ -196,7 +254,26 @@ describe('recent games store', () => {
     const store = { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v) };
     expect(saveRecent(recent, store)).toBe(true);
     expect([...data.keys()]).toEqual([RECENT_KEY]);
-    expect(loadRecent(store)?.games.map((g) => g.london)).toEqual([true, false]);
+    expect(loadRecent(store)?.games.map((g) => g.prep)).toEqual(['london', null]);
+  });
+
+  it('reads data saved before Black existed, and works out the side and opening again', () => {
+    const old = (g: object) => JSON.stringify({ source: 'lichess', label: 'student1', at: 1, games: [g] });
+    const base = { source: 'lichess', white: 'student1', black: 'rival', result: '1-0', date: '', id: 'a' };
+    // Saved with the old "london" flag: a username game was always White's.
+    const london = loadRecent({ getItem: () => old({ ...base, sans: ['d4', 'd5', 'Bf4'], london: true }) });
+    expect(london?.games[0]).toMatchObject({ side: 'w', prep: 'london' });
+    // White playing 1.e4 against the opponent's ...c6 is not a Caro-Kann for the student.
+    const white = loadRecent({ getItem: () => old({ ...base, sans: ['e4', 'c6', 'd4'], london: false }) });
+    expect(white?.games[0]).toMatchObject({ side: 'w', prep: null });
+    // An old pasted game gets the same guess a fresh paste does.
+    const pasted = loadRecent({ getItem: () => JSON.stringify({ source: 'paste', label: 'pasted PGN', at: 1, games: [{ ...base, source: 'paste', sans: ['e4', 'c6', 'd4'], london: false }] }) });
+    expect(pasted?.games[0]).toMatchObject({ side: 'b', prep: 'caro-kann' });
+  });
+
+  it('keeps a saved side and recomputes the opening from it', () => {
+    const r = loadRecent({ getItem: () => JSON.stringify({ source: 'lichess', label: 'x', at: 1, games: [{ source: 'lichess', id: 'a', white: 'rival', black: 'x', result: '*', date: '', sans: ['e4', 'c6'], side: 'b', prep: null }] }) });
+    expect(r?.games[0]).toMatchObject({ side: 'b', prep: 'caro-kann' });
   });
 
   it('survives blocked, full and corrupt storage', () => {

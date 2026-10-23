@@ -1,6 +1,7 @@
 // PGN reading for game import (decision 1b). Pure: no DOM, no network.
 // Own tokenizer instead of chess.js loadPgn so a bad move can be reported by move number.
 import { Chess } from 'chess.js';
+import type { Opening } from '../data/openings';
 
 export type GameSource = 'lichess' | 'chesscom' | 'paste';
 
@@ -17,8 +18,10 @@ export interface ImportedGame {
   url?: string;
   /** Every move, both sides, as chess.js normalizes it. */
   sans: string[];
-  /** The student, as White, played 1.d4 and an early Bf4. */
-  london: boolean;
+  /** The student's colour: the username's side, or the paste's best guess until the student says. */
+  side: 'w' | 'b';
+  /** The opening in OPENINGS that the student played on that side, or null. */
+  prep: Opening['id'] | null;
 }
 
 export class PgnError extends Error {
@@ -36,6 +39,18 @@ export function isLondonAsWhite(sans: string[]): boolean {
   if (sans[0] !== 'd4') return false;
   for (let i = 2; i < Math.min(sans.length, 10); i += 2) if (/^Bf4[+#]?$/.test(sans[i])) return true;
   return false;
+}
+
+/** ponytail: Caro-Kann means the student, as Black, answered 1.e4 with ...c6. Not a full opening classifier. */
+export const isCaroKannAsBlack = (sans: string[]) => sans[0] === 'e4' && sans[1] === 'c6';
+
+/** The side a pasted game was probably played from: Black for 1.e4 c6, White for anything else. */
+export const guessSide = (sans: string[]): 'w' | 'b' => (isCaroKannAsBlack(sans) ? 'b' : 'w');
+
+/** The opening the student played, given the side they played. */
+export function detectPrep(sans: string[], side: 'w' | 'b'): ImportedGame['prep'] {
+  if (side === 'w') return isLondonAsWhite(sans) ? 'london' : null;
+  return isCaroKannAsBlack(sans) ? 'caro-kann' : null;
 }
 
 /** "6. Nbd2" for White's ply (0-based), "5...Nc6" for Black's. */
@@ -61,7 +76,9 @@ export function splitPgn(text: string): string[] {
   return games;
 }
 
-export function parseGame(pgn: string, source: GameSource, fallbackId: string): ImportedGame {
+/** `student` is the username the games were fetched for; the colour that name played is the student's.
+ *  Without one (a paste) the side is guessed from the moves. */
+export function parseGame(pgn: string, source: GameSource, fallbackId: string, student?: string): ImportedGame {
   const tags: Record<string, string> = {};
   const body: string[] = [];
   for (const line of pgn.replace(/\r/g, '').split('\n')) {
@@ -98,17 +115,22 @@ export function parseGame(pgn: string, source: GameSource, fallbackId: string): 
   const date = (tags.UTCDate ?? tags.Date ?? '').replace(/\./g, '-');
   const link = tags.Link ?? tags.Site ?? '';
   const url = /^https:\/\/(www\.)?(lichess\.org|chess\.com)\//.test(link) ? link : undefined; // only links shown as links
+  const white = tags.White || 'White';
+  const black = tags.Black || 'Black';
+  const named = student?.toLowerCase();
+  const side = named && white.toLowerCase() === named ? 'w' : named && black.toLowerCase() === named ? 'b' : guessSide(sans);
   return {
     id: url ?? fallbackId,
     source,
-    white: tags.White || 'White',
-    black: tags.Black || 'Black',
+    white,
+    black,
     result,
     date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '',
     opening: tags.Opening,
     url,
     sans,
-    london: isLondonAsWhite(sans),
+    side,
+    prep: detectPrep(sans, side),
   };
 }
 
@@ -118,11 +140,11 @@ export interface ParsedPgn {
   errors: PgnError[];
 }
 
-export function parsePgn(text: string, source: GameSource, idPrefix = source): ParsedPgn {
+export function parsePgn(text: string, source: GameSource, idPrefix = source, student?: string): ParsedPgn {
   const out: ParsedPgn = { games: [], errors: [] };
   for (const [i, pgn] of splitPgn(text).entries()) {
     try {
-      out.games.push(parseGame(pgn, source, `${idPrefix}-${i}`));
+      out.games.push(parseGame(pgn, source, `${idPrefix}-${i}`, student));
     } catch (err) {
       out.errors.push(err instanceof PgnError ? err : new PgnError(String(err)));
     }

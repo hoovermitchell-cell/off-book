@@ -52,3 +52,6 @@ export const OPENINGS: Opening[] = [
 ];
 
 export const DEFAULT_OPENING = OPENINGS[0];
+
+/** The opening Off Book has prep for on this side, if any. */
+export const openingForSide = (side: 'w' | 'b') => OPENINGS.find((o) => o.side === side);

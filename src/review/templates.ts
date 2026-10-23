@@ -1,10 +1,15 @@
 // DRAFT pending Mitch's review (decision 4b): every sentence the game review shows.
 // Rules: plain chess words; each verdict sits next to the number that produced it
 // (DESIGN.md "Show the work"); no hype, no exclamation marks, no em dashes.
-// Scores are centipawns from White's side, and the student is White, so higher is better for them.
+// Scores here are centipawns from the student's own side (review.ts flips them for Black), so higher
+// is better for them and a loss is a positive number, whichever colour they play.
+import type { Opening } from '../data/openings';
 import { MISTAKE, PLAYABLE } from '../drill/drill';
 import { plyLabel } from '../import/pgn';
 import { BLUNDER, type Lesson, type MoveCheck, type PrepWalk } from './review';
+
+/** Said once under the check, where the scores are first shown. */
+export const SCORE_NOTE = 'Scores are from your side: plus is better for you.';
 
 export const pts = (cp: number) => (cp / 100).toFixed(1);
 /** A drop for display. Mate scores make drops of 1000 or more, which would read as noise. */
@@ -29,10 +34,10 @@ export interface Text {
 const moveNo = (ply: number) => Math.floor(ply / 2) + 1;
 
 /** The headline: where prep ended and who left first. */
-export function boundaryText(walk: PrepWalk, sans: string[]): Text {
+export function boundaryText(walk: PrepWalk, sans: string[], opening: Pick<Opening, 'name'>): Text {
   const last = walk.lastPrepPly >= 0 ? `Last prep move: ${plyLabel(walk.lastPrepPly, sans[walk.lastPrepPly])}` : 'Last prep move: none';
   if (walk.deviationPly === null) {
-    return { head: 'You stayed in prep all game.', body: `Every White move matched your London prep until the game ended after move ${moveNo(sans.length - 1)}.`, num: last };
+    return { head: 'You stayed in prep all game.', body: `Every one of your moves matched your ${opening.name} prep until the game ended after move ${moveNo(sans.length - 1)}.`, num: last };
   }
   const ply = walk.deviationPly;
   if (walk.leftBy === 'student') {

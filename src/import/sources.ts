@@ -44,26 +44,27 @@ async function get(site: string, url: string, name: string, { fetch: f = globalT
 
 const LICHESS_MAX = 50;
 
-/** The student's recent standard games as White, newest first. */
+/** The student's recent standard games as either colour, newest first. */
 export async function fetchLichess(raw: string, opts: Options = {}): Promise<ImportedGame[]> {
   const name = validateUsername(raw);
-  // perfType leaves out variants and Chess960; color=white because the London is White's repertoire.
-  const url = `https://lichess.org/api/games/user/${encodeURIComponent(name)}?max=${LICHESS_MAX}&color=white&opening=true&perfType=ultraBullet,bullet,blitz,rapid,classical,correspondence`;
+  // perfType leaves out variants and Chess960. Both colours come back: the London is White's repertoire, the Caro-Kann Black's.
+  const url = `https://lichess.org/api/games/user/${encodeURIComponent(name)}?max=${LICHESS_MAX}&opening=true&perfType=ultraBullet,bullet,blitz,rapid,classical,correspondence`;
   const res = await get('Lichess', url, name, opts, 'application/x-chess-pgn');
-  return parsePgn(await res.text(), 'lichess').games;
+  return parsePgn(await res.text(), 'lichess', 'lichess', name).games;
 }
 
 interface ChessComGame {
   pgn?: string;
   rules?: string;
   white?: { username?: string };
+  black?: { username?: string };
 }
 
 const ARCHIVE = /^https:\/\/api\.chess\.com\/pub\/player\/[A-Za-z0-9_-]+\/games\/\d{4}\/\d{2}$/;
 const CHESSCOM_MONTHS = 3;
 const CHESSCOM_ENOUGH = 20;
 
-/** The student's recent standard games as White, newest first. Reads the latest month, and earlier ones until there are enough. */
+/** The student's recent standard games as either colour, newest first. Reads the latest month, and earlier ones until there are enough. */
 export async function fetchChessCom(raw: string, opts: Options = {}): Promise<ImportedGame[]> {
   const name = validateUsername(raw);
   const base = `https://api.chess.com/pub/player/${encodeURIComponent(name.toLowerCase())}`;
@@ -80,9 +81,10 @@ export async function fetchChessCom(raw: string, opts: Options = {}): Promise<Im
       throw err;
     }
     for (const g of [...(data.games ?? [])].reverse()) {
-      if (g.rules !== 'chess' || g.white?.username?.toLowerCase() !== name.toLowerCase() || !g.pgn) continue;
+      const players = [g.white?.username, g.black?.username].map((u) => u?.toLowerCase());
+      if (g.rules !== 'chess' || !players.includes(name.toLowerCase()) || !g.pgn) continue;
       try {
-        out.push(parseGame(g.pgn, 'chesscom', `${month}-${out.length}`));
+        out.push(parseGame(g.pgn, 'chesscom', `${month}-${out.length}`, name));
       } catch {
         // ponytail: a game that won't parse is skipped, not reported.
       }

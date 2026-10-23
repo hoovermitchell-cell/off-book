@@ -5,10 +5,10 @@ import type { Api } from 'chessground/api';
 import type { DrawBrushes, DrawShape } from 'chessground/draw';
 import type { Key } from 'chessground/types';
 import { Chess, type Move } from 'chess.js';
-import { buildTree } from '../data/london';
+import { openingForSide } from '../data/openings';
 import { plyLabel, type ImportedGame } from '../import/pgn';
 import { analyze, chooseLesson, walkPrep, type MoveCheck } from '../review/review';
-import { boundaryText, lessonText, pendingText, stepText, type Text } from '../review/templates';
+import { boundaryText, lessonText, pendingText, SCORE_NOTE, stepText, type Text } from '../review/templates';
 import { createStockfish, type StockfishHandle } from '../chess/stockfish-worker';
 import { mountImport } from './import-view';
 import prepEndsSvg from '../../design/icons/prep-ends.svg?raw';
@@ -23,8 +23,6 @@ const ICONS = {
   last: '<path d="m6 17 5-5-5-5M13 17l5-5-5-5"/>',
 };
 const icon = (p: string) => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
-
-const tree = buildTree();
 
 // One Stockfish for the page's life, started when the first review needs it. A cancelled review leaves
 // at most one 0.3 s search in flight, which the engine's queue absorbs.
@@ -61,8 +59,9 @@ export function mountReview(root: HTMLElement) {
 
 /** Builds the review screen for one game inside `host`. Returns a function that stops everything it started. */
 function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHidden: () => boolean): () => void {
-  const { sans } = game;
-  const walk = walkPrep(sans, tree);
+  const { sans, side } = game;
+  const opening = openingForSide(side)!; // the import step only opens games whose side has an opening
+  const walk = walkPrep(sans, opening);
 
   // One replay of the game: the position, last move and check state after every ply.
   const replay = new Chess();
@@ -102,7 +101,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
   const token = (name: string) => css.getPropertyValue(name).trim();
   const durPiece = parseFloat(token('--dur-piece')) || 0;
   const ground: Api = Chessground($('rv-board'), {
-    orientation: 'white',
+    orientation: side === 'w' ? 'white' : 'black',
     coordinates: true,
     viewOnly: true,
     animation: { enabled: durPiece > 0, duration: durPiece },
@@ -133,7 +132,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
   }
 
   function renderBoundary() {
-    const t = boundaryText(walk, sans);
+    const t = boundaryText(walk, sans, opening);
     els.now.textContent = t.head;
     for (const line of [t.body, t.num]) {
       if (!line) continue;
@@ -145,7 +144,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
   }
 
   function renderLesson() {
-    const lesson = chooseLesson(sans, walk, checks);
+    const lesson = chooseLesson(sans, walk, checks, opening.ideaFor);
     const t = (status !== 'done' && pendingText(lesson, status === 'starting' || status === 'running')) || lessonText(lesson);
     els.lesson.innerHTML = `<h3 id="rv-lesson-h">Lesson to revisit</h3><p class="fb"></p><p class="body"></p>${lesson.kind === 'deviation' && lesson.idea ? '<p class="note"></p>' : ''}`;
     fill(els.lesson.querySelector<HTMLElement>('.fb')!, t);
@@ -198,7 +197,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
       running: `Checking your moves with Stockfish: ${checks.length} of ${total}`,
       stopped: `Check stopped after ${checks.length} of ${total} moves.`,
       failed: `Stockfish stopped, so the check didn't finish. ${failure}`,
-      done: checks.length ? `Stockfish checked ${checks.length} of your moves after prep, about 0.3 seconds each.` : '',
+      done: checks.length ? `Stockfish checked ${checks.length} of your moves after prep, about 0.3 seconds each. ${SCORE_NOTE}` : '',
     }[status];
     els.prog.innerHTML = `<span class="soft"></span>${running ? '<button type="button" class="quiet" id="rv-cancel">Cancel</button>' : status === 'stopped' || status === 'failed' ? '<button type="button" class="quiet" id="rv-retry">Try again</button>' : ''}`;
     els.prog.firstElementChild!.textContent = text;
@@ -214,7 +213,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
     if (here?.glyph && here.bestUci.length >= 4 && here.bestUci !== prep?.uci) shapes.push({ orig: here.bestUci.slice(0, 2) as Key, dest: here.bestUci.slice(2, 4) as Key, brush: 'better' });
     // A move-quality badge sits on the top-right of the square the last move landed on (design/icons/BRIEF.md).
     const last = cursor > 0 ? byPly().get(cursor - 1) : undefined;
-    const svg = last?.glyph ? (last.glyph === '??' ? badgeBlunder : badgeMistake) : cursor > 0 && (cursor - 1) % 2 === 0 && cursor - 1 <= walk.lastPrepPly ? badgeBook : null;
+    const svg = last?.glyph ? (last.glyph === '??' ? badgeBlunder : badgeMistake) : cursor > 0 && (cursor - 1) % 2 === (side === 'w' ? 0 : 1) && cursor - 1 <= walk.lastPrepPly ? badgeBook : null;
     if (svg) shapes.push({ orig: moves[cursor - 1].to as Key, customSvg: { html: svg.replace(/<svg[^>]*>/, '<svg x="60" y="2" width="38" height="38" viewBox="0 0 32 32">') } });
     ground.setAutoShapes(shapes);
   }

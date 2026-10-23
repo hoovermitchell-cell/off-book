@@ -1,10 +1,14 @@
 // Import flow: pick a source, pick a game, confirm the moves. Nothing is analysed until the student
 // has confirmed the move list (a legal but mistyped move would give a convincing wrong analysis).
-import { parsePgn, plyLabel, type GameSource, type ImportedGame } from '../import/pgn';
+import { OPENINGS, openingForSide } from '../data/openings';
+import { detectPrep, parsePgn, plyLabel, type GameSource, type ImportedGame } from '../import/pgn';
 import { loadRecent, saveRecent } from '../import/recent';
 import { fetchChessCom, fetchLichess, ImportError } from '../import/sources';
 
 const SITES: Record<GameSource, string> = { lichess: 'Lichess', chesscom: 'Chess.com', paste: 'pasted PGN' };
+const SIDE = { w: 'White', b: 'Black' } as const;
+/** "the London as White and the Caro-Kann as Black", from OPENINGS. */
+const prepList = OPENINGS.map((o) => `the ${o.name} as ${SIDE[o.side]}`).join(' and ');
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) => void): { show(): void } {
@@ -12,7 +16,7 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
     <section class="import" aria-labelledby="im-h">
       <div id="im-start">
         <h2 id="im-h" tabindex="-1">Review a game</h2>
-        <p class="soft">Bring a game you played as White. Off Book finds where your London prep ended, who left it first, and whether leaving cost you anything. The only request that leaves this browser is the one to Lichess or Chess.com that you start.</p>
+        <p class="soft">Bring a game you played in your London as White or your Caro-Kann as Black. Off Book finds where your prep ended, who left it first, and whether leaving cost you anything. The only request that leaves this browser is the one to Lichess or Chess.com that you start.</p>
         <div class="seg row" role="group" aria-label="Where is the game from?">
           ${(['lichess', 'chesscom', 'paste'] as const).map((s) => `<button type="button" class="quiet" data-src="${s}">${s === 'paste' ? 'Paste a PGN' : SITES[s]}</button>`).join('')}
         </div>
@@ -39,8 +43,9 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
   let source: GameSource = 'lichess';
   let games: ImportedGame[] = [];
   let title = '';
-  let londonOnly = true;
+  let prepOnly = true;
   let picked: ImportedGame | null = null;
+  let side: 'w' | 'b' = 'w'; // the side chosen on the confirm step
   let skipped = ''; // why some pasted games were left out
 
   function step(which: 'start' | 'list' | 'confirm') {
@@ -62,47 +67,58 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
   function renderRecent() {
     const r = loadRecent();
     els.recent.innerHTML = r ? `<p class="soft">Last import: ${esc(SITES[r.source])}, ${esc(r.label)}, ${r.games.length} games, ${esc(new Date(r.at).toLocaleDateString())}. Kept on this device only. <button type="button" class="quiet" id="im-reopen">Open them</button></p>` : '';
-    els.recent.querySelector('#im-reopen')?.addEventListener('click', () => { games = r!.games; title = `Games from ${r!.label}`; skipped = ''; londonOnly = true; renderList(); });
+    els.recent.querySelector('#im-reopen')?.addEventListener('click', () => { games = r!.games; title = `Games from ${r!.label}`; skipped = ''; prepOnly = true; renderList(); });
   }
 
   function renderList() {
-    const shown = londonOnly ? games.filter((g) => g.london) : games;
-    const london = games.filter((g) => g.london).length;
+    const shown = prepOnly ? games.filter((g) => g.prep) : games;
+    const inPrep = games.filter((g) => g.prep).length;
     const rows = shown.map((g) => `
       <li><button type="button" class="game" data-id="${games.indexOf(g)}">
         <span class="g-names">${esc(g.white)} vs ${esc(g.black)}</span>
-        ${g.london ? '<span class="prep-tag">London</span>' : '<span></span>'}
-        <span class="g-meta">${[g.date, g.result, g.opening ?? `${Math.ceil(g.sans.length / 2)} moves`].filter(Boolean).map(esc).join(' · ')}</span>
+        ${g.prep ? `<span class="prep-tag">${esc(OPENINGS.find((o) => o.id === g.prep)!.name)}</span>` : '<span></span>'}
+        <span class="g-meta">${[g.source === 'paste' ? '' : `as ${SIDE[g.side]}`, g.date, g.result, g.opening ?? `${Math.ceil(g.sans.length / 2)} moves`].filter(Boolean).map(esc).join(' · ')}</span>
       </button></li>`).join('');
     const none = !shown.length
-      ? `<p>${games.length ? `None of these ${games.length} games are London games as White (1.d4 and an early Bf4).` : 'No games found.'}</p>${games.length ? '<p><button type="button" id="im-all">Show all games</button></p>' : ''}`
+      ? `<p>${games.length ? `None of these ${games.length} games are in your openings: ${prepList} (1.d4 with an early Bf4, or 1.e4 c6).` : 'No games found.'}</p>${games.length ? '<p><button type="button" id="im-all">Show all games</button></p>' : ''}`
       : '';
     els.list.innerHTML = `
       <h2 tabindex="-1">${esc(title)}</h2>
-      <p class="soft">${london} of ${games.length} are London games as White. Pick one to review.${skipped ? ` ${esc(skipped)}` : ''}</p>
-      <label><input type="checkbox" id="im-london"${londonOnly ? ' checked' : ''}> Only London games</label>
+      <p class="soft">${inPrep} of ${games.length} are in your openings (${prepList}). Pick one to review.${skipped ? ` ${esc(skipped)}` : ''}</p>
+      <label><input type="checkbox" id="im-prep"${prepOnly ? ' checked' : ''}> Only games in your openings</label>
       ${none}<ol class="games">${rows}</ol>
       <div class="row"><button type="button" class="quiet" id="im-back">Back</button></div>`;
     step('list');
   }
 
-  function renderConfirm(g: ImportedGame) {
+  function renderConfirm(g: ImportedGame, played = g.side) {
     picked = g;
+    side = played;
+    const opening = openingForSide(side);
+    // A username import knows the side; only a paste asks.
+    const choice = g.source === 'paste'
+      ? `<div class="row"><span id="im-side-l">You played</span><div class="seg row" role="group" aria-labelledby="im-side-l">${(['w', 'b'] as const).map((c) => `<button type="button" class="quiet" data-side="${c}" aria-pressed="${c === side}">${SIDE[c]}</button>`).join('')}</div></div>`
+      : '';
+    const verdict = opening
+      ? `Off Book will check your ${opening.name} prep and your moves as ${SIDE[side]}.`
+      : `Off Book has prep for ${prepList}, so it can't review a game as ${SIDE[side]} yet.`;
     let moves = '';
     for (let i = 0; i < g.sans.length; i += 2) moves += `<li><span class="n">${i / 2 + 1}.</span><span>${g.sans[i]}</span><span>${g.sans[i + 1] ?? ''}</span></li>`;
     els.confirm.innerHTML = `
       <h2 tabindex="-1">Is this the game as you played it?</h2>
       <p>${esc(g.white)} vs ${esc(g.black)}${g.date ? `, ${esc(g.date)}` : ''}${g.result && g.result !== '*' ? `, ${esc(g.result)}` : ''}. ${Math.ceil(g.sans.length / 2)} moves, ending ${esc(plyLabel(g.sans.length - 1, g.sans.at(-1)!))}.</p>
-      <p class="soft">Check it against your scoresheet. A move that is legal but mistyped would give an analysis that looks right and isn't. Off Book reviews the White side.</p>
+      <p class="soft">Check it against your scoresheet. A move that is legal but mistyped would give an analysis that looks right and isn't.</p>
+      ${choice}
+      <p class="soft">${esc(verdict)}</p>
       <div class="scoresheet"><ol class="moves" aria-label="Moves of the game">${moves}</ol></div>
-      <div class="row"><button type="button" id="im-yes">Yes, review this game</button><button type="button" class="quiet" id="im-no">No, go back</button></div>`;
+      <div class="row">${opening ? '<button type="button" id="im-yes">Yes, review this game</button>' : ''}<button type="button" class="quiet" id="im-no">No, go back</button></div>`;
     step('confirm');
   }
 
   function loaded(label: string, found: ImportedGame[]) {
     games = found;
     title = `Games from ${label}`;
-    londonOnly = true;
+    prepOnly = true;
     saveRecent({ source, label, at: Date.now(), games: found });
     renderRecent();
     renderList();
@@ -119,7 +135,7 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
     try {
       const name = els.name.value.trim();
       const found = await (source === 'lichess' ? fetchLichess : fetchChessCom)(name);
-      if (!found.length) els.msg.textContent = `${SITES[source]} has no standard games as White for "${name}" yet.`;
+      if (!found.length) els.msg.textContent = `${SITES[source]} has no standard games for "${name}" yet.`;
       else { skipped = ''; loaded(name, found); }
     } catch (err) {
       els.msg.textContent = err instanceof ImportError ? err.message : `Something went wrong reading the games (${String(err)}). Try again.`;
@@ -146,18 +162,23 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
     const t = ev.target as HTMLElement;
     const row = t.closest<HTMLElement>('[data-id]');
     if (row) renderConfirm(games[Number(row.dataset.id)]);
-    else if (t.id === 'im-all') { londonOnly = false; renderList(); }
+    else if (t.id === 'im-all') { prepOnly = false; renderList(); }
     else if (t.id === 'im-back') step('start');
   });
   els.list.addEventListener('change', (ev) => {
-    if ((ev.target as HTMLElement).id !== 'im-london') return;
-    londonOnly = (ev.target as HTMLInputElement).checked;
+    if ((ev.target as HTMLElement).id !== 'im-prep') return;
+    prepOnly = (ev.target as HTMLInputElement).checked;
     renderList();
-    root.querySelector<HTMLElement>('#im-london')!.focus();
+    root.querySelector<HTMLElement>('#im-prep')!.focus();
   });
   els.confirm.addEventListener('click', (ev) => {
-    const id = (ev.target as HTMLElement).id;
-    if (id === 'im-yes' && picked) onReview(picked);
+    const t = ev.target as HTMLElement;
+    const id = t.id;
+    if (t.dataset.side && picked) {
+      renderConfirm(picked, t.dataset.side as 'w' | 'b');
+      root.querySelector<HTMLElement>(`[data-side="${side}"]`)!.focus();
+    }
+    if (id === 'im-yes' && picked) onReview({ ...picked, side, prep: detectPrep(picked.sans, side) });
     if (id === 'im-no') { if (games.length > 1) renderList(); else step('start'); }
   });
 

@@ -1,22 +1,25 @@
 // Prep-boundary review (v1 scope item 5), pure logic with no DOM.
-// The student is White. Walk the game against the London prep tree to find where prep ended and
-// who left first, ask Stockfish what leaving cost, and pick one lesson. Wording lives in templates.ts.
+// The student plays one side of one opening (White's London or Black's Caro-Kann). Walk the game
+// against that opening's prep tree to find where prep ended and who left first, ask Stockfish what
+// leaving cost, and pick one lesson. Wording lives in templates.ts.
 import { Chess } from 'chess.js';
-import { posKey, type PrepMove, type PrepTree } from '../data/london';
-import { ideaFor } from '../data/london-ideas';
+import type { Opening } from '../data/openings';
+import { posKey, type PrepMove } from '../data/prep';
 import { JUDGE_MS, MISTAKE, type Judgement } from '../drill/drill';
 
 /** A drop this big gets `??` instead of `?`. Same split the drill screen uses for display. */
 export const BLUNDER = 300;
-/** White moves checked from the deviation onward. */
+/** The student's moves checked from the deviation onward. */
 export const MAX_CHECKED = 10;
 
 export interface PrepWalk {
+  /** The student's colour. */
+  side: 'w' | 'b';
   /** Who left prep first. null: the game ended while still in prep. */
   leftBy: 'student' | 'opponent' | null;
   /** Ply (0-based, both sides) of the last move still in prep. -1 when the first move already left it. */
   lastPrepPly: number;
-  /** Ply of the first move out of prep: the student's own move, or Black's reply the tree doesn't cover. */
+  /** Ply of the first move out of prep: the student's own move, or the opponent's reply the tree doesn't cover. */
   deviationPly: number | null;
   /** The prep move the student should have played, when the student left. */
   prep: PrepMove | null;
@@ -24,21 +27,21 @@ export interface PrepWalk {
 
 const uciOf = (m: { from: string; to: string; promotion?: string }) => m.from + m.to + (m.promotion ?? '');
 
-/** Walks the game against the tree. A White move is in prep when it is the tree's move at that
- *  position; a Black reply is in book when the position after it is still in the tree. */
-export function walkPrep(sans: string[], tree: PrepTree): PrepWalk {
+/** Walks the game against the tree. One of the student's moves is in prep when it is the tree's move
+ *  at that position; an opponent reply is in book when the position after it is still in the tree. */
+export function walkPrep(sans: string[], { tree, side }: Pick<Opening, 'tree' | 'side'>): PrepWalk {
   const chess = new Chess();
   for (const [ply, san] of sans.entries()) {
-    const white = ply % 2 === 0;
-    const prep = white ? tree.get(posKey(chess.fen())) : undefined;
+    const mine = ply % 2 === (side === 'w' ? 0 : 1);
+    const prep = mine ? tree.get(posKey(chess.fen())) : undefined;
     const m = chess.move(san);
-    if (white) {
-      if (prep && prep.uci !== uciOf(m)) return { leftBy: 'student', lastPrepPly: ply - 1, deviationPly: ply, prep };
+    if (mine) {
+      if (prep && prep.uci !== uciOf(m)) return { side, leftBy: 'student', lastPrepPly: ply - 1, deviationPly: ply, prep };
     } else if (!tree.has(posKey(chess.fen()))) {
-      return { leftBy: 'opponent', lastPrepPly: ply - 1, deviationPly: ply, prep: null };
+      return { side, leftBy: 'opponent', lastPrepPly: ply - 1, deviationPly: ply, prep: null };
     }
   }
-  return { leftBy: null, lastPrepPly: sans.length - 1, deviationPly: null, prep: null };
+  return { side, leftBy: null, lastPrepPly: sans.length - 1, deviationPly: null, prep: null };
 }
 
 /** FEN after `plies` moves of the game. */
@@ -51,7 +54,8 @@ export function fenAt(sans: string[], plies: number): string {
 export interface MoveCheck {
   ply: number;
   san: string;
-  /** Stockfish's score before the move (its best line) and after the move played. Centipawns, White's view. */
+  /** Stockfish's score before the move (its best line) and after the move played. Centipawns from the
+   *  student's side: positive is better for them, whichever colour they play. */
   before: number;
   after: number;
   best: string;
@@ -60,7 +64,7 @@ export interface MoveCheck {
   loss: number;
   /** Set when the drop reaches MISTAKE and the move wasn't Stockfish's own choice. */
   glyph: '?' | '??' | null;
-  /** The deviation move only: the score had the student played their prep move. */
+  /** The deviation move only: the score had the student played their prep move (the student's view). */
   prepAfter?: number;
   depth?: number;
   nodes?: number;
@@ -74,10 +78,11 @@ export interface AnalyzeOptions {
   onProgress?: (done: number, total: number, check: MoveCheck | null) => void;
 }
 
-/** Score of a position the game could not continue from: checkmate by White, or a draw. */
-const terminal = (chess: Chess): Judgement | null => (chess.isCheckmate() ? { cp: 100000, best: '' } : chess.isGameOver() ? { cp: 0, best: '' } : null);
+/** Student's-view score of a position the game could not continue from. The student has just moved,
+ *  so checkmate is theirs. */
+const terminal = (chess: Chess): number | null => (chess.isCheckmate() ? 100000 : chess.isGameOver() ? 0 : null);
 
-/** Stockfish check of White's moves from the deviation onward, up to `maxMoves` of them.
+/** Stockfish check of the student's moves from the deviation onward, up to `maxMoves` of them.
  *  Nothing to check when the game stayed in prep. */
 export async function analyze(
   sans: string[],
@@ -86,6 +91,8 @@ export async function analyze(
   { maxMoves = MAX_CHECKED, ms = JUDGE_MS, signal, onProgress }: AnalyzeOptions = {},
 ): Promise<MoveCheck[]> {
   if (walk.deviationPly === null) return [];
+  // Stockfish scores are White's view; the checks keep the student's, so a Black student's loss is a rise.
+  const own = (j: Judgement) => (walk.side === 'w' ? j.cp : 0 - j.cp);
   const first = walk.leftBy === 'student' ? walk.deviationPly : walk.deviationPly + 1;
   const plies: number[] = [];
   for (let p = first; p < sans.length && plies.length < maxMoves; p += 2) plies.push(p);
@@ -101,17 +108,18 @@ export async function analyze(
     signal?.throwIfAborted();
     const a = await engine.evaluate(beforeFen, ms);
     signal?.throwIfAborted();
-    const b = terminal(chess) ?? (await engine.evaluate(chess.fen(), ms));
+    const b = terminal(chess) ?? own(await engine.evaluate(chess.fen(), ms));
 
     let prepAfter: number | undefined;
     if (walk.leftBy === 'student' && ply === walk.deviationPly && walk.prep) {
       signal?.throwIfAborted();
       const alt = new Chess(beforeFen);
       alt.move(walk.prep.san);
-      prepAfter = (terminal(alt) ?? (await engine.evaluate(alt.fen(), ms))).cp;
+      prepAfter = terminal(alt) ?? own(await engine.evaluate(alt.fen(), ms));
     }
 
-    const loss = a.cp - b.cp;
+    const before = own(a);
+    const loss = before - b;
     const flagged = loss >= MISTAKE && a.best !== uciOf(played);
     let best = a.best;
     try {
@@ -120,7 +128,7 @@ export async function analyze(
       // Keep Stockfish's own notation if it can't be turned into SAN.
     }
     const check: MoveCheck = {
-      ply, san: played.san, before: a.cp, after: b.cp, best, bestUci: a.best, loss,
+      ply, san: played.san, before, after: b, best, bestUci: a.best, loss,
       glyph: flagged ? (loss >= BLUNDER ? '??' : '?') : null, prepAfter, depth: a.depth, nodes: a.nodes,
     };
     checks.push(check);
@@ -137,7 +145,7 @@ export type Lesson =
   | { kind: 'clean'; reason: 'in-prep' | 'no-mistake'; checked: number };
 
 /** One lesson to revisit. `checks` may be empty (not run yet): a deviation still has its prep move. */
-export function chooseLesson(sans: string[], walk: PrepWalk, checks: MoveCheck[]): Lesson {
+export function chooseLesson(sans: string[], walk: PrepWalk, checks: MoveCheck[], ideaFor: Opening['ideaFor']): Lesson {
   if (walk.leftBy === 'student' && walk.prep && walk.deviationPly !== null) {
     const idea = ideaFor(fenAt(sans, walk.deviationPly), walk.prep);
     return { kind: 'deviation', ply: walk.deviationPly, played: sans[walk.deviationPly], prep: walk.prep, idea, check: checks.find((c) => c.ply === walk.deviationPly) ?? null };
