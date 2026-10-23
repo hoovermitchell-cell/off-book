@@ -2,24 +2,10 @@
 // Policy (Mitch, 2026-10-21): system first, plus two traps; cover Black's common replies widely.
 // LINES are hand-pinned. AUTO (london-auto.ts, from build-tree.mjs) fills the rest of the
 // common replies with system moves; a pinned line always wins over AUTO.
-import { Chess } from 'chess.js';
 import { AUTO } from './london-auto';
+import { buildPrepTree, posKey, type PrepMove, type PrepTree } from './prep';
 
-/** The prep move White should play at a position. */
-export interface PrepMove {
-  san: string;
-  uci: string;
-  /** Hand-pinned in LINES (absent on AUTO entries). */
-  pinned?: boolean;
-  /** Generation metadata, AUTO entries only. */
-  loss?: number;
-  how?: 'system' | 'stockfish';
-  p?: number;
-  line?: string;
-}
-
-/** Position key (first four FEN fields) to White's prep move. */
-export type PrepTree = Map<string, PrepMove>;
+export { posKey, type PrepMove, type PrepTree };
 
 export const LINES: string[] = [
   // Core setup vs ...d5 / ...Nf6 / ...e6
@@ -53,21 +39,5 @@ export const LINES: string[] = [
   'd4 d5 Bf4 e5 Bxe5',
 ];
 
-export const posKey = (fen: string): string => fen.split(' ').slice(0, 4).join(' ');
-
-export function buildTree({ auto = true }: { auto?: boolean } = {}): PrepTree {
-  const tree: PrepTree = new Map();
-  for (const line of LINES) {
-    const chess = new Chess();
-    for (const san of line.split(' ')) {
-      const key = posKey(chess.fen());
-      const m = chess.move(san); // throws on an illegal move
-      if (m.color !== 'w') continue;
-      const prev = tree.get(key);
-      if (prev && prev.san !== m.san) throw new Error(`conflict at ${key}: ${prev.san} vs ${m.san}`);
-      tree.set(key, { san: m.san, uci: m.from + m.to + (m.promotion ?? ''), pinned: true });
-    }
-  }
-  if (auto) for (const [key, v] of Object.entries(AUTO)) if (!tree.has(key)) tree.set(key, v);
-  return tree;
-}
+export const buildTree = ({ auto = true }: { auto?: boolean } = {}): PrepTree =>
+  buildPrepTree(LINES, auto ? AUTO : {}, 'w');

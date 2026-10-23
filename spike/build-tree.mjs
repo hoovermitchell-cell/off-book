@@ -1,21 +1,46 @@
-// Run: node build-tree.mjs   (writes london-auto.js; takes several minutes)
-// Walks the London from the start. At White's turn: the pinned move if there is one, else the first
-// system-style move Stockfish rates within SLACK of its best, else Stockfish's best. At Black's turn:
-// every reply Maia plays at least MIN_REPLY often (max over RATINGS), while the path stays likely
-// enough (MIN_PATH) and White's move number is at most MAX_MOVE.
+// Run: node build-tree.mjs [london|caro-kann]   (default london; takes several minutes)
+// Walks the opening from its start. At the student's turn: the pinned move if there is one, else the
+// first system-style move Stockfish rates within SLACK of its best, else Stockfish's best. At the
+// opponent's turn: every reply Maia plays at least MIN_REPLY often (max over RATINGS), while the path
+// stays likely enough (MIN_PATH) and the move number is at most maxMove.
 // ponytail: system preference is a fixed move list, not a plan model; good enough for one opening.
 import { writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import * as ort from 'onnxruntime-web';
 import { Chess } from 'chess.js';
-import { buildTree, posKey } from './london.js';
 import { createEngine } from './engine.js';
 import { maiaMoves } from './maia.js';
 
 const RATINGS = [800, 1200, 1600];
-const MIN_REPLY = 0.08, MIN_PATH = 0.002, MAX_MOVE = 8, SLACK = 35;
-const SYSTEM = ['d4', 'Bf4', 'e3', 'Nf3', 'c3', 'Bd3', 'Nbd2', 'O-O', 'h3', 'Be2', 'Qc2', 'Qe2', 'Ngf3', 'Nd2', 'Re1', 'a4', 'Bh2', 'Qc1', 'b3'];
-const BLOCKS = ['c3', 'Nbd2', 'Nd2', 'Nc3', 'Bd2', 'Qd2'];
+const MIN_REPLY = 0.08, MIN_PATH = 0.002, SLACK = 35;
+
+// Per opening: the student's side, the moves before the first student move, how deep to go, and the
+// "system" preference list (SAN, best first). `extra` adds candidates after the recaptures and check
+// answers; `reject` drops a candidate. London's two hooks are exactly its old inline rules.
+const OPENINGS = {
+  london: {
+    side: 'w', start: [], maxMove: 8, maxCands: 7,
+    system: ['d4', 'Bf4', 'e3', 'Nf3', 'c3', 'Bd3', 'Nbd2', 'O-O', 'h3', 'Be2', 'Qc2', 'Qe2', 'Ngf3', 'Nd2', 'Re1', 'a4', 'Bh2', 'Qc1', 'b3'],
+    blocks: ['c3', 'Nbd2', 'Nd2', 'Nc3', 'Bd2', 'Qd2'],
+    extra: (c, legal) => (c.get('d6')?.type === 'b' && c.get('d6').color === 'b' && c.get('f4')?.type === 'b' ? [legal.find((m) => m.san === 'Bg3')] : []),
+    reject: () => false,
+    spikeCopy: true,
+  },
+  'caro-kann': {
+    side: 'b', start: ['e4'], maxMove: 8, maxCands: 9,
+    system: ['c6', 'd5', 'Bf5', 'Bg4', 'e6', 'Nd7', 'Nbd7', 'Ngf6', 'Nf6', 'Be7', 'Bd6', 'c5', 'O-O', 'Qb6', 'Qc7', 'h6', 'Nc6', 'Ne7', 'Qd7', 'b6', 'a6'],
+    blocks: ['Nd7', 'Nbd7', 'Bd7', 'Qd7', 'Nc6', 'Nbc6', 'e6', 'Nf6'],
+    extra: () => [],
+    // ponytail: a piece that has already moved is not "system" again (no Bf5-g4 shuffles); pawns and the king are exempt.
+    reject: (c, m, side) => !'pk'.includes(m.piece) && c.history({ verbose: true }).some((h) => h.color === side && h.to === m.from),
+  },
+};
+const name = process.argv[2] ?? 'london';
+const cfg = OPENINGS[name];
+if (!cfg) throw new Error(`unknown opening ${name}; try ${Object.keys(OPENINGS).join(', ')}`);
+const { side, start, maxMove: MAX_MOVE, system: SYSTEM, blocks: BLOCKS } = cfg;
+const { buildTree, posKey } = await import(`./${name}.js`);
+const sign = side === 'w' ? 1 : -1; // Stockfish scores are from White's point of view
 
 const pinned = buildTree(Chess, { auto: false });
 const sf = createRequire(import.meta.url)('stockfish')('lite-single', (l) => engine.onLine(l));
@@ -29,19 +54,20 @@ function candidates(c) {
   const out = [];
   if (last?.captured) out.push(...legal.filter((m) => m.to === last.to).sort((a, b) => 'pnbrqk'.indexOf(a.piece) - 'pnbrqk'.indexOf(b.piece)));
   if (c.inCheck()) out.push(...BLOCKS.map((s) => legal.find((m) => m.san.replace('+', '') === s)).filter(Boolean));
-  if (c.get('d6')?.type === 'b' && c.get('d6').color === 'b' && c.get('f4')?.type === 'b') out.push(legal.find((m) => m.san === 'Bg3'));
+  out.push(...cfg.extra(c, legal));
   out.push(...SYSTEM.map((s) => legal.find((m) => m.san.replace(/[+#]/, '') === s)).filter(Boolean));
   // Never "develop" a piece back to where it just came from (Bg3, then Bf4 again).
-  const undoes = (m) => c.history({ verbose: true }).some((h) => h.color === 'w' && h.from === m.to && h.to === m.from);
-  return [...new Set(out.filter(Boolean))].filter((m) => !undoes(m)).slice(0, 7);
+  const undoes = (m) => c.history({ verbose: true }).some((h) => h.color === side && h.from === m.to && h.to === m.from);
+  return [...new Set(out.filter(Boolean))].filter((m) => !undoes(m) && !cfg.reject(c, m, side)).slice(0, cfg.maxCands);
 }
 
-async function pickWhite(c) {
+async function pickMine(c) {
   const best = await engine.evaluate(c.fen(), 400);
   for (const m of candidates(c)) {
     const t = new Chess(c.fen()); t.move(m.san);
     const after = await engine.evaluate(t.fen(), 250);
-    if (best.cp - after.cp <= SLACK) return { san: m.san, uci: m.from + m.to + (m.promotion ?? ''), loss: best.cp - after.cp, how: 'system' };
+    const loss = sign * (best.cp - after.cp);
+    if (loss <= SLACK) return { san: m.san, uci: m.from + m.to + (m.promotion ?? ''), loss, how: 'system' };
   }
   const m = new Chess(c.fen()).move({ from: best.best.slice(0, 2), to: best.best.slice(2, 4), promotion: best.best[4] });
   return { san: m.san, uci: best.best, loss: 0, how: 'stockfish' };
@@ -54,14 +80,14 @@ async function replies(c) {
 }
 
 const auto = {}, seen = new Set();
-const queue = [{ moves: [], p: 1 }];
+const queue = [{ moves: start, p: 1 }];
 while (queue.length) {
   const { moves, p } = queue.shift();
   const c = new Chess(); moves.forEach((m) => c.move(m));
   const key = posKey(c.fen());
   if (seen.has(key) || c.isGameOver()) continue;
   seen.add(key);
-  const w = pinned.get(key) ?? (auto[key] = { ...(await pickWhite(c)), p: +p.toFixed(3), line: moves.join(' ') });
+  const w = pinned.get(key) ?? (auto[key] = { ...(await pickMine(c)), p: +p.toFixed(3), line: moves.join(' ') });
   if (c.moveNumber() >= MAX_MOVE) continue;
   c.move(w.san);
   if (c.isGameOver()) continue;
@@ -70,9 +96,17 @@ while (queue.length) {
 }
 sf.terminate();
 
-writeFileSync('london-auto.js', `// Generated by build-tree.mjs. Do not edit by hand; pin lines in london.js instead.\nexport const AUTO = ${JSON.stringify(auto, null, 1)};\n`);
-// The app's copy. ponytail: LINES in london.js and src/data/london.ts must match by hand; move this
-// generator into the app when Node can import the app's extensionless TS modules.
-writeFileSync('../src/data/london-auto.ts', `// Generated by spike/build-tree.mjs. Do not edit by hand; pin lines in london.ts instead.\nimport type { PrepMove } from './london';\n\nexport const AUTO: Record<string, PrepMove> = ${JSON.stringify(auto, null, 1)};\n`);
+if (cfg.spikeCopy) writeFileSync(`${name}-auto.js`, `// Generated by build-tree.mjs. Do not edit by hand; pin lines in ${name}.js instead.
+export const AUTO = ${JSON.stringify(auto, null, 1)};
+`);
+// The app's copy. ponytail: london.js's LINES must match src/data/london.ts by hand; caro-kann.js reads
+// its LINES and AUTO straight from the TS files. Move this generator into the app when Node can import
+// the app's extensionless TS modules.
+const types = name === 'london' ? "import type { PrepMove } from './london';" : "import type { PrepMove } from './prep';";
+writeFileSync(`../src/data/${name}-auto.ts`, `// Generated by spike/build-tree.mjs. Do not edit by hand; pin lines in ${name}.ts instead.
+${types}
+
+export const AUTO: Record<string, PrepMove> = ${JSON.stringify(auto, null, 1)};
+`);
 const vals = Object.values(auto);
 console.log(`\nwrote ${vals.length} auto positions (${vals.filter((v) => v.how === 'stockfish').length} fell back to Stockfish's move)`);
