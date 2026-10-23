@@ -50,33 +50,43 @@ export function mountDrill(root: HTMLElement) {
 
   root.innerHTML = `
     <main class="drill">
-      <div class="board" id="board"></div>
-      <section class="sheet" aria-label="Drill">
+      <section class="play" aria-label="Drill">
         <p class="now" id="now" role="status">Loading the engines…</p>
-        <p class="fb" id="verdict" role="status" hidden></p>
-        <p class="note" id="note" hidden></p>
-        <div class="scoresheet" id="scoresheet"><ol class="moves" id="moves" aria-label="Moves"></ol></div>
-        <section class="know" id="know" hidden aria-labelledby="know-h"></section>
-        <div class="level" id="level"></div>
-        <div class="row">
+        <div class="board" id="board"></div>
+        <div class="under">
+          <p class="fb" id="verdict" role="status" hidden></p>
+          <p class="note" id="note" hidden></p>
+        </div>
+      </section>
+      <aside class="rail" aria-label="Drill setup and record">
+        <div class="rail-section setup">
           <label>Opening
             <select id="opening">${OPENINGS.map((o) => `<option value="${o.id}"${o === opening ? ' selected' : ''}>${o.name} (you play ${sideName(o.side)})</option>`).join('')}</select>
           </label>
           <label>Opponent rating
             <select id="rating">${RATINGS.map((r) => `<option${r === 1000 ? ' selected' : ''}>${r}</option>`).join('')}</select>
           </label>
-          <button type="button" class="quiet" id="show-prep">Show my prep</button>
-          <button type="button" class="quiet" id="know-btn" aria-expanded="false" aria-controls="know">How did it know?</button>
         </div>
-        <form class="row" id="typed-form">
-          <label>Type a move <input type="text" id="typed" autocomplete="off" spellcheck="false" placeholder="Nf3"></label>
-          <button type="submit" class="quiet">Play</button>
-          <button type="button" class="quiet" id="resign">Resign</button>
-          <button type="button" id="new-game" hidden>New game</button>
-        </form>
-        <p class="typed-error" id="typed-error" aria-live="polite"></p>
-        <p class="soft" id="storage-note" role="status" hidden>This browser isn't saving your progress (a private window can do this). Your tallies and learned moves will reset when you close it.</p>
-      </section>
+        <div class="rail-section">
+          <div class="scoresheet" id="scoresheet"><ol class="moves" id="moves" aria-label="Moves"></ol></div>
+          <section class="know" id="know" hidden aria-labelledby="know-h"></section>
+          <div class="level" id="level"></div>
+        </div>
+        <div class="rail-section">
+          <div class="row">
+            <button type="button" class="quiet" id="show-prep">Show my prep</button>
+            <button type="button" class="quiet" id="know-btn" aria-expanded="false" aria-controls="know">How did it know?</button>
+            <button type="button" class="quiet" id="resign">Resign</button>
+            <button type="button" id="new-game" hidden>New game</button>
+          </div>
+          <form class="row" id="typed-form">
+            <label>Type a move <input type="text" id="typed" autocomplete="off" spellcheck="false" placeholder="Nf3"></label>
+            <button type="submit" class="quiet">Play</button>
+          </form>
+          <p class="typed-error" id="typed-error" aria-live="polite"></p>
+          <p class="soft" id="storage-note" role="status" hidden>This browser isn't saving your progress (a private window can do this). Your tallies and learned moves will reset when you close it.</p>
+        </div>
+      </aside>
     </main>
     <p class="visually-hidden" id="announce" aria-live="polite"></p>`;
 

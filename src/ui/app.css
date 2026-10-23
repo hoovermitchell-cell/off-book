@@ -34,34 +34,49 @@ button, input, select { font: inherit; color: inherit; }
 .tab[aria-current="page"] { background: var(--paper); color: var(--ink); font-weight: 700; padding-bottom: 1px; border-top: 3px solid var(--ink); }
 @media (max-width: 600px) { .masthead { padding: 0 var(--space-4); gap: var(--space-2); } .tabs { margin-left: auto; } .tab { padding: 0 var(--space-3); } }
 
-/* ---- Board and sheet: board first, the sheet is its margin ---- */
+/* ---- Board column and rail: board first, the notes sit under it, the rail holds the tools ----
+   --status-h and --under-h reserve the lines above and below the board, so its text can change every
+   move and the board never jumps. The board is sized from what is left of the viewport height. */
 .drill, .review {
-  --board: min(calc(100dvh - 56px - 2 * var(--space-6)), calc(100vw - 520px - 3 * var(--space-6)), 720px);
+  --status-h: 4.25rem;
+  --under-h: 8rem;
+  --rail-w: 400px;
+  --board: min(calc(100dvh - 56px - var(--status-h) - var(--under-h) - var(--space-3) - 3 * var(--space-2)), calc(100vw - var(--rail-w) - var(--space-8) - 2 * var(--space-6)), 760px);
   display: grid;
-  grid-template-columns: var(--board) minmax(340px, 520px);
-  gap: var(--space-6);
-  padding: var(--space-6);
+  grid-template-columns: var(--board) var(--rail-w);
+  gap: var(--space-8);
+  padding: var(--space-3) var(--space-6) var(--space-2);
   justify-content: center;
   align-items: start;
 }
+/* The lesson text needs room to read, so the review's column stays at least 32rem wide even when the board is smaller. */
+.review {
+  --status-h: 4.6rem;
+  --under-h: 14.25rem;
+  grid-template-columns: max(var(--board), min(32rem, calc(100vw - var(--rail-w) - var(--space-8) - 2 * var(--space-6)))) var(--rail-w);
+}
 @media (max-width: 900px) {
-  .drill, .review { --board: min(calc(100vw - 2 * var(--space-4)), 560px); grid-template-columns: var(--board); padding: var(--space-4); }
+  .drill, .review { --board: min(calc(100vw - 2 * var(--space-4)), 560px); grid-template-columns: var(--board); padding: var(--space-4); gap: var(--space-6); }
 }
+/* Phone width wraps the lines more, so reserve more of them. */
+@media (max-width: 600px) {
+  .drill, .review { --status-h: 6.5rem; --under-h: 9rem; }
+  .review { --under-h: 20rem; }
+}
+.play { display: grid; gap: var(--space-2); }
 .board { width: var(--board); height: var(--board); }
+.under { min-height: var(--under-h); display: grid; gap: var(--space-1); align-content: start; }
 
-.sheet {
-  background: var(--paper-sheet);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  padding: var(--space-4);
-  display: flex; flex-direction: column; gap: var(--space-3);
-  height: var(--board);
-  min-height: 0;
-}
-@media (max-width: 900px) { .sheet { height: auto; } }
+.rail { display: grid; gap: var(--space-3); }
+.rail-section { display: grid; gap: var(--space-3); }
+.rail-section + .rail-section { border-top: 1px solid var(--rule); padding-top: var(--space-3); }
+.setup { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.setup label { display: grid; gap: 0; min-height: 0; font-size: var(--text-sm); color: var(--ink-soft); }
+.setup label:first-child { flex: 1 1 17rem; }
+.setup select { width: 100%; font-size: var(--text-md); color: var(--ink); }
 
-/* What to do now: the first thing on the sheet, always. */
-.now { margin: 0; font-size: var(--text-xl); font-weight: 700; line-height: 1.25; }
+/* What to do now: sits above the board, always. */
+.now { min-height: var(--status-h); margin: 0; font-size: var(--text-xl); font-weight: 700; line-height: 1.25; }
 .now small { display: block; margin-top: var(--space-1); font-size: var(--text-sm); font-weight: 400; color: var(--ink-soft); }
 
 /* Verdict row: glyph, words, the number behind it. */
@@ -82,7 +97,7 @@ button, input, select { font: inherit; color: inherit; }
 .note svg { flex: none; width: 22px; height: 22px; margin-top: 2px; }
 
 /* Scoresheet */
-.scoresheet { flex: 1; min-height: calc(3 * var(--rule-height)); overflow-y: auto; border-top: 1px solid var(--rule); }
+.scoresheet { min-height: calc(3 * var(--rule-height)); max-height: calc(10 * var(--rule-height)); overflow-y: auto; }
 .moves {
   list-style: none; margin: 0; padding: 0;
   font: var(--text-md) / var(--rule-height) var(--font-notation);
@@ -98,7 +113,7 @@ button, input, select { font: inherit; color: inherit; }
 .moves:empty::before { content: "Your moves go here."; color: var(--ink-soft); font-family: var(--font-ui); }
 
 /* How did it know? Takes the scoresheet's place while open. */
-.know { flex: 1; overflow-y: auto; border-top: 1px solid var(--rule); padding-top: var(--space-2); display: grid; gap: var(--space-2); align-content: start; }
+.know { max-height: calc(12 * var(--rule-height)); overflow-y: auto; display: grid; gap: var(--space-2); align-content: start; }
 .know[hidden] { display: none; }
 .know h2 { margin: 0; font-size: var(--text-md); }
 .know p { margin: 0; }
@@ -172,22 +187,16 @@ textarea {
 .g-names { font-weight: 600; overflow-wrap: anywhere; }
 .g-meta { grid-column: 1 / -1; color: var(--ink-soft); font-size: var(--text-sm); }
 .prep-tag { background: var(--highlighter); color: var(--ink); padding: 0 var(--space-2); border-radius: 2px; font: 600 var(--text-xs) var(--font-ui); }
-#im-confirm .scoresheet { flex: none; max-height: 40vh; background: var(--paper-sheet); border: 1px solid var(--rule); padding: 0 var(--space-3); }
+#im-confirm .scoresheet { max-height: 40vh; background: var(--paper-sheet); border: 1px solid var(--rule); padding: 0 var(--space-3); }
 
-/* ---- Review: board, lesson card, stepping ---- */
-.drill .sheet, .review .sheet { height: auto; min-height: var(--board); }
-.drill .scoresheet { max-height: calc(10 * var(--rule-height)); }
-/* The lesson card is tall, so the sheet grows past the board rather than squeezing the moves to a few rows. */
-.review .scoresheet { flex: none; max-height: calc(10 * var(--rule-height)); }
+/* ---- Review: lesson card under the board, stepping in the rail ---- */
 .review .now small.num, .lesson .fb .num { font: var(--text-sm) var(--font-notation); color: var(--ink-soft); }
-.lesson { border: 1px solid var(--rule); border-radius: var(--radius); padding: var(--space-3); display: grid; gap: var(--space-2); flex: none; }
-.lesson h3 { font-size: var(--text-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
-.lesson p { margin: 0; }
-.lesson .fb .num { grid-column: 2 / -1; white-space: normal; }
+.lesson { border-top: 1px solid var(--rule); padding-top: var(--space-1); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-3); align-items: center; }
+.lesson h3 { grid-column: 1; grid-row: 1; font-size: var(--text-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.lesson button { grid-column: 2; grid-row: 1; }
+.lesson > :not(h3, button) { grid-column: 1 / -1; margin: 0; }
+.lesson .fb .num { white-space: normal; }
 .lesson .body { font-size: var(--text-sm); }
-.lesson button { justify-self: start; }
-#rv-step { flex: none; min-height: 1.45em; }
-#rv-step:empty { display: none; }
 .rv-moves li { grid-template-columns: 4ch 1fr 1fr; }
 .rv-moves .mv {
   min-height: var(--rule-height); padding: 0 2px; border: 0; border-radius: 0; background: transparent;
@@ -202,4 +211,5 @@ button.icon { width: var(--target-min); padding: 0; display: inline-grid; place-
 /* A verdict row with no glyph (an in-prep step, a lesson with nothing to flag) gives the glyph column back. */
 .fb:has(> b:empty) { grid-template-columns: minmax(0, 1fr) auto; }
 .fb > b:empty { display: none; }
-.lesson .fb:has(> b:empty) .num { grid-column: 1 / -1; }
+/* Plain-text step lines ("Start of the game.") have no glyph cell at all. */
+.fb:not(:has(> b)) { display: block; }

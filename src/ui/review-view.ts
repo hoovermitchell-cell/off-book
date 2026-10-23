@@ -76,21 +76,29 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
 
   host.innerHTML = `
     <main class="review">
-      <div class="board" id="rv-board"></div>
-      <section class="sheet" aria-label="Game review">
+      <section class="play" aria-label="Game review">
         <p class="now" id="rv-now"></p>
-        <section class="lesson" id="rv-lesson" aria-labelledby="rv-lesson-h"></section>
-        <p class="fb" id="rv-step" role="status"></p>
-        <div class="scoresheet"><ol class="moves rv-moves" id="rv-moves" aria-label="Moves of the game"></ol></div>
-        <div class="rv-prog" id="rv-prog"></div>
-        <div class="row">
-          <button type="button" class="quiet icon" id="rv-first" aria-label="First position" title="First position">${icon(ICONS.first)}</button>
-          <button type="button" class="quiet icon" id="rv-prev" aria-label="Previous move" title="Previous move (left arrow)">${icon(ICONS.prev)}</button>
-          <button type="button" class="quiet icon" id="rv-next" aria-label="Next move" title="Next move (right arrow)">${icon(ICONS.next)}</button>
-          <button type="button" class="quiet icon" id="rv-last" aria-label="Last position" title="Last position">${icon(ICONS.last)}</button>
-          <button type="button" class="quiet" id="rv-other">Choose another game</button>
+        <div class="board" id="rv-board"></div>
+        <div class="under">
+          <p class="fb" id="rv-step" role="status"></p>
+          <section class="lesson" id="rv-lesson" aria-labelledby="rv-lesson-h"></section>
         </div>
       </section>
+      <aside class="rail" aria-label="Moves and steps">
+        <div class="rail-section">
+          <div class="scoresheet"><ol class="moves rv-moves" id="rv-moves" aria-label="Moves of the game"></ol></div>
+          <div class="row">
+            <button type="button" class="quiet icon" id="rv-first" aria-label="First position" title="First position">${icon(ICONS.first)}</button>
+            <button type="button" class="quiet icon" id="rv-prev" aria-label="Previous move" title="Previous move (left arrow)">${icon(ICONS.prev)}</button>
+            <button type="button" class="quiet icon" id="rv-next" aria-label="Next move" title="Next move (right arrow)">${icon(ICONS.next)}</button>
+            <button type="button" class="quiet icon" id="rv-last" aria-label="Last position" title="Last position">${icon(ICONS.last)}</button>
+          </div>
+          <div class="rv-prog" id="rv-prog"></div>
+        </div>
+        <div class="rail-section">
+          <div class="row"><button type="button" class="quiet" id="rv-other">Choose another game</button></div>
+        </div>
+      </aside>
     </main>
     <p class="visually-hidden" id="rv-live" aria-live="polite"></p>`;
   const $ = <T extends HTMLElement>(id: string) => host.querySelector<T>(`#${id}`)!;
