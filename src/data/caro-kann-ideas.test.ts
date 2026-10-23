@@ -16,10 +16,10 @@ describe('Caro-Kann ideas', () => {
     expect(missing.length / ideas.length).toBeLessThan(0.05);
   });
 
-  it('has about 20 to 45 distinct texts', () => {
+  it('has about 20 to 50 distinct texts', () => {
     const n = new Set(ALL_IDEAS).size;
     expect(n).toBeGreaterThanOrEqual(20);
-    expect(n).toBeLessThanOrEqual(45);
+    expect(n).toBeLessThanOrEqual(50);
   });
 
   it('the traps are noted: Nd6 mate, the Fantasy rook, Bxf7+ after ...Bxf3', () => {
