@@ -175,7 +175,8 @@ textarea {
 #im-confirm .scoresheet { flex: none; max-height: 40vh; background: var(--paper-sheet); border: 1px solid var(--rule); padding: 0 var(--space-3); }
 
 /* ---- Review: board, lesson card, stepping ---- */
-.review .sheet { height: auto; min-height: var(--board); }
+.drill .sheet, .review .sheet { height: auto; min-height: var(--board); }
+.drill .scoresheet { max-height: calc(10 * var(--rule-height)); }
 /* The lesson card is tall, so the sheet grows past the board rather than squeezing the moves to a few rows. */
 .review .scoresheet { flex: none; max-height: calc(10 * var(--rule-height)); }
 .review .now small.num, .lesson .fb .num { font: var(--text-sm) var(--font-notation); color: var(--ink-soft); }

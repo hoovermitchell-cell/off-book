@@ -24,6 +24,8 @@ const NAMES: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 
 
 const sideName = (side: 'w' | 'b') => (side === 'w' ? 'White' : 'Black');
 const pts = (cp: number) => (cp / 100).toFixed(1);
+/** A loss in pawns. Below zero means the move scored as well as the better one; a mate swing reads as a cap, as in the review. */
+const drop = (cp: number) => (cp >= 1000 ? 'more than 10.0' : pts(Math.max(0, cp)));
 const pct = (p: number) => `${Math.round(p * 100)}%`;
 /** "6. Nbd2" for White's ply, "5...Nc6" for Black's. */
 const label = (ply: number, san: string) => (ply % 2 ? `${(ply + 1) / 2}...${san}` : `${ply / 2 + 1}. ${san}`);
@@ -310,9 +312,9 @@ export function mountDrill(root: HTMLElement) {
       case 'prep-miss': {
         const moveNo = label(s.history.length, e.played);
         const prepNo = label(s.history.length, e.prep);
-        if (e.verdict === 'playable') setVerdict('?!', 'dubious', `${moveNo}. Playable, but not your prep. Your prep is ${prepNo}.`, `${pts(e.loss)} behind prep`);
-        else { const m = glyphFor(e.loss); setVerdict(m.g, m.cls, `${moveNo}. ${m.word}. Your prep is ${prepNo}.`, `${pts(e.loss)} behind prep`); }
-        know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${pts(e.loss)} lower than your prep move ${e.prep}. Under ${pts(PLAYABLE)} counts as playable.`, depth: e.depth, nodes: e.nodes };
+        if (e.verdict === 'playable') setVerdict('?!', 'dubious', `${moveNo}. Playable, but not your prep. Your prep is ${prepNo}.`, `${drop(e.loss)} behind prep`);
+        else { const m = glyphFor(e.loss); setVerdict(m.g, m.cls, `${moveNo}. ${m.word}. Your prep is ${prepNo}.`, `${drop(e.loss)} behind prep`); }
+        know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${drop(e.loss)} lower than your prep move ${e.prep}. Under ${pts(PLAYABLE)} counts as playable.`, depth: e.depth, nodes: e.nodes };
         setNow('Try again: play your prep move.', 'The arrow shows it. This one won\'t add a tally.');
         sync([{ orig: e.prepUci.slice(0, 2) as Key, dest: e.prepUci.slice(2, 4) as Key, brush: 'prep' }]);
         break;
@@ -332,8 +334,8 @@ export function mountDrill(root: HTMLElement) {
         const m = glyphFor(e.loss);
         marks.set(ply, m);
         badge = { sq: lastTo(), svg: m.g === '??' ? badgeBlunder : badgeMistake };
-        setVerdict(m.g, m.cls, `${label(ply, e.played)}. ${m.word}. ${label(ply, e.better)} was better.`, `${pts(e.loss)} lower`);
-        know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${pts(e.loss)} lower than its choice, ${e.better}. A drop of 1.0 or more counts as a mistake; 3.0 or more as a blunder.`, depth: e.depth, nodes: e.nodes };
+        setVerdict(m.g, m.cls, `${label(ply, e.played)}. ${m.word}. ${label(ply, e.better)} was better.`, `${drop(e.loss)} lower`);
+        know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${drop(e.loss)} lower than its choice, ${e.better}. A drop of 1.0 or more counts as a mistake; 3.0 or more as a blunder.`, depth: e.depth, nodes: e.nodes };
         setNow(`${opp()} is thinking…`);
         sync([{ orig: e.betterUci.slice(0, 2) as Key, dest: e.betterUci.slice(2, 4) as Key, brush: 'better' }]);
         break;
