@@ -12,7 +12,6 @@ import { maiaMoves } from '../chess/maia';
 import { createMaiaRunner } from '../chess/maia-ort';
 import { createStockfish } from '../chess/stockfish-worker';
 import { levelOf, loadSaved, REPS_PER_LEVEL, updateSaved, type Saved } from '../storage';
-import markUrl from '../../design/brand/off-the-page/favicon.svg';
 import prepEndsSvg from '../../design/icons/prep-ends.svg?raw';
 import badgeBook from '../../design/icons/badges/book.svg?raw';
 import badgeGood from '../../design/icons/badges/good.svg?raw';
@@ -42,11 +41,6 @@ function describe(m: Move): string {
 
 export function mountDrill(root: HTMLElement) {
   root.innerHTML = `
-    <header class="masthead">
-      <img src="${markUrl}" alt="">
-      <h1>Off Book</h1>
-      <p>London drill · you play White</p>
-    </header>
     <main class="drill">
       <div class="board" id="board"></div>
       <section class="sheet" aria-label="Drill">
