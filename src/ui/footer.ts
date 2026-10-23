@@ -30,7 +30,7 @@ export function mountFooter(root: HTMLElement) {
     a.href = URL.createObjectURL(blob);
     a.download = `off-book-progress-${stamp(now)}.json`;
     a.click();
-    URL.revokeObjectURL(a.href);
+    setTimeout(() => URL.revokeObjectURL(a.href)); // same-tick revoke can cancel the download in Firefox
     say(`Saved ${a.download} to your downloads.`);
   });
 
