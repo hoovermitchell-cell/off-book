@@ -10,7 +10,6 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 
 ## Needs shaping
 
-- Mitch reviews the Caro-Kann idea texts in `src/data/caro-kann-ideas.ts` (the repertoire questions are answered: decision 15)
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Drill the Caro-Kann: the drill and review assume White today; playing Black needs both to take a side (after Mitch's Caro-Kann answers)
 - Review Black games too (the Caro-Kann), once the Caro-Kann is in the drill
