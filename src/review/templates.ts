@@ -103,3 +103,17 @@ export function stepText(ply: number, san: string, walk: PrepWalk, check: MoveCh
   if (check) return { head: `${label}. No mistake.`, num: `${fmtEval(check.before)} before, ${fmtEval(check.after)} after` };
   return null;
 }
+
+/** What the lesson card says while Stockfish is still working or didn't finish, when the finished text would claim too much. */
+export function pendingText(lesson: Lesson, running: boolean): Text | null {
+  if (lesson.kind === 'clean') {
+    if (lesson.reason === 'in-prep') return null;
+    return running
+      ? { head: 'Checking your moves.', body: 'Stockfish is looking at your moves after book.', num: '' }
+      : { head: 'No lesson yet.', body: 'The check stopped before it finished, so nothing is claimed either way. Run it again to finish.', num: '' };
+  }
+  if (lesson.kind === 'deviation' && running && lesson.check?.prepAfter === undefined) {
+    return { ...lessonText(lesson), g: undefined, cls: undefined, body: 'Stockfish is checking what leaving prep cost.', num: '' };
+  }
+  return null;
+}
