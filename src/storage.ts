@@ -10,7 +10,7 @@ export interface Saved {
   learned: string[];
 }
 
-function safeStorage(): Storage | undefined {
+export function safeStorage(): Storage | undefined {
   try {
     return globalThis.localStorage;
   } catch {
