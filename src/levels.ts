@@ -77,21 +77,39 @@ export function stageViews(opening: Opening, ladder: Ladder, proven: readonly st
   });
 }
 
+/** Which of the opening's staged lines the student has started: a learned move that no earlier line
+ *  has. Lines open on the same first moves, so a shared prefix alone would make every line look started. */
+function startedLines(opening: Opening, ladder: Ladder): boolean[] {
+  const seen = new Set<string>();
+  return opening.stages.map((stage) => {
+    const keys = stageKeys(stage, opening.side);
+    const started = keys.some((k) => ladder[k] && !seen.has(k));
+    for (const k of keys) seen.add(k);
+    return started;
+  });
+}
+
 /** The staged line to play this round: the first open line with a new or due move. null means
- *  nothing is waiting, so the round is free play against Maia. */
-export function pickStage(opening: Opening, ladder: Ladder, proven: readonly string[], now: number): Stage | null {
-  for (const v of stageViews(opening, ladder, proven)) {
+ *  nothing is waiting, so the round is free play against Maia. While `paused`, a line the student
+ *  has not started is skipped, so reviews carry on and no new line begins. */
+export function pickStage(opening: Opening, ladder: Ladder, proven: readonly string[], now: number, paused = false): Stage | null {
+  const started = startedLines(opening, ladder);
+  for (const [i, v] of stageViews(opening, ladder, proven).entries()) {
     if (v.status === 'locked') break;
+    if (paused && !started[i]) continue;
     if (stageKeys(v.stage, opening.side).some((k) => !ladder[k] || ladder[k].due <= now)) return v.stage;
   }
   return null;
 }
 
-/** Learned moves of the opening's open lines that are due now. */
-export function dueNow(opening: Opening, ladder: Ladder, proven: readonly string[], now: number): number {
+/** Learned moves of the opening's open lines that are due now. Every learned move sits in a started
+ *  line, so `paused` leaves the count as it is; it is here to match pickStage's call sites. */
+export function dueNow(opening: Opening, ladder: Ladder, proven: readonly string[], now: number, paused = false): number {
+  const started = startedLines(opening, ladder);
   const keys = new Set<string>();
-  for (const v of stageViews(opening, ladder, proven)) {
+  for (const [i, v] of stageViews(opening, ladder, proven).entries()) {
     if (v.status === 'locked') break;
+    if (paused && !started[i]) continue;
     for (const k of stageKeys(v.stage, opening.side)) if (ladder[k] && ladder[k].due <= now) keys.add(k);
   }
   return keys.size;
@@ -117,7 +135,10 @@ export function provenStage(sans: string[], opening: Opening): Stage | null {
   for (const [i, stage] of opening.stages.entries()) {
     const keys = all[i];
     const hit = keys.filter((k) => played.has(k)).length;
-    const own = keys.some((k) => played.has(k) && !all.some((other, j) => j !== i && other.includes(k)));
+    // A deeper tier's line can continue this one (decision 16); a line that contains all of this one's
+    // moves doesn't take its own moves away from it.
+    const rivals = all.filter((other, j) => j !== i && !keys.every((k) => other.includes(k)));
+    const own = keys.some((k) => played.has(k) && !rivals.some((other) => other.includes(k)));
     // ponytail: "half the line" is a judgement call; raise it if openings that barely start count.
     if (own && hit * 2 >= keys.length && hit > most) { best = stage; most = hit; }
   }

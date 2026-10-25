@@ -10,9 +10,11 @@ export interface Saved {
   ladder: Ladder;
   /** Staged lines (Stage.id) a clean real game has proven. */
   proven: string[];
+  /** Openings (Opening.id) whose new lines are paused: reviews carry on, no new line starts. */
+  paused: string[];
 }
 
-const empty = (): Saved => ({ ladder: {}, proven: [] });
+const empty = (): Saved => ({ ladder: {}, proven: [], paused: [] });
 
 export function safeStorage(): Storage | undefined {
   try {
@@ -66,7 +68,7 @@ function migrate(ladder: Ladder): Ladder {
  *  The first format ({ correct, learned }) carries over: learned moves start the ladder, due now.
  *  Legacy four-field ladder keys are migrated (see migrate). */
 function sanitize(parsed: unknown): Saved {
-  const p = parsed as { ladder?: unknown; proven?: unknown; learned?: unknown } | null;
+  const p = parsed as { ladder?: unknown; proven?: unknown; paused?: unknown; learned?: unknown } | null;
   const ladder: Ladder = {};
   if (p?.ladder && typeof p.ladder === 'object') {
     for (const [k, r] of Object.entries(p.ladder as Record<string, { level?: unknown; due?: unknown }>)) {
@@ -77,7 +79,9 @@ function sanitize(parsed: unknown): Saved {
     for (const k of p.learned) if (typeof k === 'string') ladder[k] = { level: 0, due: 0 };
   }
   const proven = Array.isArray(p?.proven) ? p.proven.filter((k): k is string => typeof k === 'string') : [];
-  return { ladder: migrate(ladder), proven };
+  // Saves and backups from before Pause new lines have no `paused`; it reads as empty.
+  const paused = Array.isArray(p?.paused) ? p.paused.filter((k): k is string => typeof k === 'string') : [];
+  return { ladder: migrate(ladder), proven, paused };
 }
 
 export function loadSaved(store: Pick<Storage, 'getItem'> | undefined = safeStorage()): Saved {

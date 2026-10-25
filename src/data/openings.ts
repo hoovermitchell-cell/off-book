@@ -19,11 +19,13 @@ export interface Stage {
   tier: Tier;
   /** SAN, both sides, from the start position. */
   moves: string[];
-  /** A theory note for the line (decision 16). Nothing in the UI reads it yet. */
+  /** A theory note for the line (decision 16): the plan, the pawn structure, the usual mistake. */
   note?: string;
 }
 
 const stage = (id: string, name: string, moves: string): Stage => ({ id, name, tier: 'intro', moves: moves.split(' ') });
+/** An Intermediate line (decision 16 pilot, docs/plans/2026-10-25-tier-pilot.md). DRAFT notes, pending Mitch's review. */
+const deeper = (id: string, name: string, moves: string, note: string): Stage => ({ ...stage(id, name, moves), tier: 'intermediate', note });
 
 export interface Opening {
   id: string;
@@ -66,6 +68,11 @@ export const OPENINGS: Opening[] = [
       stage('e6-bd6', '...e6 and early ...Bd6', 'd4 e6 Bf4 d5 e3 Nf6 Nf3 Bd6 Bg3 O-O Bd3 Nc6 c3'),
       stage('early-bf5', 'Early ...Bf5', 'd4 d5 Bf4 Bf5 e3 e6 Bd3 Bg6 Nf3 Nf6 c3'),
       stage('nf6-bf5', '...Bf5 after ...Nf6', 'd4 d5 Bf4 Nf6 e3 Bf5 Bd3 Bxd3 Qxd3 e6 Nf3 Bd6 Bg3'),
+      // Intermediate: the textbook continued, then setups by Maia frequency (King's Indian, 2.0%).
+      deeper('textbook-12', 'Textbook, to move 12', 'd4 d5 Bf4 Nf6 e3 e6 Nf3 c5 c3 Nc6 Nbd2 Bd6 Bg3 O-O Bd3 Re8 Ne5 cxd4 exd4 Nxe5 dxe5 Bxe5 Bxe5',
+        "With your pieces out, the knight jumps to e5 and eyes Black's kingside. If Black swaps on d4, take back with the e-pawn: it keeps the e-file and e5 for you. Then if ...Nxe5, dxe5 attacks the bishop on d6 and the knight on f6 at once, and the pawn fork wins a piece for a pawn."),
+      deeper('kid', "King's Indian setup", 'd4 Nf6 Bf4 g6 e3 Bg7 Nf3 O-O Be2 d6 h3 Nbd7 c3 Re8 Nbd2 e5 Bg5',
+        "Against ...g6, ...Bg7 and ...d6, keep the London shape but put the bishop on e2. h3 gives the f4 bishop a retreat on h2, so ...Nh5 can't trade it off. Black's plan is ...e5; when it comes, Bg5 pins the f6 knight to the queen, since ...e5 has emptied e7."),
     ],
   },
   {
@@ -88,6 +95,15 @@ export const OPENINGS: Opening[] = [
       stage('advance', 'Advance', 'e4 c6 d4 d5 e5 Bf5 Nf3 e6 Bd3 Bxd3 Qxd3 c5'),
       stage('classical-bd3', 'Classical with 5.Bd3', 'e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Bd3 Qxd4 Nf3 Qd8 O-O'), // ends before 7...Bxe4: the tree's prep there is 7...e6
       stage('d3', '2.d3', 'e4 c6 d3 d5 Nd2 e5 Ngf3 Bd6 g3 Nf6 Bg2 O-O'),
+      // Intermediate: the Classical continued, then setups by Maia frequency (Two Knights 1.6%, Fantasy 1.0%, Panov 0.7%).
+      deeper('classical-17', 'Classical, into the endgame', 'e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Ng3 Bg6 h4 h6 Nf3 Nd7 h5 Bh7 Bd3 Bxd3 Qxd3 e6 Bf4 Ngf6 O-O-O Be7 Kb1 O-O Ne4 c5 dxc5 Nxc5 Nxc5 Bxc5 Qxd8 Raxd8',
+        "Once your king is castled, ...c5 is the Classical's break: it hits d4 and frees your pieces. When White takes on c5 and offers the queens, trade: the endgame is level and your pawns have no weak points. White's pawn on h5 is the one that can become weak there."),
+      deeper('two-knights', 'Two Knights', 'e4 c6 Nc3 d5 Nf3 Bg4 h3 Bxf3 Qxf3 e6 d3 Nf6 Bg5 Nbd7 exd5 cxd5',
+        "Against 2.Nc3 and 3.Nf3, ...Bg4 pins the knight and then trades it, so White gets the bishop pair but less control of d4 and e5. Build with ...e6, ...Nf6 and ...Nbd7. When White takes on d5, take back with the c-pawn so you keep a pawn in the center."),
+      deeper('fantasy', 'Fantasy', 'e4 c6 d4 d5 f3 dxe4 fxe4 e5 Nf3 Bg4 Bc4 Nd7 O-O Ngf6 dxe5 Qb6+',
+        "3.f3 props up e4 for a big center. Take on e4 and hit back with ...e5 before White is developed. With the f-pawn gone, the diagonals to White's king are open: dxe5 too early allows ...Qh4+, and after castling ...Qb6+ checks and hits b2. Don't take on f3 before ...Nd7: after Qxf3, the queen and the c4 bishop both hit f7."),
+      deeper('panov', 'Panov', 'e4 c6 d4 d5 exd5 cxd5 c4 Nf6 Nc3 e6 Nf3 Be7 cxd5 Nxd5 Bd3 Nc6 O-O O-O Re1 Nf6 Be3 b6 Qc2 Nb4',
+        "After the trades White has an isolated pawn on d4, with no pawn beside it to guard it. Aim your pieces at it, keep it blockaded, and welcome trades: every trade makes the lone pawn weaker. ...b6 makes room for your last bishop, and ...Nb4 hits the queen and the d3 bishop."),
     ],
   },
   {
