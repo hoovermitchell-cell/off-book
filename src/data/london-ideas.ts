@@ -50,7 +50,7 @@ const STOCKFISH = "The usual setup doesn't fit this position, so this is Stockfi
 const momentKeys = new Map(
   MOMENTS.map(([line, text]) => {
     const c = new Chess();
-    line.split(' ').forEach((m) => c.move(m));
+    line.split(' ').forEach((m) => { c.move(m); });
     return [posKey(c.fen()), text] as const;
   }),
 );

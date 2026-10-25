@@ -57,7 +57,7 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
 
   function setSource(s: GameSource) {
     source = s;
-    sourceButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.src === s)));
+    sourceButtons.forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.src === s)); });
     els.user.hidden = s === 'paste';
     els.paste.hidden = s !== 'paste';
     els.name.labels![0].firstChild!.textContent = `${SITES[s]} username `;
@@ -125,7 +125,7 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
   }
 
   // ---- events ----------------------------------------------------------------------------------
-  sourceButtons.forEach((b) => b.addEventListener('click', () => setSource(b.dataset.src as GameSource)));
+  for (const b of sourceButtons) b.addEventListener('click', () => setSource(b.dataset.src as GameSource));
 
   els.user.addEventListener('submit', async (ev) => {
     ev.preventDefault();

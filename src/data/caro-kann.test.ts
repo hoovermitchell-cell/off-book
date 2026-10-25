@@ -6,7 +6,7 @@ import { posKey } from './prep';
 
 const keyAfter = (line: string) => {
   const chess = new Chess();
-  line.split(' ').forEach((san) => chess.move(san));
+  line.split(' ').forEach((san) => { chess.move(san); });
   return posKey(chess.fen());
 };
 

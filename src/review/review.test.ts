@@ -19,7 +19,7 @@ function scripted(answers: Judgement[]) {
 /** First legal Black reply to `line` that the tree doesn't cover. */
 function uncoveredReply(line: string): string {
   const c = new Chess();
-  game(line).forEach((m) => c.move(m));
+  game(line).forEach((m) => { c.move(m); });
   const found = c.moves().find((san) => { const t = new Chess(c.fen()); t.move(san); return !tree.has(posKey(t.fen())); });
   if (!found) throw new Error('every reply is covered');
   return found;
