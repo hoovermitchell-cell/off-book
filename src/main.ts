@@ -33,6 +33,6 @@ function show(screen: string) {
 }
 for (const tab of tabs) tab.addEventListener('click', () => show(tab.dataset.screen!));
 
-const reviewScreen = mountReview(document.getElementById('screen-review')!);
-mountDrill(document.getElementById('screen-drill')!, (game) => { show('review'); reviewScreen.open(game); });
+const reviewScreen = mountReview(document.getElementById('screen-review')!, (openingId, moves) => { show('drill'); drillScreen.drillLine(openingId, moves); });
+const drillScreen = mountDrill(document.getElementById('screen-drill')!, (game) => { show('review'); reviewScreen.open(game); });
 mountFooter(document.getElementById('footer')!);

@@ -22,6 +22,8 @@ import badgeBlunder from '../../design/icons/badges/blunder.svg?raw';
 // ponytail: display-only split of a "mistake" into ? and ??; the drill only knows MISTAKE.
 const BLUNDER = 300;
 const RATINGS = [600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800];
+/** The stand-in stage for a round that replays a reviewed game (drillLine); it is never one of the opening's lines. */
+const FROM_REVIEW = 'from-review';
 const NAMES: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
 
 const sideName = (side: 'w' | 'b') => (side === 'w' ? 'White' : 'Black');
@@ -43,8 +45,9 @@ function describe(m: Move): string {
   return text;
 }
 
-/** `onReview` opens a finished sparring game in the review screen. */
-export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => void) {
+/** `onReview` opens a finished sparring game in the review screen. Returns `drillLine`, which the review's
+ *  "Drill this line" calls: switch to that opening and replay the game's moves up to the one that was missed. */
+export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => void): { drillLine(openingId: string, moves: string[]): void } {
   // The picked opening decides the student's side; everything below reads it through these.
   let opening = OPENINGS.find((o) => o.id === loadOpening()) ?? DEFAULT_OPENING;
   const color = () => (opening.side === 'w' ? 'white' : 'black');
@@ -140,7 +143,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   /** Destination square of the last move on the board, for the badge. */
   const lastTo = () => { const c = new Chess(); drill.getState().history.forEach((m) => { c.move(m); }); return c.history({ verbose: true }).at(-1)?.to as Key; };
   let know: { kind: 'maia'; san: string; ply: number; top: TopMove[]; rating: number; p: number }
-    | { kind: 'staged'; san: string; ply: number; line: string }
+    | { kind: 'staged'; san: string; ply: number; line: string; replay: boolean }
     | { kind: 'forced'; san: string; ply: number }
     | { kind: 'stockfish'; text: string; depth?: number; nodes?: number } | null = null;
 
@@ -171,6 +174,8 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   };
   /** The staged line this round follows; null is free play against Maia. */
   let current: Stage | null = null;
+  /** A reviewed game's moves waiting for the engines to load; they start the round instead of newGame(). */
+  let pendingLine: string[] | null = null;
   /** This round is a sparring game (v1 scope 3): no arrows, hints or takebacks, then a review. */
   let sparring = false;
   // Progress made in another tab shows up here too.
@@ -183,7 +188,9 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
       return [o.id, d];
     }));
     drill = drills.get(opening.id)!;
-    newGame();
+    const line = pendingLine;
+    pendingLine = null;
+    newGame(line ?? undefined);
   }).catch((err: unknown) => {
     setNow('The engines did not load.', `Reload the page. If it keeps happening, the school network may be blocking files. (${String(err)})`);
   });
@@ -273,6 +280,9 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
     if (know.kind === 'forced') {
       els.know.innerHTML = `<h2 id="know-h">How did it know?</h2>
         <p>${opp()} played <b>${label(know.ply, know.san)}</b> because your ${opening.name} starts from it. After that, Maia plays like a human at your chosen rating.</p>`;
+    } else if (know.kind === 'staged' && know.replay) {
+      els.know.innerHTML = `<h2 id="know-h">How did it know?</h2>
+        <p>${opp()} played <b>${label(know.ply, know.san)}</b> because that is the move in your game, which you are replaying. When the replay ends, Maia takes over and plays like a human at your chosen rating.</p>`;
     } else if (know.kind === 'staged') {
       els.know.innerHTML = `<h2 id="know-h">How did it know?</h2>
         <p>${opp()} played <b>${label(know.ply, know.san)}</b> because it is the next move of your staged line, ${know.line}. Staged lines come first, so you meet the likely positions in order. When the line ends, Maia takes over and plays like a human at your chosen rating.</p>`;
@@ -334,6 +344,8 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         els.verdict.hidden = true;
         if (sparring) {
           setNow(opening.heading, `Sparring: a full game against Maia at ${s.rating}. No arrows and no takebacks. Learned prep moves still count when they're due.`);
+        } else if (current?.id === FROM_REVIEW) {
+          setNow(opening.heading, 'Replaying your game. Play your prep up to the move you missed; then Maia takes over.');
         } else if (current) {
           const n = opening.stages.indexOf(current) + 1;
           setNow(opening.heading, `Staged line ${n} of ${opening.stages.length}: ${current.name}. ${opp()} plays it move by move, then Maia takes over.`);
@@ -383,7 +395,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         break;
       }
       case 'opponent-move':
-        know = e.staged && current ? { kind: 'staged', san: e.san, ply, line: current.name }
+        know = e.staged && current ? { kind: 'staged', san: e.san, ply, line: current.name, replay: current.id === FROM_REVIEW }
           : e.forced ? { kind: 'forced', san: e.san, ply }
           : { kind: 'maia', san: e.san, ply, top: e.top, rating: e.rating, p: e.p };
         setNow(s.offBook ? 'Your move. You\'re off book: play it out.' : 'Your move. Stay in your prep.', `${opp()} played ${label(ply, e.san)}.`);
@@ -430,11 +442,12 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
     if (typedLast && !els.typed.disabled) els.typed.focus();
   }
 
-  function newGame() {
+  /** `replay`: a reviewed game's moves, played by the opponent as a one-off staged line (never kept for the next round). */
+  function newGame(replay?: string[]) {
     ground.set({ orientation: color() });
     els.typed.placeholder = opening.example[0];
     sparring = els.mode.value === 'spar';
-    current = sparring ? null : pickStage(opening, saved.ladder, saved.proven, Date.now());
+    current = sparring ? null : replay ? { id: FROM_REVIEW, name: 'From your game', moves: replay, tier: 'intro' } : pickStage(opening, saved.ladder, saved.proven, Date.now());
     drill.start(Number(els.rating.value), current?.moves, sparring);
     renderLevel();
   }
@@ -496,4 +509,16 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   });
 
   renderLevel();
+
+  return {
+    drillLine(openingId, moves) {
+      opening = OPENINGS.find((o) => o.id === openingId) ?? DEFAULT_OPENING;
+      saveOpening(opening.id);
+      els.opening.value = opening.id;
+      els.mode.value = 'drill';
+      if (!drills) { pendingLine = moves; return; } // the engines are still loading; they start the round when ready
+      drill = drills.get(opening.id)!;
+      newGame(moves);
+    },
+  };
 }
