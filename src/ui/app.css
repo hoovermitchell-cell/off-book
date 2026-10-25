@@ -193,6 +193,14 @@ textarea {
 .g-meta { grid-column: 1 / -1; color: var(--ink-soft); font-size: var(--text-sm); }
 .prep-tag { background: var(--highlighter); color: var(--ink); padding: 0 var(--space-2); border-radius: 2px; font: 600 var(--text-xs) var(--font-ui); }
 #im-confirm .scoresheet { max-height: 40vh; background: var(--paper-sheet); border: 1px solid var(--rule); padding: 0 var(--space-3); }
+/* Board entry: the review's board and rail, filling the width the import column would cap. Heading and
+   status line are one line each, so the board comes out larger than the review's. */
+.import:has(#im-board:not([hidden])) { max-width: none; padding: 0; }
+.entry { --status-h: 3.6rem; --under-h: 2.5rem; }
+.entry .now small { font-size: var(--text-sm); }
+.entry .under p { margin: 0; }
+.entry input[type="text"] { width: 12ch; }
+.entry .scoresheet { max-height: calc(8 * var(--rule-height)); background: var(--paper-sheet); border: 1px solid var(--rule); padding: 0 var(--space-3); }
 
 /* ---- Review: step line under the board; lesson card and stepping in the rail ---- */
 .review .now small.num, .lesson .fb .num { font: var(--text-sm) var(--font-notation); color: var(--ink-soft); }
