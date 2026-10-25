@@ -35,8 +35,9 @@ const dropStockfish = () => { const p = stockfish; stockfish = null; p?.then((h)
 
 type Status = 'starting' | 'running' | 'done' | 'stopped' | 'failed';
 
-/** Returns `open`, which reviews a game handed over from outside the import flow (a sparring game). */
-export function mountReview(root: HTMLElement): { open(game: ImportedGame): void } {
+/** Returns `open`, which reviews a game handed over from outside the import flow (a sparring game).
+ *  `onDrill` drills a deviation: the opening it was reviewed as, and the game's moves up to the missed one. */
+export function mountReview(root: HTMLElement, onDrill: (openingId: string, moves: string[]) => void): { open(game: ImportedGame): void } {
   root.innerHTML = '<div id="rv-import"></div><div id="rv-screen" hidden></div>';
   const importEl = root.querySelector<HTMLElement>('#rv-import')!;
   const screen = root.querySelector<HTMLElement>('#rv-screen')!;
@@ -57,14 +58,14 @@ export function mountReview(root: HTMLElement): { open(game: ImportedGame): void
     teardown();
     importEl.hidden = true;
     screen.hidden = false;
-    teardown = review(screen, game, leave, openGame, () => !!screen.closest('[hidden]'));
+    teardown = review(screen, game, leave, openGame, onDrill, () => !!screen.closest('[hidden]'));
   }
 
   return { open: openGame };
 }
 
 /** Builds the review screen for one game inside `host`. Returns a function that stops everything it started. */
-function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, onReopen: (game: ImportedGame) => void, isHidden: () => boolean): () => void {
+function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, onReopen: (game: ImportedGame) => void, onDrill: (openingId: string, moves: string[]) => void, isHidden: () => boolean): () => void {
   const { sans, side } = game;
   const opening = OPENINGS.find((o) => o.id === game.prep)!; // the import step only opens games with an opening
   const walk = walkPrep(sans, opening);
@@ -173,9 +174,15 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, onRe
     }
   }
 
+  /** What the lesson card last showed. The card is redrawn on every analysis step; redrawing an unchanged
+   *  card would swap its buttons out from under a click in progress. */
+  let shownLesson = '';
   function renderLesson() {
     const lesson = chooseLesson(sans, walk, checks, opening.ideaFor);
     const t = (status !== 'done' && pendingText(lesson, status === 'starting' || status === 'running')) || lessonText(lesson);
+    const sig = JSON.stringify([t, lesson]);
+    if (sig === shownLesson) return;
+    shownLesson = sig;
     els.lesson.innerHTML = `<h3 id="rv-lesson-h">Lesson to revisit</h3><p class="fb"></p><p class="body"></p>${lesson.kind === 'deviation' && lesson.idea ? '<p class="note"></p>' : ''}`;
     fill(els.lesson.querySelector<HTMLElement>('.fb')!, t);
     els.lesson.querySelector('.body')!.textContent = t.body ?? '';
@@ -187,7 +194,17 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, onRe
       b.className = 'quiet';
       b.textContent = 'Show it on the board';
       b.addEventListener('click', () => go(target));
-      els.lesson.append(b);
+      if (lesson.kind !== 'deviation') { els.lesson.append(b); return; }
+      // A deviation can be drilled: replay the game up to the missed move, then play the prep move there.
+      const d = document.createElement('button');
+      d.type = 'button';
+      d.className = 'quiet';
+      d.textContent = 'Drill this line';
+      d.addEventListener('click', () => onDrill(opening.id, sans.slice(0, lesson.ply)));
+      const actions = document.createElement('div');
+      actions.className = 'row lesson-actions';
+      actions.append(b, d);
+      els.lesson.append(actions);
     }
   }
 

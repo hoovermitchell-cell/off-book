@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildTree, posKey, type PrepTree } from '../data/london';
 import { ladderKey } from '../data/prep';
 import { buildTree as caroKannTree } from '../data/caro-kann';
+import { OPENINGS } from '../data/openings';
+import { walkPrep } from '../review/review';
 import type { MaiaMove } from '../chess/maia';
 import { createDrill, JUDGE_MS, MISTAKE, PLAYABLE, type DrillEvent } from './drill';
 
@@ -587,4 +589,51 @@ describe('drill: forced replies', () => {
     expect(drill.getState()).toMatchObject({ offBook: true, history: ['d4', 'd5'] });
     expect(of('opponent-move')[0]).toMatchObject({ san: 'd5', forced: false });
   });
+});
+
+describe('drill: replaying a reviewed game (Drill this line)', () => {
+  /** Starts a round whose staged line is the game's moves up to the student's first deviation, and plays the student's side of it. */
+  async function replay(openingId: string, game: string[], learned: Set<string>) {
+    const o = OPENINGS.find((x) => x.id === openingId)!;
+    const walk = walkPrep(game, o);
+    expect(walk).toMatchObject({ leftBy: 'student' });
+    const line = game.slice(0, walk.deviationPly!);
+    const drill = createDrill({ tree: o.tree, side: o.side, forcedReplies: o.forcedReplies, learned, engine: queuedEngine(), maia: scriptedMaia([]), rand: () => 0, delay: async () => {} });
+    const events: DrillEvent[] = [];
+    drill.on((e) => events.push(e));
+    drill.start(1000, line);
+    // Each student move is the game's next one; the opponent's reply is already on the board, from the line.
+    while (drill.getState().history.length < line.length) {
+      const m = new Chess(drill.getState().fen).move(line[drill.getState().history.length]);
+      await drill.play(mv(m.from, m.to));
+    }
+    return { drill, events, line, prep: walk.prep! };
+  }
+
+  const cases = [
+    ['london', 'd4 d5 Bf4 Nf6 e3 e6 Bd3 c5 c3 Nc6'.split(' '), 'Nf3'],
+    ['caro-kann', 'e4 c6 d4 d5 Nc3 dxe4 Nxe4 Nd7 Nf3 Ngf6'.split(' '), 'Bf5'],
+  ] as const;
+
+  for (const [id, game, prepSan] of cases) {
+    it(`${id}: the opponent replays the game, then the student is at the missed prep move, taught`, async () => {
+      const { drill, events, line, prep } = await replay(id, [...game], new Set());
+      const s = drill.getState();
+      expect(s.history).toEqual(line); // Black's (or White's) moves all came from the game, none from Maia
+      expect(events.filter((e) => e.type === 'opponent-move').every((e) => e.staged)).toBe(true);
+      expect(s).toMatchObject({ phase: 'student', offBook: false });
+      expect(s.teach?.san).toBe(prepSan);
+      expect(prep.san).toBe(prepSan);
+      // Only the prep move is legal, where the student played game[line.length] instead.
+      expect([...drill.dests().values()].flat()).toHaveLength(1);
+    });
+
+    it(`${id}: with the move already learned it is a test, and the prep move is the expected one`, async () => {
+      const all = { has: () => true, add: () => {} };
+      const { drill } = await replay(id, [...game], all as unknown as Set<string>);
+      const s = drill.getState();
+      expect(s).toMatchObject({ phase: 'student', offBook: false, teach: null });
+      expect(drill.prepHint()?.san).toBe(prepSan);
+    });
+  }
 });
