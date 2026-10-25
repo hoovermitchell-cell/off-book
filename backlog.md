@@ -4,13 +4,42 @@
 (plan → work → review → PR → green CI). Putting an item here is the approval.
 Everything below waits for a human. Start the loop with the command in AGENTS.md.
 
+## Refinement loop
+
+Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
+opening → polish → feature → opening …
+
+**Next slot: opening** (step 0, plumbing)
+
+- **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
+  (QG + Slav), the tier pilot, batch 2 (re-picked by decision 16's rule), batch 3.
+  Full autonomy: write the coverage matrix yourself into the plan doc and keep
+  going; Mitch reviews the texts and matrix at the PR. A step too big for one
+  iteration keeps the pointer on "opening" with a note on where it stopped. Own
+  branch and PR per step.
+- **Polish.** Run the app, find the most valuable rough edge (or take one from
+  `## Polish ideas`). Small (a few lines, no behaviour change worth a review):
+  commit to the rolling branch `refine/polish`, one PR kept open. Larger: its own
+  branch and PR.
+- **Feature.** Fewer than 5 items under `## Feature ideas`: brainstorm and add
+  some, ranked. Otherwise build the top one, sized like polish.
+
+Every slot: work in a worktree under `.claude/worktrees/`, keep this checkout on
+`main`. Base on `feat/levelling` until PR #3 merges, then on `main`. Run `cycle`,
+green CI, never merge (`propose`). Log one line under `## Done`. Removing a
+worktree: delete its `node_modules` junction first.
+
+## Polish ideas
+
+## Feature ideas
+
 ## Ready
 
 <!-- approved, scoped work — the loop drains these top to bottom -->
 
 ## Needs shaping
 
-- After the talk and after sparring merges (decision 16): repertoire plumbing slice, step 0 of `docs/plans/2026-10-25-repertoire-expansion.md`; then batch 1 (Queen's Gambit + Slav), starting with Mitch approving its coverage matrix
+- Repertoire plumbing and batches: now run by the refinement loop above
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
 - Build the levelling from decision 14c (per-move ladder, staged-line unlocks, Proven from real games, per-line status UI); staged lines settled in 14d
