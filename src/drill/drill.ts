@@ -16,6 +16,9 @@
 //   off book:  any legal move. Stockfish judges before/after; a drop of MISTAKE or more that is not
 //              Stockfish's own best move is flagged, and play continues.
 //   the game is played out to checkmate, a draw, or resign() (decision 12b).
+// Sparring (v1 scope 3) is a round started with spar: a real game against Maia from move 1. Nothing is
+// taught or shown, and a move that is not prep stands: Stockfish compares it with the prep move, the
+// student is off book, and play goes on.
 // Each answer at a learned position is a ladder review (decision 14c): a first-try correct move
 // may climb, the first miss at a position (a wrong move, or looking) drops it.
 import { Chess } from 'chess.js';
@@ -94,6 +97,8 @@ export type DrillEvent =
   | { type: 'judging'; kind: 'prep' | 'offbook' }
   | { type: 'prep-correct'; san: string; counted: boolean; prepMoves: number; reps: number; learnedNow: boolean; climbed: boolean }
   | { type: 'prep-miss'; played: string; prep: string; prepUci: string; loss: number; verdict: 'playable' | 'mistake'; depth?: number; nodes?: number }
+  /** Sparring: the student's non-prep move stands, so the student left prep. */
+  | { type: 'left-prep'; played: string; prep: string; loss: number; verdict: 'playable' | 'mistake'; depth?: number; nodes?: number }
   | { type: 'opponent-move'; san: string; uci: string; p: number; top: TopMove[]; rating: number; staged: boolean }
   | { type: 'off-book'; san: string }
   | { type: 'offbook-mistake'; played: string; better: string; betterUci: string; loss: number; depth?: number; nodes?: number }
@@ -110,8 +115,9 @@ export interface StudentMove {
 export interface Drill {
   getState(): DrillState;
   /** Starts (or restarts) a round. As Black, the opponent has moved when this returns, or is about to.
-   *  `staged`: SAN moves from the start, both sides, that the opponent plays while the game follows them. */
-  start(rating?: number, staged?: string[]): void;
+   *  `staged`: SAN moves from the start, both sides, that the opponent plays while the game follows them.
+   *  `spar`: a sparring round, with no teaching, no hints and no takebacks. */
+  start(rating?: number, staged?: string[], spar?: boolean): void;
   setRating(rating: number): void;
   /** Plays the student's move. Resolves once the whole cycle (judging, the opponent's reply) is done.
    *  Resolves false if the move was ignored (not the student's turn, or illegal). */
@@ -151,6 +157,7 @@ export function createDrill(deps: DrillDeps): Drill {
   // Bumped on every start() so that work left over from a previous round is dropped.
   let round = 0;
   let staged: string[] = [];
+  let spar = false;
   // A wrong prep move is on the board while Stockfish judges it; resign() must take it back.
   let pendingMiss = false;
 
@@ -175,16 +182,17 @@ export function createDrill(deps: DrillDeps): Drill {
 
   /** The prep move to show, if the student is at a prep position they have not learned yet. */
   function teaching(): PrepMove | null {
-    if (phase !== 'student' || offBook) return null;
+    if (phase !== 'student' || offBook || spar) return null;
     const key = posKey(chess.fen());
     const prep = tree.get(key);
     return prep && !learned.has(key) ? prep : null;
   }
 
-  function start(r?: number, line: string[] = []) {
+  function start(r?: number, line: string[] = [], sparring = false) {
     round++;
     if (r !== undefined) rating = r;
     staged = line;
+    spar = sparring;
     chess = new Chess();
     for (const san of openingMoves) chess.move(san);
     phase = chess.turn() === student ? 'student' : 'opponent';
@@ -316,7 +324,7 @@ export function createDrill(deps: DrillDeps): Drill {
 
     if (!offBook) {
       const prep = tree.get(posKey(before));
-      if (prep && !learned.has(posKey(before))) {
+      if (prep && !spar && !learned.has(posKey(before))) {
         // Learning step: only the shown move is accepted.
         if (played.san !== prep.san) {
           chess.undo();
@@ -337,7 +345,8 @@ export function createDrill(deps: DrillDeps): Drill {
         emit({ type: 'off-book', san: played.san });
       } else if (played.san === prep.san) {
         prepMoves++;
-        const counted = !missed;
+        // Sparring reaches prep positions not learned yet; only learned ones are reviewed.
+        const counted = !missed && learned.has(posKey(before));
         let climbed = false;
         if (counted) {
           reps++;
@@ -353,16 +362,25 @@ export function createDrill(deps: DrillDeps): Drill {
       } else {
         // Not prep: Stockfish compares it with the prep move, then the student retries.
         phase = 'judging';
-        pendingMiss = true;
+        pendingMiss = !spar;
         emit({ type: 'judging', kind: 'prep' });
         const prepChess = new Chess(before);
         prepChess.move(prep.san);
         const [a, b] = await Promise.all([engine.evaluate(prepChess.fen(), JUDGE_MS), evalAfter()]);
         if (myRound !== round || isOver()) return true; // resign() already took the move back
         pendingMiss = false;
-        chess.undo();
         const loss = lossOf(a, b);
+        const verdict = loss < PLAYABLE ? 'playable' : 'mistake';
         miss(before);
+        if (spar) {
+          offBook = true;
+          phase = 'opponent';
+          emit({ type: 'left-prep', played: played.san, prep: prep.san, loss, verdict, depth: a.depth, nodes: a.nodes });
+          if (checkOver()) return true;
+          await opponentReply(myRound);
+          return true;
+        }
+        chess.undo();
         phase = 'student';
         emit({
           type: 'prep-miss',
@@ -370,7 +388,7 @@ export function createDrill(deps: DrillDeps): Drill {
           prep: prep.san,
           prepUci: prep.uci,
           loss,
-          verdict: loss < PLAYABLE ? 'playable' : 'mistake',
+          verdict,
           depth: a.depth,
           nodes: a.nodes,
         });
@@ -383,7 +401,7 @@ export function createDrill(deps: DrillDeps): Drill {
 
   /** The first miss at a position drops it a rung; retries there cost nothing more. */
   function miss(fen: string) {
-    if (!missed) learned.review?.(posKey(fen), false);
+    if (!missed && learned.has(posKey(fen))) learned.review?.(posKey(fen), false);
     missed = true;
   }
 
@@ -419,7 +437,7 @@ export function createDrill(deps: DrillDeps): Drill {
     dests,
     prepHint,
     revealPrep: () => {
-      const hint = phase === 'student' && !teaching() ? prepHint() : undefined;
+      const hint = phase === 'student' && !spar && !teaching() ? prepHint() : undefined;
       if (hint) miss(chess.fen());
       return hint;
     },

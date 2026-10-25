@@ -12,6 +12,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
+- Mitch confirms the sparring defaults in the sparring PR (no takebacks or hints, a learned prep move counts and a miss drops, sparring never marks a line Proven)
 - Define this project's "done" gate beyond green CI, if any
 - Low priority, since the app is for a talk, not a rollout (Mitch, 2026-10-23): Chromebook load time and engine speed; questions for the school about devices and accounts
 
@@ -28,3 +29,4 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 - Repo public at github.com/hoovermitchell-cell/off-book (AGPL-3.0, footer link live), 2026-10-25
 - CI on GitHub Actions: build (with tsc) and tests on every PR and push to main, 2026-10-25 (#1); Biome lint added the same day (#2)
 - Levelling from decisions 14c and 14d: per-move ladder, staged lines, Proven from real games, per-line status in the rail, 2026-10-25 (`feat/levelling`)
+- Sparring against Maia (v1 scope 3): full game from move 1, no arrows or takebacks, then straight into Review, 2026-10-25 (`feat/sparring`)

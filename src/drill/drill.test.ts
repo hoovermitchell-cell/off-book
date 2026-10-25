@@ -494,3 +494,47 @@ describe('drill: staged lines and the ladder (decision 14c)', () => {
     expect(learned.calls).toEqual([[START, false]]);
   });
 });
+
+describe('drill: sparring (v1 scope 3, decision 14d)', () => {
+  const recorder = (known: (k: string) => boolean = () => true) => {
+    const calls: [string, boolean][] = [];
+    return { calls, has: known, add: () => {}, review: (k: string, ok: boolean) => { calls.push([k, ok]); return { from: 1, to: ok ? 2 : 0 }; } };
+  };
+  function spar(learned: ReturnType<typeof recorder>, engine: Eval[] = [], maia: string[] = []) {
+    const drill = createDrill({ tree: buildTree(), learned, engine: queuedEngine(engine), maia: scriptedMaia(maia), rand: () => 0, delay: async () => {} });
+    const events: DrillEvent[] = [];
+    drill.on((e) => events.push(e));
+    drill.start(1000, [], true);
+    return { drill, events };
+  }
+
+  it('a non-prep move stands: the student is off book, the miss drops a rung, and the opponent replies', async () => {
+    const learned = recorder();
+    const { drill, events } = spar(learned, [{ cp: 30, best: 'x' }, { cp: -50, best: 'x' }], ['e5']);
+    await drill.play(mv('e2', 'e4'));
+    const s = drill.getState();
+    expect(s.history).toEqual(['e4', 'e5']);
+    expect(s.offBook).toBe(true);
+    expect(learned.calls).toEqual([[START, false]]);
+    expect(events.find((e) => e.type === 'left-prep')).toMatchObject({ played: 'e4', prep: 'd4', loss: 80, verdict: 'mistake' });
+    expect(events.some((e) => e.type === 'prep-miss')).toBe(false);
+  });
+
+  it('a learned prep move is reviewed; nothing is taught and nothing can be revealed', async () => {
+    const learned = recorder();
+    const { drill } = spar(learned, [], ['d5']);
+    expect(drill.getState().teach).toBeNull();
+    expect(drill.revealPrep()).toBeUndefined();
+    await drill.play(mv('d2', 'd4'));
+    expect(learned.calls).toEqual([[START, true]]);
+  });
+
+  it('a position not learned yet takes any move and touches no ladder', async () => {
+    const learned = recorder(() => false);
+    const { drill, events } = spar(learned, [], ['d5']);
+    expect(drill.dests().size).toBeGreaterThan(1);
+    await drill.play(mv('d2', 'd4'));
+    expect(events.find((e) => e.type === 'prep-correct')).toMatchObject({ counted: false, learnedNow: false });
+    expect(learned.calls).toEqual([]);
+  });
+});
