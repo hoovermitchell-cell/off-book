@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { detectPrep, guessSide, isLondonAsWhite, parseGame, parsePgn, PgnError, splitPgn } from './pgn';
+import { detectPrep, guessSide, parseGame, parsePgn, PgnError, splitPgn } from './pgn';
 import { loadRecent, RECENT_KEY, saveRecent, type RecentImport } from './recent';
 import { fetchChessCom, fetchLichess, ImportError, validateUsername } from './sources';
 
@@ -89,13 +89,12 @@ describe('PGN parsing', () => {
     expect(errors[0].moveNumber).toBe(1);
   });
 
-  it('flags the London as 1.d4 with an early Bf4', () => {
+  it('finds the London by walking the game through its prep', () => {
     const sans = (s: string) => parsePgn(s, 'paste').games[0].sans;
-    expect(isLondonAsWhite(sans('1. d4 d5 2. Bf4 Nf6'))).toBe(true);
-    expect(isLondonAsWhite(sans('1. d4 Nf6 2. Nf3 d5 3. Bf4 e6'))).toBe(true);
-    expect(isLondonAsWhite(sans('1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 Be7'))).toBe(false);
-    expect(isLondonAsWhite(sans('1. e4 e5 2. Nf3 Nc6 3. Bb5'))).toBe(false);
-    expect(isLondonAsWhite(sans('1. d4 d5 2. c4 c6 3. Nf3 Nf6 4. Nc3 e6 5. a3 Bd6 6. Bf4'))).toBe(false); // too late
+    expect(detectPrep(sans('1. d4 d5 2. Bf4 Nf6'), 'w')).toEqual({ prep: 'london', prepFrom: 'book' });
+    expect(detectPrep(sans('1. d4 Nf6 2. Nf3 d5 3. Bf4 e6'), 'w').prep).toBeNull(); // 2.Nf3 left prep after one move, and 1.d4 alone is too little
+    expect(detectPrep(sans('1. e4 e5 2. Nf3 Nc6 3. Bb5'), 'w').prep).toBeNull();
+    expect(detectPrep(sans('1. c4 e5 2. Nc3'), 'w').prep).toBeNull();
   });
 });
 
@@ -105,17 +104,17 @@ describe('opening and side', () => {
   it('detects the Caro-Kann as 1.e4 c6 for Black only', () => {
     const caro = sans('1. e4 c6 2. d4 d5');
     expect(guessSide(caro)).toBe('b');
-    expect(detectPrep(caro, 'b')).toBe('caro-kann');
-    expect(detectPrep(caro, 'w')).toBeNull(); // White playing 1.e4 against ...c6 is not the student's prep
-    expect(detectPrep(sans('1. e4 e5 2. Nf3'), 'b')).toBeNull();
-    expect(detectPrep(sans('1. d4 c6'), 'b')).toBeNull();
+    expect(detectPrep(caro, 'b')).toEqual({ prep: 'caro-kann', prepFrom: 'book' });
+    expect(detectPrep(caro, 'w').prep).toBeNull(); // White playing 1.e4 against ...c6 is not the student's prep
+    expect(detectPrep(sans('1. e4 e5 2. Nf3'), 'b').prep).toBeNull();
+    expect(detectPrep(sans('1. d4 c6'), 'b').prep).toBeNull();
   });
 
   it('detects the London for White only', () => {
     const london = sans('1. d4 d5 2. Bf4 Nf6');
     expect(guessSide(london)).toBe('w');
-    expect(detectPrep(london, 'w')).toBe('london');
-    expect(detectPrep(london, 'b')).toBeNull();
+    expect(detectPrep(london, 'w').prep).toBe('london');
+    expect(detectPrep(london, 'b').prep).toBeNull();
   });
 
   it('a paste has no username: the side is guessed, and White when nothing is recognised', () => {
@@ -202,7 +201,7 @@ describe('Chess.com import', () => {
   it('reads the archive list, then the latest months, keeping standard White games newest first', async () => {
     const fetch = mock({
       'https://api.chess.com/pub/player/student1/games/2026/10': { games: [entry(chessComPgn, 'someone-else'), entry(chessComPgn, 'student1', 'chess960')] },
-      'https://api.chess.com/pub/player/student1/games/2026/09': { games: [entry(chessComPgn.replace('Bf4', 'Nf3'), 'student1'), entry(chessComPgn, 'STUDENT1')] },
+      'https://api.chess.com/pub/player/student1/games/2026/09': { games: [entry(chessComPgn.replace('1. d4', '1. c4').replace('2. Bf4', '2. Nc3'), 'student1'), entry(chessComPgn, 'STUDENT1')] },
       'https://api.chess.com/pub/player/student1/games/2026/08': { games: [entry(chessComPgn, 'student1')] },
     });
     const games = await fetchChessCom('Student1', { fetch });

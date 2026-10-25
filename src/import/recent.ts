@@ -1,5 +1,6 @@
 // The last imported games, kept on this device under their own key so they can be reopened
 // offline (decision 3: nothing on a server). Guarded like storage.ts: storage can be blocked or full.
+import { OPENINGS } from '../data/openings';
 import { safeStorage } from '../storage';
 import { detectPrep, guessSide, type GameSource, type ImportedGame } from './pgn';
 
@@ -18,10 +19,12 @@ type Read = Pick<Storage, 'getItem'>;
 type Write = Pick<Storage, 'setItem'>;
 
 /** Saved games from before Black existed have no side or opening. Username imports were White's
- *  then; a pasted game gets the same guess as a fresh paste. The opening is always recomputed. */
+ *  then; a pasted game gets the same guess as a fresh paste. The opening is recomputed (the book
+ *  grows) unless the student picked it, and a pick that no longer names an opening on this side is dropped. */
 function withPrep(g: ImportedGame): ImportedGame {
   const side = g.side === 'w' || g.side === 'b' ? g.side : g.source === 'paste' ? guessSide(g.sans) : 'w';
-  return { ...g, side, prep: detectPrep(g.sans, side) };
+  if (g.prepFrom === 'student' && OPENINGS.some((o) => o.id === g.prep && o.side === side)) return { ...g, side };
+  return { ...g, side, ...detectPrep(g.sans, side) };
 }
 
 export function loadRecent(store: Read | undefined = safeStorage()): RecentImport | null {

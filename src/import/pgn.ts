@@ -1,7 +1,8 @@
 // PGN reading for game import (decision 1b). Pure: no DOM, no network.
 // Own tokenizer instead of chess.js loadPgn so a bad move can be reported by move number.
 import { Chess } from 'chess.js';
-import type { Opening } from '../data/openings';
+import { OPENINGS } from '../data/openings';
+import { walkPrep } from '../review/review';
 
 /** 'spar' is a sparring game against Maia, handed straight to the review. */
 export type GameSource = 'lichess' | 'chesscom' | 'paste' | 'spar';
@@ -22,7 +23,10 @@ export interface ImportedGame {
   /** The student's colour: the username's side, or the paste's best guess until the student says. */
   side: 'w' | 'b';
   /** The opening in OPENINGS that the student played on that side, or null. */
-  prep: Opening['id'] | null;
+  prep: string | null;
+  /** Who chose `prep`: the book walk, a tie it could not break (the first tied opening is named), or
+   *  the student, whose pick is kept when the list is reopened. Absent on a sparring game. */
+  prepFrom?: 'book' | 'tie' | 'student';
 }
 
 export class PgnError extends Error {
@@ -35,24 +39,28 @@ export class PgnError extends Error {
 const TAG = /^\s*\[(\w+)\s+"((?:[^"\\]|\\.)*)"\s*\]\s*$/;
 const RESULT = /^(1-0|0-1|1\/2-1\/2|\*)$/;
 
-/** ponytail: London means 1.d4 and Bf4 within White's first five moves. Not a full opening classifier. */
-export function isLondonAsWhite(sans: string[]): boolean {
-  if (sans[0] !== 'd4') return false;
-  for (let i = 2; i < Math.min(sans.length, 10); i += 2) if (/^Bf4[+#]?$/.test(sans[i])) return true;
-  return false;
+/** The opening the student played, given the side they played: the game is walked through every opening
+ *  on that side and each is scored by the student's moves that stayed in its prep. The highest score
+ *  wins and needs at least one move (two for White); equal top scores are a tie, which still names the
+ *  first tied opening so the review can open, but is marked so it can ask. */
+export function detectPrep(sans: string[], side: 'w' | 'b'): { prep: string | null; prepFrom: 'book' | 'tie' } {
+  // ponytail: White's first move alone (1.d4) is every d4 opening's, so White needs two moves in prep.
+  // A per-opening "distinguishing move" would be exact; add it if two openings share more than move one.
+  const min = side === 'w' ? 2 : 1;
+  let best = 0;
+  const top: string[] = [];
+  for (const o of OPENINGS) {
+    if (o.side !== side) continue;
+    const plies = walkPrep(sans, o).lastPrepPly + 1; // plies still in prep, both sides
+    const score = side === 'w' ? Math.ceil(plies / 2) : Math.floor(plies / 2);
+    if (score > best) { best = score; top.length = 0; }
+    if (score === best && score >= min) top.push(o.id);
+  }
+  return { prep: top[0] ?? null, prepFrom: top.length > 1 ? 'tie' : 'book' };
 }
 
-/** ponytail: Caro-Kann means the student, as Black, answered 1.e4 with ...c6. Not a full opening classifier. */
-export const isCaroKannAsBlack = (sans: string[]) => sans[0] === 'e4' && sans[1] === 'c6';
-
-/** The side a pasted game was probably played from: Black for 1.e4 c6, White for anything else. */
-export const guessSide = (sans: string[]): 'w' | 'b' => (isCaroKannAsBlack(sans) ? 'b' : 'w');
-
-/** The opening the student played, given the side they played. */
-export function detectPrep(sans: string[], side: 'w' | 'b'): ImportedGame['prep'] {
-  if (side === 'w') return isLondonAsWhite(sans) ? 'london' : null;
-  return isCaroKannAsBlack(sans) ? 'caro-kann' : null;
-}
+/** The side a pasted game was probably played from: Black when a Black opening matches and no White one does. */
+export const guessSide = (sans: string[]): 'w' | 'b' => (detectPrep(sans, 'b').prep && !detectPrep(sans, 'w').prep ? 'b' : 'w');
 
 /** "6. Nbd2" for White's ply (0-based), "5...Nc6" for Black's. */
 export const plyLabel = (ply: number, san: string) => (ply % 2 ? `${(ply + 1) / 2}...${san}` : `${ply / 2 + 1}. ${san}`);
@@ -131,7 +139,7 @@ export function parseGame(pgn: string, source: GameSource, fallbackId: string, s
     url,
     sans,
     side,
-    prep: detectPrep(sans, side),
+    ...detectPrep(sans, side),
   };
 }
 

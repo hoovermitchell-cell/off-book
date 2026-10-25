@@ -5,18 +5,24 @@ import { buildTree as caroKannTree } from './caro-kann';
 import { ideaFor as caroKannIdea } from './caro-kann-ideas';
 import type { PrepMove, PrepTree } from './prep';
 
+/** How deep a staged line goes (decision 16). Every line so far is an intro. */
+export type Tier = 'intro' | 'intermediate' | 'advanced';
+
 /** A staged line (decision 14b): the opponent plays these fixed moves, then Maia takes over. */
 export interface Stage {
   id: string;
   name: string;
+  tier: Tier;
   /** SAN, both sides, from the start position. */
   moves: string[];
+  /** A theory note for the line (decision 16). Nothing in the UI reads it yet. */
+  note?: string;
 }
 
-const stage = (id: string, name: string, moves: string): Stage => ({ id, name, moves: moves.split(' ') });
+const stage = (id: string, name: string, moves: string): Stage => ({ id, name, tier: 'intro', moves: moves.split(' ') });
 
 export interface Opening {
-  id: 'london' | 'caro-kann';
+  id: string;
   /** Shown in the picker, with the side. */
   name: string;
   /** The student's colour. */
@@ -25,8 +31,9 @@ export interface Opening {
   tree: PrepTree;
   /** The one-line idea shown with a new prep move. */
   ideaFor(fen: string, prep: PrepMove): string | null;
-  /** SAN moves played by rule before the student's first turn; Maia takes over after them. */
-  openingMoves: string[];
+  /** The opponent's first moves in SAN, played by rule at its turns while the student is in book;
+   *  Maia takes over after them, and a staged line wins over them. [] for an opening with no forced reply. */
+  forcedReplies: string[];
   /** The first line of the drill panel. */
   heading: string;
   /** The opponent line under it. */
@@ -44,7 +51,7 @@ export const OPENINGS: Opening[] = [
     side: 'w',
     tree: londonTree(),
     ideaFor: londonIdea,
-    openingMoves: [],
+    forcedReplies: [],
     heading: 'Play your London as White.',
     opponentLine: (rating) => `Black answers like a ${rating}-rated player.`,
     example: ['Nf3', 'e2e4'],
@@ -64,7 +71,7 @@ export const OPENINGS: Opening[] = [
     tree: caroKannTree(),
     ideaFor: caroKannIdea,
     // The tree covers only 1.e4 (decision 14b stages Black's replies; Maia takes over after move 1).
-    openingMoves: ['e4'],
+    forcedReplies: ['e4'],
     heading: 'Play your Caro-Kann as Black.',
     opponentLine: (rating) => `White opens 1.e4, then answers like a ${rating}-rated player.`,
     example: ['Nf6', 'e7e5'],
@@ -82,6 +89,3 @@ export const OPENINGS: Opening[] = [
 ];
 
 export const DEFAULT_OPENING = OPENINGS[0];
-
-/** The opening Off Book has prep for on this side, if any. */
-export const openingForSide = (side: 'w' | 'b') => OPENINGS.find((o) => o.side === side);
