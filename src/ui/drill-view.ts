@@ -6,11 +6,12 @@ import type { DrawBrushes, DrawShape } from 'chessground/draw';
 import type { Key } from 'chessground/types';
 import { Chess, type Move } from 'chess.js';
 import { createDrill, PLAYABLE, type DrillEvent, type TopMove } from '../drill/drill';
-import { DEFAULT_OPENING, OPENINGS } from '../data/openings';
+import { DEFAULT_OPENING, OPENINGS, type Stage } from '../data/openings';
 import { maiaMoves } from '../chess/maia';
 import { createMaiaRunner } from '../chess/maia-ort';
 import { createStockfish } from '../chess/stockfish-worker';
-import { levelOf, loadOpening, loadSaved, REPS_PER_LEVEL, saveOpening, updateSaved, type Saved } from '../storage';
+import { loadOpening, loadSaved, saveOpening, updateSaved, type Saved } from '../storage';
+import { dueNow, learn, pickStage, review, SECURE, stageViews, type Status } from '../levels';
 import prepEndsSvg from '../../design/icons/prep-ends.svg?raw';
 import badgeBook from '../../design/icons/badges/book.svg?raw';
 import badgeGood from '../../design/icons/badges/good.svg?raw';
@@ -84,7 +85,7 @@ export function mountDrill(root: HTMLElement) {
             <button type="submit" class="quiet">Play</button>
           </form>
           <p class="typed-error" id="typed-error" aria-live="polite"></p>
-          <p class="soft" id="storage-note" role="status" hidden>This browser isn't saving your progress (a private window can do this). Your tallies and learned moves will reset when you close it.</p>
+          <p class="soft" id="storage-note" role="status" hidden>This browser isn't saving your progress (a private window can do this). Your learned moves will reset when you close it.</p>
         </div>
       </aside>
     </main>
@@ -133,6 +134,7 @@ export function mountDrill(root: HTMLElement) {
   /** Destination square of the last move on the board, for the badge. */
   const lastTo = () => { const c = new Chess(); drill.getState().history.forEach((m) => c.move(m)); return c.history({ verbose: true }).at(-1)?.to as Key; };
   let know: { kind: 'maia'; san: string; ply: number; top: TopMove[]; rating: number; p: number }
+    | { kind: 'staged'; san: string; ply: number; line: string }
     | { kind: 'stockfish'; text: string; depth?: number; nodes?: number } | null = null;
 
   // ---- engines ---------------------------------------------------------------------------------
@@ -144,22 +146,26 @@ export function mountDrill(root: HTMLElement) {
   let drills: Map<string, ReturnType<typeof createDrill>> | null = null;
   let drill: ReturnType<typeof createDrill>;
 
-  // Learned positions live on the device with the tally (decisions 3 and 13).
-  // ponytail: one shared learned set and tally for every opening; the per-opening tally waits for decision 14.
-  let learnedSet = new Set(saved.learned);
+  // Learned positions and their ladder rungs live on the device (decisions 3, 13 and 14c).
   /** Writes against the latest save, so another open tab's progress isn't overwritten. */
   function persist(fn: (latest: Saved) => Saved) {
     const r = updateSaved(fn);
     saved = r.saved;
-    learnedSet = new Set(saved.learned);
     if (!r.ok) els.storageNote.hidden = false;
   }
   const learned = {
-    has: (k: string) => learnedSet.has(k),
-    add: (k: string) => persist((s) => ({ ...s, learned: [...new Set([...s.learned, k])] })),
+    has: (k: string) => k in saved.ladder,
+    add: (k: string) => persist((s) => ({ ...s, ladder: learn(s.ladder, k, Date.now()) })),
+    review: (k: string, ok: boolean) => {
+      let r = { from: -1, to: -1 };
+      persist((s) => { const x = review(s.ladder, k, ok, Date.now()); r = x; return { ...s, ladder: x.ladder }; });
+      return { from: r.from, to: r.to };
+    },
   };
+  /** The staged line this round follows; null is free play against Maia. */
+  let current: Stage | null = null;
   // Progress made in another tab shows up here too.
-  window.addEventListener('storage', () => { saved = loadSaved(); learnedSet = new Set(saved.learned); renderLevel(); });
+  window.addEventListener('storage', () => { saved = loadSaved(); renderLevel(); });
 
   ready.then(([sf, run]) => {
     drills = new Map(OPENINGS.map((o) => {
@@ -216,21 +222,34 @@ export function mountDrill(root: HTMLElement) {
     els.scoresheet.scrollTop = els.scoresheet.scrollHeight;
   }
 
-  function renderLevel(stamp = false) {
-    const { level, progress } = levelOf(saved.correct);
-    let s = '';
-    for (let i = 0; i < REPS_PER_LEVEL; i++) {
-      const g = Math.floor(i / 5), k = i % 5, x = g * 44 + 6;
-      const color = i < progress ? 'var(--ink)' : 'var(--rule)';
-      s += k < 4
-        ? `<line x1="${x + k * 7}" y1="4" x2="${x + k * 7}" y2="26" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>`
-        : `<line x1="${x - 4}" y1="22" x2="${x + 25}" y2="8" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>`;
-    }
-    els.level.innerHTML = `
-      <span class="badge-level${stamp ? ' stamp' : ''}">Level ${level}</span>
-      <span class="tally" role="img" aria-label="${progress} of ${REPS_PER_LEVEL} first-try prep moves toward level ${level + 1}">
-        <svg width="88" height="30" viewBox="0 0 88 30" aria-hidden="true">${s}</svg></span>
-      <span class="soft">${progress} of ${REPS_PER_LEVEL} to level ${level + 1} · ${learnedSet.size} move${learnedSet.size === 1 ? '' : 's'} learned</span>`;
+  const STATUS: Record<Status, string> = { locked: 'Locked', learning: 'Learning', cleared: 'Cleared', proven: 'Proven' };
+  let shown = new Map<string, Status>();
+  /** One row per staged line: a small ladder per move, then the line's status (decision 14c).
+   *  Wear and records, never a progress bar (DESIGN.md). A status that just changed gets the stamp. */
+  function renderLevel() {
+    const views = stageViews(opening, saved.ladder, saved.proven);
+    const due = dueNow(opening, saved.ladder, saved.proven, Date.now());
+    const rows = views.map((v) => {
+      const svg = v.levels.map((l, i) => {
+        let r = '';
+        for (let k = 0; k < SECURE; k++) {
+          const y = 20 - k * 5;
+          r += `<line x1="${i * 9 + 1}" y1="${y}" x2="${i * 9 + 7}" y2="${y}" stroke="${l > k ? 'var(--ink)' : 'var(--rule)'}" stroke-width="2" stroke-linecap="round"/>`;
+        }
+        return `<g${l < 0 ? ' opacity="0.4"' : ''}>${r}</g>`;
+      }).join('');
+      const secure = v.levels.filter((l) => l >= SECURE).length;
+      const known = v.levels.filter((l) => l >= 0).length;
+      const was = shown.get(v.stage.id);
+      const stamp = was !== undefined && was !== v.status ? ' stamp' : '';
+      const cls = v.status === 'cleared' || v.status === 'proven' ? `badge-level${stamp}` : `soft${stamp}`;
+      return `<li class="line-row${v.stage === current ? ' current' : ''}">
+        <span class="line-name">${v.stage.name}</span>
+        <span class="rungs" role="img" aria-label="${known} of ${v.levels.length} moves learned, ${secure} secure"><svg width="${v.levels.length * 9}" height="22" viewBox="0 0 ${v.levels.length * 9} 22" aria-hidden="true">${svg}</svg></span>
+        <span class="${cls}">${STATUS[v.status]}</span></li>`;
+    }).join('');
+    shown = new Map(views.map((v) => [v.stage.id, v.status]));
+    els.level.innerHTML = `<p class="soft">${due ? `${due} move${due === 1 ? '' : 's'} due for review` : 'Nothing due for review now'}</p><ol class="lines" aria-label="Staged lines">${rows}</ol>`;
   }
 
   function renderKnow() {
@@ -242,7 +261,10 @@ export function mountDrill(root: HTMLElement) {
       els.know.innerHTML = `<h2 id="know-h">How did it know?</h2><p>Play a move. Here you'll see why ${opp()} chose its reply and how Stockfish judged yours.</p>`;
       return;
     }
-    if (know.kind === 'maia') {
+    if (know.kind === 'staged') {
+      els.know.innerHTML = `<h2 id="know-h">How did it know?</h2>
+        <p>${opp()} played <b>${label(know.ply, know.san)}</b> because it is the next move of your staged line, ${know.line}. Staged lines come first, so you meet the likely positions in order. When the line ends, Maia takes over and plays like a human at your chosen rating.</p>`;
+    } else if (know.kind === 'maia') {
       const rows = know.top.map((m) => `<tr><td class="mv">${m.san}</td><td><span class="bar" style="--w:${Math.round(m.p * 100)}%"></span></td><td>${pct(m.p)}</td></tr>`).join('');
       els.know.innerHTML = `<h2 id="know-h">How did it know?</h2>
         <p>${opp()} is Maia, an engine trained on millions of human games. It plays the way a ${know.rating}-rated player does, not the best move.</p>
@@ -296,7 +318,12 @@ export function mountDrill(root: HTMLElement) {
       case 'start':
         bookPlies = null; marks = new Map(); know = null; announced = 0; badge = null;
         els.verdict.hidden = true;
-        setNow(opening.heading, `${opening.opponentLine(s.rating)} Moves you've learned, you play from memory.`);
+        if (current) {
+          const n = opening.stages.indexOf(current) + 1;
+          setNow(opening.heading, `Staged line ${n} of ${opening.stages.length}: ${current.name}. ${opp()} plays it move by move, then Maia takes over.`);
+        } else {
+          setNow(opening.heading, `Nothing new or due, so this is free play. ${opening.opponentLine(s.rating)} Prep moves still count when they're due.`);
+        }
         setNote('New moves get an arrow. Learned ones are up to you.');
         sync([]);
         break;
@@ -307,13 +334,9 @@ export function mountDrill(root: HTMLElement) {
         break;
       case 'prep-correct': {
         if (e.learnedNow) setVerdict('!', 'good', `${label(ply, e.san)}. Learned.`, 'new move');
-        else setVerdict('!', 'good', `${label(ply, e.san)}. Your prep, from memory.`, e.counted ? '+1 tally' : 'no tally, you looked');
-        if (e.learnedNow) renderLevel();
+        else setVerdict('!', 'good', `${label(ply, e.san)}. Your prep, from memory.`, !e.counted ? 'no climb after a miss' : e.climbed ? 'up a rung' : 'not due yet');
+        renderLevel();
         badge = { sq: lastTo(), svg: e.learnedNow ? badgeBook : badgeGood };
-        if (e.counted) {
-          persist((s) => ({ ...s, correct: s.correct + 1 }));
-          renderLevel(levelOf(saved.correct).progress === 0);
-        }
         setNow(`${opp()} is thinking…`);
         setNote('');
         sync([]);
@@ -325,12 +348,13 @@ export function mountDrill(root: HTMLElement) {
         if (e.verdict === 'playable') setVerdict('?!', 'dubious', `${moveNo}. Playable, but not your prep. Your prep is ${prepNo}.`, `${drop(e.loss)} behind prep`);
         else { const m = glyphFor(e.loss); setVerdict(m.g, m.cls, `${moveNo}. ${m.word}. Your prep is ${prepNo}.`, `${drop(e.loss)} behind prep`); }
         know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${drop(e.loss)} lower than your prep move ${e.prep}. Under ${pts(PLAYABLE)} counts as playable.`, depth: e.depth, nodes: e.nodes };
-        setNow('Try again: play your prep move.', 'The arrow shows it. This one won\'t add a tally.');
+        setNow('Try again: play your prep move.', 'The arrow shows it. A miss drops this move one rung.');
+        renderLevel();
         sync([{ orig: e.prepUci.slice(0, 2) as Key, dest: e.prepUci.slice(2, 4) as Key, brush: 'prep' }]);
         break;
       }
       case 'opponent-move':
-        know = { kind: 'maia', san: e.san, ply, top: e.top, rating: e.rating, p: e.p };
+        know = e.staged && current ? { kind: 'staged', san: e.san, ply, line: current.name } : { kind: 'maia', san: e.san, ply, top: e.top, rating: e.rating, p: e.p };
         setNow(s.offBook ? 'Your move. You\'re off book: play it out.' : 'Your move. Stay in your prep.', `${opp()} played ${label(ply, e.san)}.`);
         sync([]);
         break;
@@ -378,7 +402,8 @@ export function mountDrill(root: HTMLElement) {
   function newGame() {
     ground.set({ orientation: color() });
     els.typed.placeholder = opening.example[0];
-    drill.start(Number(els.rating.value));
+    current = pickStage(opening, saved.ladder, saved.proven, Date.now());
+    drill.start(Number(els.rating.value), current?.moves);
     renderLevel();
   }
 
@@ -415,7 +440,8 @@ export function mountDrill(root: HTMLElement) {
   els.showPrep.addEventListener('click', () => {
     const hint = drill?.revealPrep();
     if (!hint) return;
-    setNow(`Your prep here is ${hint.san}.`, 'Play it. Looking means this move won\'t add a tally.');
+    setNow(`Your prep here is ${hint.san}.`, 'Play it. Looking drops this move one rung.');
+    renderLevel();
     arrows = [{ orig: hint.uci.slice(0, 2) as Key, dest: hint.uci.slice(2, 4) as Key, brush: 'prep' }];
     drawShapes();
   });

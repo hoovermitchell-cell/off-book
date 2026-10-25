@@ -9,12 +9,15 @@
 //   in prep:   student move == prep move -> correct (a rep, unless they missed here first)
 //              otherwise Stockfish compares it with the prep move (verdict "playable" or "mistake"),
 //              the move is taken back and the student retries.
-//   opponent:  replies by sampling Maia at the chosen rating. A position outside the tree means
+//   opponent:  plays the round's staged line while the game follows it (decision 14b), then
+//              replies by sampling Maia at the chosen rating. A position outside the tree means
 //              the student is off book. As Black, the opponent's first move is not sampled: the
 //              opening config plays it (deps.openingMoves) before the student's first turn.
 //   off book:  any legal move. Stockfish judges before/after; a drop of MISTAKE or more that is not
 //              Stockfish's own best move is flagged, and play continues.
 //   the game is played out to checkmate, a draw, or resign() (decision 12b).
+// Each answer at a learned position is a ladder review (decision 14c): a first-try correct move
+// may climb, the first miss at a position (a wrong move, or looking) drops it.
 import { Chess } from 'chess.js';
 import { posKey, type PrepMove, type PrepTree } from '../data/prep';
 import { sample, type MaiaMove } from '../chess/maia';
@@ -45,8 +48,9 @@ export interface DrillDeps {
   engine: { evaluate(fen: string, ms: number): Promise<Judgement> };
   /** Legal moves for the side to move with probabilities, sorted high to low. */
   maia: (chess: Chess, elo: number) => Promise<MaiaMove[]>;
-  /** Prep positions (posKey) the student has already learned. Defaults to an in-memory set. */
-  learned?: { has(key: string): boolean; add(key: string): void };
+  /** Prep positions (posKey) the student has already learned. Defaults to an in-memory set.
+   *  `review`, when given, records each answer at a learned position and returns the level before and after. */
+  learned?: { has(key: string): boolean; add(key: string): void; review?(key: string, ok: boolean): { from: number; to: number } };
   rand?: () => number;
   delay?: (ms: number) => Promise<void>;
 }
@@ -88,9 +92,9 @@ export interface TopMove {
 export type DrillEvent =
   | { type: 'start'; state: DrillState }
   | { type: 'judging'; kind: 'prep' | 'offbook' }
-  | { type: 'prep-correct'; san: string; counted: boolean; prepMoves: number; reps: number; learnedNow: boolean }
+  | { type: 'prep-correct'; san: string; counted: boolean; prepMoves: number; reps: number; learnedNow: boolean; climbed: boolean }
   | { type: 'prep-miss'; played: string; prep: string; prepUci: string; loss: number; verdict: 'playable' | 'mistake'; depth?: number; nodes?: number }
-  | { type: 'opponent-move'; san: string; uci: string; p: number; top: TopMove[]; rating: number }
+  | { type: 'opponent-move'; san: string; uci: string; p: number; top: TopMove[]; rating: number; staged: boolean }
   | { type: 'off-book'; san: string }
   | { type: 'offbook-mistake'; played: string; better: string; betterUci: string; loss: number; depth?: number; nodes?: number }
   | { type: 'game-over'; result: Result; reason: EndReason; prepMoves: number; reps: number; mistakes: number }
@@ -105,8 +109,9 @@ export interface StudentMove {
 
 export interface Drill {
   getState(): DrillState;
-  /** Starts (or restarts) a round. As Black, the opponent has moved when this returns, or is about to. */
-  start(rating?: number): void;
+  /** Starts (or restarts) a round. As Black, the opponent has moved when this returns, or is about to.
+   *  `staged`: SAN moves from the start, both sides, that the opponent plays while the game follows them. */
+  start(rating?: number, staged?: string[]): void;
   setRating(rating: number): void;
   /** Plays the student's move. Resolves once the whole cycle (judging, the opponent's reply) is done.
    *  Resolves false if the move was ignored (not the student's turn, or illegal). */
@@ -129,7 +134,7 @@ export function createDrill(deps: DrillDeps): Drill {
   const { tree, engine, maia } = deps;
   const student = deps.side ?? 'w';
   const openingMoves = deps.openingMoves ?? [];
-  const learned = deps.learned ?? new Set<string>();
+  const learned: NonNullable<DrillDeps['learned']> = deps.learned ?? new Set<string>();
   const rand = deps.rand ?? Math.random;
   const delay = deps.delay ?? defaultDelay;
   const listeners = new Set<(e: DrillEvent) => void>();
@@ -145,6 +150,7 @@ export function createDrill(deps: DrillDeps): Drill {
   let result: Result | null = null;
   // Bumped on every start() so that work left over from a previous round is dropped.
   let round = 0;
+  let staged: string[] = [];
   // A wrong prep move is on the board while Stockfish judges it; resign() must take it back.
   let pendingMiss = false;
 
@@ -175,9 +181,10 @@ export function createDrill(deps: DrillDeps): Drill {
     return prep && !learned.has(key) ? prep : null;
   }
 
-  function start(r?: number) {
+  function start(r?: number, line: string[] = []) {
     round++;
     if (r !== undefined) rating = r;
+    staged = line;
     chess = new Chess();
     for (const san of openingMoves) chess.move(san);
     phase = chess.turn() === student ? 'student' : 'opponent';
@@ -225,9 +232,20 @@ export function createDrill(deps: DrillDeps): Drill {
   async function opponentReply(myRound: number): Promise<void> {
     phase = 'opponent';
     const elo = rating; // a rating change mid-search applies to the next reply, not this one
-    const moves = await maia(new Chess(chess.fen()), elo);
-    if (myRound !== round || isOver()) return;
-    const pick = sample(moves, rand);
+    const history = chess.history();
+    const next = staged[history.length];
+    const onLine = next !== undefined && history.every((san, i) => san === staged[i]);
+    let moves: MaiaMove[];
+    let pick: MaiaMove;
+    if (onLine) {
+      const m = new Chess(chess.fen()).move(next);
+      pick = { san: m.san, uci: uciOf(m), logit: 0, p: 1 };
+      moves = [pick];
+    } else {
+      moves = await maia(new Chess(chess.fen()), elo);
+      if (myRound !== round || isOver()) return;
+      pick = sample(moves, rand);
+    }
     await delay(OPPONENT_DELAY_MS);
     if (myRound !== round || isOver()) return;
     chess.move(pick.san);
@@ -242,6 +260,7 @@ export function createDrill(deps: DrillDeps): Drill {
       p: pick.p,
       top: moves.slice(0, 4).map((m) => ({ san: m.san, p: m.p })),
       rating: elo,
+      staged: onLine,
     });
     if (checkOver()) return;
     if (leftBook) emit({ type: 'off-book', san: pick.san });
@@ -307,7 +326,7 @@ export function createDrill(deps: DrillDeps): Drill {
         prepMoves++;
         missed = false;
         phase = 'opponent';
-        emit({ type: 'prep-correct', san: played.san, counted: false, prepMoves, reps, learnedNow: true });
+        emit({ type: 'prep-correct', san: played.san, counted: false, prepMoves, reps, learnedNow: true, climbed: false });
         if (checkOver()) return true;
         await opponentReply(myRound);
         return true;
@@ -319,10 +338,15 @@ export function createDrill(deps: DrillDeps): Drill {
       } else if (played.san === prep.san) {
         prepMoves++;
         const counted = !missed;
-        if (counted) reps++;
+        let climbed = false;
+        if (counted) {
+          reps++;
+          const r = learned.review?.(posKey(before), true);
+          climbed = !!r && r.to > r.from;
+        }
         missed = false;
         phase = 'opponent';
-        emit({ type: 'prep-correct', san: played.san, counted, prepMoves, reps, learnedNow: false });
+        emit({ type: 'prep-correct', san: played.san, counted, prepMoves, reps, learnedNow: false, climbed });
         if (checkOver()) return true;
         await opponentReply(myRound);
         return true;
@@ -338,7 +362,7 @@ export function createDrill(deps: DrillDeps): Drill {
         pendingMiss = false;
         chess.undo();
         const loss = lossOf(a, b);
-        missed = true;
+        miss(before);
         phase = 'student';
         emit({
           type: 'prep-miss',
@@ -355,6 +379,12 @@ export function createDrill(deps: DrillDeps): Drill {
     }
     await playOn(myRound, before, played);
     return true;
+  }
+
+  /** The first miss at a position drops it a rung; retries there cost nothing more. */
+  function miss(fen: string) {
+    if (!missed) learned.review?.(posKey(fen), false);
+    missed = true;
   }
 
   function resign() {
@@ -390,7 +420,7 @@ export function createDrill(deps: DrillDeps): Drill {
     prepHint,
     revealPrep: () => {
       const hint = phase === 'student' && !teaching() ? prepHint() : undefined;
-      if (hint) missed = true;
+      if (hint) miss(chess.fen());
       return hint;
     },
     on: (l) => {

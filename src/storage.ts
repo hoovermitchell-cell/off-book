@@ -1,14 +1,16 @@
 // Device-only progress (decision 3). Every read and write is guarded: storage can be blocked or full.
+import type { Ladder } from './levels';
+
 export const STORAGE_KEY = 'offbook.v1';
-/** Correct first-try prep moves needed per level. */
-export const REPS_PER_LEVEL = 10;
 
 export interface Saved {
-  /** Lifetime count of prep moves played correctly on the first try. */
-  correct: number;
-  /** Prep positions (posKey) the student has been shown and played (decision 13). */
-  learned: string[];
+  /** Prep position (posKey) to its rung on the review ladder (decision 14c). Missing means not learned. */
+  ladder: Ladder;
+  /** Staged lines (Stage.id) a clean real game has proven. */
+  proven: string[];
 }
+
+const empty = (): Saved => ({ ladder: {}, proven: [] });
 
 export function safeStorage(): Storage | undefined {
   try {
@@ -39,20 +41,29 @@ export function saveOpening(id: string, store: Pick<Storage, 'setItem'> | undefi
   }
 }
 
-/** The one place raw stored or uploaded data becomes a `Saved`: junk fields fall back to empty. */
+/** The one place raw stored or uploaded data becomes a `Saved`: junk fields fall back to empty.
+ *  The first format ({ correct, learned }) carries over: learned moves start the ladder, due now. */
 function sanitize(parsed: unknown): Saved {
-  const p = parsed as Partial<Saved> | null;
-  const n = Number(p?.correct);
-  const learned = Array.isArray(p?.learned) ? p.learned.filter((k): k is string => typeof k === 'string') : [];
-  return { correct: Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0, learned };
+  const p = parsed as { ladder?: unknown; proven?: unknown; learned?: unknown } | null;
+  const ladder: Ladder = {};
+  if (p?.ladder && typeof p.ladder === 'object') {
+    for (const [k, r] of Object.entries(p.ladder as Record<string, { level?: unknown; due?: unknown }>)) {
+      const level = Number(r?.level), due = Number(r?.due);
+      if (Number.isInteger(level) && level >= 0 && Number.isFinite(due)) ladder[k] = { level, due };
+    }
+  } else if (Array.isArray(p?.learned)) {
+    for (const k of p.learned) if (typeof k === 'string') ladder[k] = { level: 0, due: 0 };
+  }
+  const proven = Array.isArray(p?.proven) ? p.proven.filter((k): k is string => typeof k === 'string') : [];
+  return { ladder, proven };
 }
 
 export function loadSaved(store: Pick<Storage, 'getItem'> | undefined = safeStorage()): Saved {
   try {
     const raw = store?.getItem(STORAGE_KEY);
-    return raw ? sanitize(JSON.parse(raw)) : { correct: 0, learned: [] };
+    return raw ? sanitize(JSON.parse(raw)) : empty();
   } catch {
-    return { correct: 0, learned: [] };
+    return empty();
   }
 }
 
@@ -76,14 +87,9 @@ export function updateSaved(
   return { saved, ok: save(saved, store) };
 }
 
-/** Level (from 1) and progress through it (0 to REPS_PER_LEVEL - 1) for a rep count. */
-export function levelOf(correct: number): { level: number; progress: number } {
-  return { level: Math.floor(correct / REPS_PER_LEVEL) + 1, progress: correct % REPS_PER_LEVEL };
-}
-
 // ---- Backup file (decision 3) ------------------------------------------------------------------
 export const BACKUP_APP = 'off-book';
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
 
 export interface Backup {
   app: typeof BACKUP_APP;
@@ -106,10 +112,11 @@ export function parseBackup(text: string): { ok: true; saved: Saved } | { ok: fa
     return no("That file isn't a readable backup. Pick a file made with Back up progress.");
   }
   if (!file || typeof file !== 'object' || file.app !== BACKUP_APP) return no("That file isn't an Off Book backup.");
-  if (file.version !== BACKUP_VERSION) return no('That backup comes from a different version of Off Book, so it cannot be restored here.');
-  const d = file.data as Partial<Saved> | null;
+  // Version 1 files ({ correct, learned }) still restore; sanitize carries them over.
+  if (file.version !== BACKUP_VERSION && file.version !== 1) return no('That backup comes from a different version of Off Book, so it cannot be restored here.');
+  const d = file.data as { ladder?: unknown; learned?: unknown } | null;
   if (!d || typeof d !== 'object') return no("That backup has no progress in it, so it wasn't restored.");
-  if (typeof d.correct !== 'number' || !Number.isFinite(d.correct) || d.correct < 0) return no("That backup's move count isn't a valid number, so it wasn't restored.");
-  if (!Array.isArray(d.learned) || !d.learned.every((k) => typeof k === 'string')) return no("That backup's list of learned moves is damaged, so it wasn't restored.");
+  const moves = file.version === 1 ? Array.isArray(d.learned) && d.learned.every((k) => typeof k === 'string') : !!d.ladder && typeof d.ladder === 'object';
+  if (!moves) return no("That backup's list of learned moves is damaged, so it wasn't restored.");
   return { ok: true, saved: sanitize(d) };
 }

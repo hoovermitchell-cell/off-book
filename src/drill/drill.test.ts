@@ -442,3 +442,55 @@ describe('drill: Black student', () => {
     expect(of('game-over')[0]).toMatchObject({ result: 'lost', reason: 'checkmate' });
   });
 });
+
+describe('drill: staged lines and the ladder (decision 14c)', () => {
+  /** Records every ladder review; a correct answer always climbs. */
+  const recorder = () => {
+    const calls: [string, boolean][] = [];
+    return { calls, has: () => true, add: () => {}, review: (k: string, ok: boolean) => { calls.push([k, ok]); return { from: 1, to: ok ? 2 : 0 }; } };
+  };
+
+  it('the opponent plays the staged line, then Maia takes over', async () => {
+    const maia = vi.fn(scriptedMaia(['Nc6']));
+    const drill = createDrill({ tree: buildTree(), learned: allLearned, engine: queuedEngine(), maia, rand: () => 0, delay: async () => {} });
+    const events: DrillEvent[] = [];
+    drill.on((e) => events.push(e));
+    drill.start(1000, ['d4', 'd5', 'Bf4', 'Nf6']);
+    await drill.play(mv('d2', 'd4'));
+    await drill.play(mv('c1', 'f4'));
+    expect(maia).not.toHaveBeenCalled();
+    await drill.play(mv('e2', 'e3'));
+    expect(maia).toHaveBeenCalledTimes(1);
+    const opp = events.filter((e) => e.type === 'opponent-move');
+    expect(opp.map((e) => [e.san, e.staged])).toEqual([['d5', true], ['Nf6', true], ['Nc6', false]]);
+  });
+
+  it('a first-try correct move is reviewed as right and reports the climb', async () => {
+    const learned = recorder();
+    const drill = createDrill({ tree: buildTree(), learned, engine: queuedEngine(), maia: scriptedMaia(['d5']), rand: () => 0, delay: async () => {} });
+    const events: DrillEvent[] = [];
+    drill.on((e) => events.push(e));
+    drill.start(1000);
+    await drill.play(mv('d2', 'd4'));
+    expect(learned.calls).toEqual([[START, true]]);
+    expect(events.find((e) => e.type === 'prep-correct')).toMatchObject({ counted: true, climbed: true });
+  });
+
+  it('the first miss at a position drops it once; a retry and a look there add nothing', async () => {
+    const learned = recorder();
+    const drill = createDrill({ tree: buildTree(), learned, engine: queuedEngine([{ cp: 30, best: 'x' }, { cp: -50, best: 'x' }]), maia: scriptedMaia(['d5']), rand: () => 0, delay: async () => {} });
+    drill.start(1000);
+    await drill.play(mv('e2', 'e4')); // not prep
+    drill.revealPrep();
+    await drill.play(mv('d2', 'd4'));
+    expect(learned.calls).toEqual([[START, false]]);
+  });
+
+  it('looking at the prep is a miss', () => {
+    const learned = recorder();
+    const drill = createDrill({ tree: buildTree(), learned, engine: queuedEngine(), maia: scriptedMaia([]), rand: () => 0, delay: async () => {} });
+    drill.start(1000);
+    drill.revealPrep();
+    expect(learned.calls).toEqual([[START, false]]);
+  });
+});
