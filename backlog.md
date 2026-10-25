@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: polish.** Rolling polish PR: #6. Next opening: batch 2, re-picked by decision 16's rule after the pilot (provisionally Italian + French), based on `feat/tier-pilot` (#9) until it merges.
+**Next slot: feature** (build idea 1, board entry). Rolling polish PR: #6. Next opening: batch 2, re-picked by decision 16's rule after the pilot (provisionally Italian + French), based on `feat/tier-pilot` (#9) until it merges.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -36,7 +36,6 @@ worktree: delete its `node_modules` junction first.
 
 From the design audit of 2026-10-25 (`refine/polish`, first polish slot). Best first.
 
-- P2, large: Resign, or switching Mode/Opening, throws away a game in progress with no confirm; confirm only when the history is non-empty
 - P2, large: "How did it know?" drops the Stockfish explanation of the student's own mistake once the opponent replies, and the open panel hides the scoresheet
 - P2, copy (Mitch): the 6.Nbd2 idea in `london-ideas.ts` says "so the c-pawn can still move to c3" when c3 is already played in the Textbook line
 - P3: three live regions announce each drill move; the review step line is announced twice
@@ -95,3 +94,4 @@ Brainstorm, 2026-10-25 (loop slot 3). Ranked by how much each strengthens the co
 - Loop: polish batch 2 (loading state, steady status, legal-move hint), on rolling PR #6, 2026-10-25
 - Loop: feature "Drill this line" from a review, PR #8 on `feat/drill-from-review`, 2026-10-25
 - Loop: tier pilot, Intermediate London + Caro-Kann with Pause new lines and theory notes (decision 16 step 2), PR #9 on `feat/tier-pilot`, 2026-10-25
+- Loop: polish, confirm before Resign or a switch discards a game, PR #10 on `fix/confirm-discard`, 2026-10-25
