@@ -9,7 +9,8 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: opening** (step 0, plumbing)
+**Next slot: polish.** Next opening: batch 1 (QG + Slav), based on `feat/repertoire-plumbing` (PR #5) until it merges.
+First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
   (QG + Slav), the tier pilot, batch 2 (re-picked by decision 16's rule), batch 3.
@@ -58,3 +59,4 @@ worktree: delete its `node_modules` junction first.
 - All review branches (2026-10-22 and 2026-10-23 batches) merged to `main` by fast-forward, 2026-10-25
 - Repo public at github.com/hoovermitchell-cell/off-book (AGPL-3.0, footer link live), 2026-10-25
 - CI on GitHub Actions: build (with tsc) and tests on every PR and push to main, 2026-10-25 (#1). No linter yet; add one if the loop needs it
+- Loop: repertoire plumbing (decision 16, step 0), PR #5 on `feat/repertoire-plumbing`, 2026-10-25
