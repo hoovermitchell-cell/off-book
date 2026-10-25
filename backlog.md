@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: feature** (build idea 1, board entry). Rolling polish PR: #6. Next opening: batch 2, re-picked by decision 16's rule after the pilot (provisionally Italian + French), based on `feat/tier-pilot` (#9) until it merges.
+**Next slot: opening** (batch 2). Rolling polish PR: #6. Next opening: batch 2, re-picked by decision 16's rule after the pilot (provisionally Italian + French), based on `feat/tier-pilot` (#9) until it merges.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -46,18 +46,16 @@ From the design audit of 2026-10-25 (`refine/polish`, first polish slot). Best f
 Brainstorm, 2026-10-25 (loop slot 3). Ranked by how much each strengthens the core loop
 (learn → play → review) and the talk demo. Feature slots build from the top.
 
-1. **Board entry for over-the-board games** (medium, decision 1b, v1 scope 4). Enter a game by
-   playing both sides on a board instead of typing PGN. School tournament games are on paper.
-2. **Battle record per line** (medium, decision 5, v1 scope 6). Each staged line in the rail shows
+1. **Battle record per line** (medium, decision 5, v1 scope 6). Each staged line in the rail shows
    the W-D-L of imported real games that followed it (same attribution as Proven). Records,
    not badges, per DESIGN.md.
-3. **Opening names in review** (small-medium, v1 scope 1). Name the position where prep ended
+2. **Opening names in review** (small-medium, v1 scope 1). Name the position where prep ended
    from Lichess `chess-openings` (CC0): "you left prep in the Caro-Kann, Advance Variation".
    Build-time TSV filtered to the trees' positions, so no runtime fetch.
-4. **Opening-linked puzzles** (large, decision 7, v1 scope 7). Lichess puzzles (CC0) filtered
+3. **Opening-linked puzzles** (large, decision 7, v1 scope 7). Lichess puzzles (CC0) filtered
    offline to positions in the student's trees, shown per line, not as a standalone mode.
    Open question for Mitch first: do solved puzzles level the line (decisions, Still open).
-5. **Weekly goal** (medium, decision 5, v1 scope 6). Effort-based: reviews done this week against
+4. **Weekly goal** (medium, decision 5, v1 scope 6). Effort-based: reviews done this week against
    a target, no streak guilt. Needs Mitch's call on what counts and the default target before
    building; until then it stays last.
 
@@ -95,3 +93,4 @@ Brainstorm, 2026-10-25 (loop slot 3). Ranked by how much each strengthens the co
 - Loop: feature "Drill this line" from a review, PR #8 on `feat/drill-from-review`, 2026-10-25
 - Loop: tier pilot, Intermediate London + Caro-Kann with Pause new lines and theory notes (decision 16 step 2), PR #9 on `feat/tier-pilot`, 2026-10-25
 - Loop: polish, confirm before Resign or a switch discards a game, PR #10 on `fix/confirm-discard`, 2026-10-25
+- Loop: feature, board entry for over-the-board games, PR #11 on `feat/board-entry`, 2026-10-25
