@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: polish.** Next opening: batch 1 (QG + Slav), based on `feat/repertoire-plumbing` (PR #5) until it merges.
+**Next slot: feature.** Rolling polish PR: #6. Next opening: batch 1 (QG + Slav), based on `feat/repertoire-plumbing` (PR #5) until it merges.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -71,3 +71,4 @@ From the design audit of 2026-10-25 (`refine/polish`, first polish slot). Best f
 - Repo public at github.com/hoovermitchell-cell/off-book (AGPL-3.0, footer link live), 2026-10-25
 - CI on GitHub Actions: build (with tsc) and tests on every PR and push to main, 2026-10-25 (#1). No linter yet; add one if the loop needs it
 - Loop: repertoire plumbing (decision 16, step 0), PR #5 on `feat/repertoire-plumbing`, 2026-10-25
+- Loop: polish batch 1 (9 design-audit fixes, two P1), rolling PR #6 on `refine/polish`, 2026-10-25
