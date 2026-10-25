@@ -32,6 +32,17 @@ worktree: delete its `node_modules` junction first.
 
 ## Polish ideas
 
+From the design audit of 2026-10-25 (`refine/polish`, first polish slot). Best first.
+
+- P2, small: drill controls look live but do nothing while the engines load; disable them until `ready` (drill-view.ts ~178)
+- P2, large: Resign, or switching Mode/Opening, throws away a game in progress with no confirm; confirm only when the history is non-empty
+- P2, large: "How did it know?" drops the Stockfish explanation of the student's own mistake once the opponent replies, and the open panel hides the scoresheet
+- P2, small: status text wraps past `--status-h` on a real Chromebook (1366x657), so the board shifts 11-17px; shorten sub-lines or clamp `.now`
+- P2, copy (Mitch): the 6.Nbd2 idea in `london-ideas.ts` says "so the c-pawn can still move to c3" when c3 is already played in the Textbook line
+- P3, small: the illegal-move hint suggests fixed examples ("Nf3 or e2e4") that may be illegal; suggest a legal move instead
+- P3: three live regions announce each drill move; the review step line is announced twice
+- P3: drill and review round the same loss differently (4.2 vs 4.3)
+
 ## Feature ideas
 
 ## Ready
