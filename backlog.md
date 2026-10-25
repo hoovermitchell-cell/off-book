@@ -10,6 +10,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 
 ## Needs shaping
 
+- After the talk and after sparring merges (decision 16): repertoire plumbing slice, step 0 of `docs/plans/2026-10-25-repertoire-expansion.md`; then batch 1 (Queen's Gambit + Slav), starting with Mitch approving its coverage matrix
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
 - Define this project's "done" gate beyond green CI, if any
