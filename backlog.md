@@ -13,8 +13,8 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
 - Design the three-stage levelling from decision 14 (main line, alternatives, real matches)
-- Publish as public GitHub repo `off-book` (LICENSE and footer link are on `feat/backup-license`). Name check done: fine for GitHub; an app-store listing would hit a live US mark, see `docs/research/2026-10-23-name-check.md`
-- Set up CI (test + lint) so the loop has a green-gate to enforce; needs the GitHub repo first
+- Make `hoovermitchell-cell/off-book` public (created private 2026-10-25; LICENSE and footer link are on main, the link 404s until public). Name check done: fine for GitHub; an app-store listing would hit a live US mark, see `docs/research/2026-10-23-name-check.md`
+- Set up CI (test + lint) so the loop has a green-gate to enforce; the GitHub repo exists now
 - Define this project's "done" gate beyond green CI, if any
 - Low priority, since the app is for a talk, not a rollout (Mitch, 2026-10-23): Chromebook load time and engine speed; questions for the school about devices and accounts
 
