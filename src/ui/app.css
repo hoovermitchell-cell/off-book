@@ -69,7 +69,7 @@ button, input, select { font: inherit; color: inherit; }
 .rail-section + .rail-section { border-top: 1px solid var(--rule); padding-top: var(--space-3); }
 .setup { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .setup label { display: grid; gap: 0; min-height: 0; font-size: var(--text-sm); color: var(--ink-soft); }
-.setup label:first-child { flex: 1 1 17rem; }
+.setup label:first-child { flex: 1 1 100%; }
 .setup select { width: 100%; font-size: var(--text-md); color: var(--ink); }
 
 /* What to do now: sits above the board, always. */

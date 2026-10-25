@@ -10,6 +10,7 @@ import { DEFAULT_OPENING, OPENINGS, type Stage } from '../data/openings';
 import { maiaMoves } from '../chess/maia';
 import { createMaiaRunner } from '../chess/maia-ort';
 import { createStockfish } from '../chess/stockfish-worker';
+import type { ImportedGame } from '../import/pgn';
 import { loadOpening, loadSaved, saveOpening, updateSaved, type Saved } from '../storage';
 import { dueNow, learn, pickStage, review, SECURE, stageViews, type Status } from '../levels';
 import prepEndsSvg from '../../design/icons/prep-ends.svg?raw';
@@ -42,7 +43,8 @@ function describe(m: Move): string {
   return text;
 }
 
-export function mountDrill(root: HTMLElement) {
+/** `onReview` opens a finished sparring game in the review screen. */
+export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => void) {
   // The picked opening decides the student's side; everything below reads it through these.
   let opening = OPENINGS.find((o) => o.id === loadOpening()) ?? DEFAULT_OPENING;
   const color = () => (opening.side === 'w' ? 'white' : 'black');
@@ -64,6 +66,9 @@ export function mountDrill(root: HTMLElement) {
           <label>Opening
             <select id="opening">${OPENINGS.map((o) => `<option value="${o.id}"${o === opening ? ' selected' : ''}>${o.name} (you play ${sideName(o.side)})</option>`).join('')}</select>
           </label>
+          <label>Mode
+            <select id="mode"><option value="drill">Drill</option><option value="spar">Spar</option></select>
+          </label>
           <label>Opponent rating
             <select id="rating">${RATINGS.map((r) => `<option${r === 1000 ? ' selected' : ''}>${r}</option>`).join('')}</select>
           </label>
@@ -78,6 +83,7 @@ export function mountDrill(root: HTMLElement) {
             <button type="button" class="quiet" id="show-prep">Show my prep</button>
             <button type="button" class="quiet" id="know-btn" aria-expanded="false" aria-controls="know">How did it know?</button>
             <button type="button" class="quiet" id="resign">Resign</button>
+            <button type="button" id="review-game" hidden>Review this game</button>
             <button type="button" id="new-game" hidden>New game</button>
           </div>
           <form class="row" id="typed-form">
@@ -94,7 +100,7 @@ export function mountDrill(root: HTMLElement) {
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
   const els = {
     now: $('now'), verdict: $('verdict'), note: $('note'), moves: $('moves'), scoresheet: $('scoresheet'),
-    know: $('know'), knowBtn: $('know-btn'), level: $('level'), rating: $<HTMLSelectElement>('rating'), opening: $<HTMLSelectElement>('opening'),
+    know: $('know'), knowBtn: $('know-btn'), level: $('level'), rating: $<HTMLSelectElement>('rating'), mode: $<HTMLSelectElement>('mode'), reviewGame: $<HTMLButtonElement>('review-game'), opening: $<HTMLSelectElement>('opening'),
     showPrep: $<HTMLButtonElement>('show-prep'), resign: $<HTMLButtonElement>('resign'), newGame: $<HTMLButtonElement>('new-game'),
     typedForm: $<HTMLFormElement>('typed-form'), typed: $<HTMLInputElement>('typed'), typedError: $('typed-error'), announce: $('announce'), storageNote: $('storage-note'),
   };
@@ -164,6 +170,8 @@ export function mountDrill(root: HTMLElement) {
   };
   /** The staged line this round follows; null is free play against Maia. */
   let current: Stage | null = null;
+  /** This round is a sparring game (v1 scope 3): no arrows, hints or takebacks, then a review. */
+  let sparring = false;
   // Progress made in another tab shows up here too.
   window.addEventListener('storage', () => { saved = loadSaved(); renderLevel(); });
 
@@ -306,6 +314,8 @@ export function mountDrill(root: HTMLElement) {
     const over = s.phase === 'over';
     els.resign.hidden = over;
     els.newGame.hidden = !over;
+    els.reviewGame.hidden = !over || !sparring || !s.history.length;
+    els.showPrep.hidden = sparring;
     els.showPrep.disabled = s.offBook || s.phase !== 'student' || !!s.teach;
     els.typed.disabled = s.phase !== 'student';
   }
@@ -318,13 +328,15 @@ export function mountDrill(root: HTMLElement) {
       case 'start':
         bookPlies = null; marks = new Map(); know = null; announced = 0; badge = null;
         els.verdict.hidden = true;
-        if (current) {
+        if (sparring) {
+          setNow(opening.heading, `Sparring: a full game against Maia at ${s.rating}. No arrows and no takebacks. Learned prep moves still count when they're due.`);
+        } else if (current) {
           const n = opening.stages.indexOf(current) + 1;
           setNow(opening.heading, `Staged line ${n} of ${opening.stages.length}: ${current.name}. ${opp()} plays it move by move, then Maia takes over.`);
         } else {
           setNow(opening.heading, `Nothing new or due, so this is free play. ${opening.opponentLine(s.rating)} Prep moves still count when they're due.`);
         }
-        setNote('New moves get an arrow. Learned ones are up to you.');
+        setNote(sparring ? 'Play it like a real game. Review it when it ends.' : 'New moves get an arrow. Learned ones are up to you.');
         sync([]);
         break;
       case 'judging':
@@ -334,7 +346,8 @@ export function mountDrill(root: HTMLElement) {
         break;
       case 'prep-correct': {
         if (e.learnedNow) setVerdict('!', 'good', `${label(ply, e.san)}. Learned.`, 'new move');
-        else setVerdict('!', 'good', `${label(ply, e.san)}. Your prep, from memory.`, !e.counted ? 'no climb after a miss' : e.climbed ? 'up a rung' : 'not due yet');
+        // Sparring has no misses before a prep move, so an uncounted one there is not learned yet.
+        else setVerdict('!', 'good', `${label(ply, e.san)}. Your prep, from memory.`, !e.counted ? (sparring ? 'not learned yet' : 'no climb after a miss') : e.climbed ? 'up a rung' : 'not due yet');
         renderLevel();
         badge = { sq: lastTo(), svg: e.learnedNow ? badgeBook : badgeGood };
         setNow(`${opp()} is thinking…`);
@@ -351,6 +364,18 @@ export function mountDrill(root: HTMLElement) {
         setNow('Try again: play your prep move.', 'The arrow shows it. A miss drops this move one rung.');
         renderLevel();
         sync([{ orig: e.prepUci.slice(0, 2) as Key, dest: e.prepUci.slice(2, 4) as Key, brush: 'prep' }]);
+        break;
+      }
+      case 'left-prep': {
+        bookPlies = s.history.length - 1;
+        const prepNo = label(ply, e.prep);
+        if (e.verdict === 'playable') setVerdict('?!', 'dubious', `${label(ply, e.played)}. Playable, but you left your prep. It was ${prepNo}.`, `${drop(e.loss)} behind prep`);
+        else { const m = glyphFor(e.loss); marks.set(ply, m); setVerdict(m.g, m.cls, `${label(ply, e.played)}. ${m.word}. You left your prep. It was ${prepNo}.`, `${drop(e.loss)} behind prep`); }
+        know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${drop(e.loss)} lower than your prep move ${e.prep}. Under ${pts(PLAYABLE)} counts as playable.`, depth: e.depth, nodes: e.nodes };
+        setNote(`You left your prep with ${label(ply, e.played)}. From here it's your own chess.`, prepEndsSvg);
+        renderLevel();
+        setNow(`${opp()} is thinking…`);
+        sync([]);
         break;
       }
       case 'opponent-move':
@@ -383,7 +408,7 @@ export function mountDrill(root: HTMLElement) {
         const head = { won: 'You won by checkmate.', lost: `Checkmate. ${opp()} wins.`, draw: 'Draw.', resigned: 'You resigned.' }[e.result];
         setNow(head, `Prep lasted ${e.prepMoves} move${e.prepMoves === 1 ? '' : 's'}. Off book: ${e.mistakes} mistake${e.mistakes === 1 ? '' : 's'} flagged.`);
         sync();
-        els.newGame.focus();
+        (els.reviewGame.hidden ? els.newGame : els.reviewGame).focus();
         break;
       }
     }
@@ -402,8 +427,9 @@ export function mountDrill(root: HTMLElement) {
   function newGame() {
     ground.set({ orientation: color() });
     els.typed.placeholder = opening.example[0];
-    current = pickStage(opening, saved.ladder, saved.proven, Date.now());
-    drill.start(Number(els.rating.value), current?.moves);
+    sparring = els.mode.value === 'spar';
+    current = sparring ? null : pickStage(opening, saved.ladder, saved.proven, Date.now());
+    drill.start(Number(els.rating.value), current?.moves, sparring);
     renderLevel();
   }
 
@@ -433,6 +459,16 @@ export function mountDrill(root: HTMLElement) {
     if (!drills) return; // the engines are still loading; they start the picked opening when ready
     drill = drills.get(opening.id)!;
     newGame();
+  });
+  els.mode.addEventListener('change', () => { if (drills) newGame(); });
+  els.reviewGame.addEventListener('click', () => {
+    const s = drill.getState();
+    const result = s.result === 'draw' ? '1/2-1/2' : (s.result === 'won') === (opening.side === 'w') ? '1-0' : '0-1';
+    const maia = `Maia ${s.rating}`;
+    onReview({
+      id: `spar-${Date.now()}`, source: 'spar', result, date: new Date().toISOString().slice(0, 10), sans: s.history,
+      white: opening.side === 'w' ? 'You' : maia, black: opening.side === 'w' ? maia : 'You', side: opening.side, prep: opening.id,
+    });
   });
   els.rating.addEventListener('change', () => drill?.setRating(Number(els.rating.value)));
   els.resign.addEventListener('click', () => drill?.resign());

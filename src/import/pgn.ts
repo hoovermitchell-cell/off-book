@@ -3,7 +3,8 @@
 import { Chess } from 'chess.js';
 import type { Opening } from '../data/openings';
 
-export type GameSource = 'lichess' | 'chesscom' | 'paste';
+/** 'spar' is a sparring game against Maia, handed straight to the review. */
+export type GameSource = 'lichess' | 'chesscom' | 'paste' | 'spar';
 
 export interface ImportedGame {
   id: string;

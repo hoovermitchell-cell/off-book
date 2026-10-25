@@ -5,7 +5,7 @@ import { detectPrep, parsePgn, plyLabel, type GameSource, type ImportedGame } fr
 import { loadRecent, saveRecent } from '../import/recent';
 import { fetchChessCom, fetchLichess, ImportError } from '../import/sources';
 
-const SITES: Record<GameSource, string> = { lichess: 'Lichess', chesscom: 'Chess.com', paste: 'pasted PGN' };
+const SITES: Record<GameSource, string> = { lichess: 'Lichess', chesscom: 'Chess.com', paste: 'pasted PGN', spar: 'sparring game' };
 const SIDE = { w: 'White', b: 'Black' } as const;
 /** "the London as White and the Caro-Kann as Black", from OPENINGS. */
 const prepList = OPENINGS.map((o) => `the ${o.name} as ${SIDE[o.side]}`).join(' and ');
