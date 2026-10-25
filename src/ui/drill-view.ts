@@ -80,15 +80,15 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         </div>
         <div class="rail-section">
           <div class="row">
-            <button type="button" class="quiet" id="show-prep">Show my prep</button>
-            <button type="button" class="quiet" id="know-btn" aria-expanded="false" aria-controls="know">How did it know?</button>
-            <button type="button" class="quiet" id="resign">Resign</button>
-            <button type="button" id="review-game" hidden>Review this game</button>
-            <button type="button" id="new-game" hidden>New game</button>
+            <button type="button" class="quiet" id="show-prep" disabled>Show my prep</button>
+            <button type="button" class="quiet" id="know-btn" aria-expanded="false" aria-controls="know" disabled>How did it know?</button>
+            <button type="button" class="quiet" id="resign" disabled>Resign</button>
+            <button type="button" id="review-game" hidden disabled>Review this game</button>
+            <button type="button" id="new-game" hidden disabled>New game</button>
           </div>
           <form class="row" id="typed-form">
-            <label>Type a move <input type="text" id="typed" autocomplete="off" spellcheck="false" placeholder="Nf3"></label>
-            <button type="submit" class="quiet">Play</button>
+            <label>Type a move <input type="text" id="typed" autocomplete="off" spellcheck="false" disabled></label>
+            <button type="submit" class="quiet" disabled>Play</button>
           </form>
           <p class="typed-error" id="typed-error" aria-live="polite"></p>
           <p class="soft" id="storage-note" role="status" hidden>This browser isn't saving your progress (a private window can do this). Your learned moves will reset when you close it.</p>
@@ -176,6 +176,8 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   window.addEventListener('storage', () => { saved = loadSaved(); renderLevel(); });
 
   ready.then(([sf, run]) => {
+    // The controls start disabled in the markup (they do nothing until the engines are up).
+    for (const el of root.querySelectorAll<HTMLButtonElement | HTMLInputElement>('.rail [disabled]')) el.disabled = false;
     drills = new Map(OPENINGS.map((o) => {
       const d = createDrill({ tree: o.tree, side: o.side, openingMoves: o.openingMoves, learned, engine: sf.engine, maia: (chess, elo) => maiaMoves(run, chess, elo, elo) });
       d.on((e) => { if (d === drill) onEvent(e); });
@@ -318,6 +320,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
     els.showPrep.hidden = sparring;
     els.showPrep.disabled = s.offBook || s.phase !== 'student' || !!s.teach;
     els.typed.disabled = s.phase !== 'student';
+    els.typed.placeholder = suggest()?.san ?? '';
   }
 
   // ---- events ----------------------------------------------------------------------------------
@@ -334,7 +337,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
           const n = opening.stages.indexOf(current) + 1;
           setNow(opening.heading, `Staged line ${n} of ${opening.stages.length}: ${current.name}. ${opp()} plays it move by move, then Maia takes over.`);
         } else {
-          setNow(opening.heading, `Nothing new or due, so this is free play. ${opening.opponentLine(s.rating)} Prep moves still count when they're due.`);
+          setNow(opening.heading, `Nothing new or due, so this is free play. ${opening.opponentLine(s.rating)} Due prep moves still count.`);
         }
         setNote(sparring ? 'Play it like a real game. Review it when it ends.' : 'New moves get an arrow. Learned ones are up to you.');
         sync([]);
@@ -381,7 +384,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
       }
       case 'opponent-move':
         know = e.staged && current ? { kind: 'staged', san: e.san, ply, line: current.name } : { kind: 'maia', san: e.san, ply, top: e.top, rating: e.rating, p: e.p };
-        setNow(s.offBook ? 'Your move. You\'re off book: play it out.' : 'Your move. Stay in your prep.', `${opp()} played ${label(ply, e.san)}.`);
+        setNow(s.offBook ? 'Your move. Off book: play it out.' : 'Your move. Stay in your prep.', `${opp()} played ${label(ply, e.san)}.`);
         if (badge && lastTo() === badge.sq) badge = null; // a capture there would leave the badge on their piece
         sync([]);
         break;
@@ -402,7 +405,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         break;
       }
       case 'engine-error':
-        setNow('The engine stopped, so this game is over.', 'Start a new game. If it keeps happening, reload the page.');
+        setNow('The engine stopped. Game over.', 'Start a new game. If it keeps happening, reload the page.');
         sync();
         els.newGame.focus();
         break;
@@ -418,6 +421,14 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   }
 
   // ---- input -----------------------------------------------------------------------------------
+  /** A legal move to show as an example: the shown move while one is being taught, else the first legal move that isn't the prep move. */
+  function suggest() {
+    const s = drill.getState();
+    if (s.teach) return { san: s.teach.san, uci: s.teach.uci };
+    const prep = drill.prepHint()?.san;
+    const m = new Chess(s.fen).moves({ verbose: true }).find((x) => x.san !== prep);
+    return m && { san: m.san, uci: m.from + m.to + (m.promotion ?? '') };
+  }
   let typedLast = false; // the student is moving by keyboard: give the move box focus back each turn
   async function play(from: string, to: string, promotion?: string) {
     els.typedError.textContent = '';
@@ -428,7 +439,6 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
 
   function newGame() {
     ground.set({ orientation: color() });
-    els.typed.placeholder = opening.example[0];
     sparring = els.mode.value === 'spar';
     current = sparring ? null : pickStage(opening, saved.ladder, saved.proven, Date.now());
     drill.start(Number(els.rating.value), current?.moves, sparring);
@@ -447,7 +457,8 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
       return;
     }
     if (!m || m.color !== opening.side) {
-      els.typedError.textContent = `"${text}" isn't a legal move for ${me()} here. Try a move like ${opening.example[0]} or ${opening.example[1]}.`;
+      const ex = suggest();
+      els.typedError.textContent = `"${text}" isn't a legal move for ${me()} here.${ex ? ` Try a move like ${ex.san} or ${ex.uci}.` : ''}`;
       return;
     }
     els.typed.value = '';

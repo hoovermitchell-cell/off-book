@@ -75,6 +75,9 @@ button, input, select { font: inherit; color: inherit; }
 /* What to do now: sits above the board, always. */
 .now { min-height: var(--status-h); margin: 0; font-size: var(--text-xl); font-weight: 700; line-height: 1.25; }
 .now small { display: block; margin-top: var(--space-1); font-size: var(--text-sm); font-weight: 400; color: var(--ink-soft); }
+/* A short Chromebook screen (1366x657) makes the board ~370px wide; the sub-line steps down a size
+   so it holds to the two lines --status-h reserves. */
+@media (max-height: 720px) and (min-width: 901px) { .drill .now small { font-size: var(--text-xs); } }
 
 /* Verdict row: glyph, words, the number behind it. */
 .fb { display: grid; grid-template-columns: 3.5ch minmax(0, 1fr) auto; gap: var(--space-3); align-items: baseline; margin: 0; }
