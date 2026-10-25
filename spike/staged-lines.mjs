@@ -1,4 +1,4 @@
-// Run: node staged-lines.mjs [london|caro-kann]  -- proposes the staged alternative lines for decision 14b.
+// Run: node staged-lines.mjs [london|caro-kann|queens-gambit|slav]  -- proposes the staged alternative lines for decision 14b.
 // An alternative = the textbook line (or an earlier alternative) until the opponent deviates, then the
 // opponent's most likely replies through the prep tree to move 8. Ranked by how often a club player
 // meets the deviation: Maia's probability averaged over RATINGS, times the chance of reaching that position.
@@ -12,6 +12,9 @@ const RATINGS = [800, 1000, 1200, 1400];
 const OPENINGS = {
   london: { side: 'w', textbook: 'd4 d5 Bf4 Nf6 e3 e6 Nf3 c5 c3 Nc6 Nbd2 Bd6 Bg3 O-O Bd3', minReply: 0.08, show: 10, skip: 0 },
   'caro-kann': { side: 'b', textbook: 'e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Ng3 Bg6 h4 h6 Nf3 Nd7 h5 Bh7 Bd3 Bxd3 Qxd3 e6 Bf4 Ngf6 O-O-O Be7 Kb1 O-O', minReply: 0.02, show: 24, skip: 1 },
+  // skip 2: both 1.d4 and the forced 1...d5 are given.
+  'queens-gambit': { side: 'w', textbook: 'd4 d5 c4 e6 Nc3 Nf6 cxd5 exd5 Bg5 c6 e3 Be7 Bd3 Nbd7 Qc2 O-O Nf3 Re8 O-O Nf8 Rab1', minReply: 0.02, show: 24, skip: 2 },
+  slav: { side: 'b', textbook: 'd4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4 a4 Bf5 e3 e6 Bxc4 Bb4 O-O O-O Qe2 Nbd7', minReply: 0.02, show: 24, skip: 1 },
 };
 const name = process.argv[2] ?? 'london';
 const cfg = OPENINGS[name];

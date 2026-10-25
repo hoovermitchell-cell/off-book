@@ -3,6 +3,10 @@ import { buildTree as londonTree } from './london';
 import { ideaFor as londonIdea } from './london-ideas';
 import { buildTree as caroKannTree } from './caro-kann';
 import { ideaFor as caroKannIdea } from './caro-kann-ideas';
+import { buildTree as queensGambitTree } from './queens-gambit';
+import { ideaFor as queensGambitIdea } from './queens-gambit-ideas';
+import { buildTree as slavTree } from './slav';
+import { ideaFor as slavIdea } from './slav-ideas';
 import type { PrepMove, PrepTree } from './prep';
 
 /** How deep a staged line goes (decision 16). Every line so far is an intro. */
@@ -84,6 +88,46 @@ export const OPENINGS: Opening[] = [
       stage('advance', 'Advance', 'e4 c6 d4 d5 e5 Bf5 Nf3 e6 Bd3 Bxd3 Qxd3 c5'),
       stage('classical-bd3', 'Classical with 5.Bd3', 'e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Bd3 Qxd4 Nf3 Qd8 O-O'), // ends before 7...Bxe4: the tree's prep there is 7...e6
       stage('d3', '2.d3', 'e4 c6 d3 d5 Nd2 e5 Ngf3 Bd6 g3 Nf6 Bg2 O-O'),
+    ],
+  },
+  {
+    id: 'queens-gambit',
+    name: "Queen's Gambit",
+    side: 'w',
+    tree: queensGambitTree(),
+    ideaFor: queensGambitIdea,
+    // The tree covers only 1.d4 d5 (decision 16); the drill forces 1...d5 and Maia takes over after it.
+    forcedReplies: ['d5'],
+    heading: "Play your Queen's Gambit as White.",
+    opponentLine: (rating) => `Black answers 1.d4 with ...d5, then replies like a ${rating}-rated player.`,
+    example: ['Nf3', 'e2e4'],
+    // docs/review/qg-slav-lines.md: the Exchange line first, then the setups Maia meets most (decision 14d).
+    stages: [
+      stage('exchange', 'Exchange', 'd4 d5 c4 e6 Nc3 Nf6 cxd5 exd5 Bg5 c6 e3 Be7 Bd3 Nbd7 Qc2 O-O Nf3 Re8 O-O Nf8 Rab1'),
+      stage('qga-b5', '2...dxc4 and ...b5', 'd4 d5 c4 dxc4 e3 b5 a4 c6 axb5 cxb5 Qf3'),
+      stage('nf6-nf3', '2...Nf6', 'd4 d5 c4 Nf6 Nf3 dxc4 Nc3 Nc6 e3 Bg4 Bxc4 e6 Qc2 Bxf3 gxf3'),
+      stage('semi-slav', '2...c6 and ...e6', 'd4 d5 c4 c6 Nf3 Nf6 Nc3 e6 e3 Bb4 Bd3'),
+      stage('qgd-dxc4', '3...dxc4', 'd4 d5 c4 e6 Nc3 dxc4 e4 Bb4 Bxc4 Bxc3+ bxc3 Nf6 e5 Ne4 Qg4'),
+    ],
+  },
+  {
+    id: 'slav',
+    name: 'Slav',
+    side: 'b',
+    tree: slavTree(),
+    ideaFor: slavIdea,
+    // The tree covers only 1.d4 (decision 16); Maia takes over after move 1, as in the Caro-Kann.
+    forcedReplies: ['d4'],
+    heading: 'Play your Slav as Black.',
+    opponentLine: (rating) => `White opens 1.d4, then answers like a ${rating}-rated player.`,
+    example: ['Nf6', 'e7e5'],
+    // docs/review/qg-slav-lines.md: the main line first, then the setups Maia meets most (decision 14d).
+    stages: [
+      stage('main-line', 'Main line', 'd4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4 a4 Bf5 e3 e6 Bxc4 Bb4 O-O O-O Qe2 Nbd7'),
+      stage('nf3-bg5', '2.Nf3 and Bg5', 'd4 d5 Nf3 c6 Nc3 Nf6 Bg5 Bf5 e3 e6 Bd3 Nbd7 Bxf5 exf5 O-O Bd6'),
+      stage('nc3-e4', '2.Nc3 and e4', 'd4 d5 Nc3 c6 e4 dxe4 Nxe4 Nf6 Nxf6+ exf6 Nf3 Bf5 Bd3 Bd6 Bxf5 Qa5+'),
+      stage('e3-bd3', '2.e3 and Bd3', 'd4 d5 e3 Nf6 Nf3 c6 Bd3 Bg4 Nbd2 e6 O-O Nbd7'),
+      stage('london-bf4', '2.Bf4, the London', 'd4 d5 Bf4 Nf6 e3 c6 Nf3 Bf5 Bd3 Bxd3 Qxd3 e6 Nbd2 Nbd7'),
     ],
   },
 ];
