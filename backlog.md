@@ -27,3 +27,4 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 - Caro-Kann in the drill as Black, next to the London, with an opening picker, 2026-10-23 (`feat/caro-kann-drill`)
 - Review tab handles Black games and the Caro-Kann, 2026-10-23 (`feat/review-black`)
 - Layout: notes under the board, tools in a rail, for drill and review (Codex studies, Mitch's pick), 2026-10-23 (`feat/layout-notes-under`)
+- All review branches (2026-10-22 and 2026-10-23 batches) merged to `main` by fast-forward, 2026-10-25
