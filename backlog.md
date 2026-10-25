@@ -11,6 +11,7 @@ opening → polish → feature → opening …
 
 **Next slot: opening** (batch 2). Rolling polish PR: #6. Next opening: batch 2, re-picked by decision 16's rule after the pilot (provisionally Italian + French), based on `feat/tier-pilot` (#9) until it merges.
 First, each tick: check open loop PRs' CI and fix any red ones.
+**Stop after batch 2** (Mitch, 2026-10-25: the last batch today). Once its PR is open and green, log it and end the loop.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
   (QG + Slav), the tier pilot, batch 2 (re-picked by decision 16's rule), batch 3.
