@@ -1,10 +1,10 @@
-// Run: node check-tree.mjs <london|caro-kann>  -- every prep move is legal, conflict-free, and close to Stockfish's best.
+// Run: node check-tree.mjs <london|caro-kann|queens-gambit|slav>  -- every prep move is legal, conflict-free, and close to Stockfish's best.
 import { createRequire } from 'node:module';
 import { Chess } from 'chess.js';
 import { createEngine } from './engine.js';
 
 const name = process.argv[2];
-const mod = await import(`./${name}.js`).catch(() => { throw new Error(`usage: node check-tree.mjs <london|caro-kann> (got ${name})`); });
+const mod = await import(`./${name}.js`).catch(() => { throw new Error(`usage: node check-tree.mjs <london|caro-kann|queens-gambit|slav> (got ${name})`); });
 const tree = mod.buildTree(Chess);
 // The student's colour is the side to move in every prep position; Stockfish scores are White's view.
 const sign = [...tree.keys()][0].split(' ')[1] === 'w' ? 1 : -1;
@@ -19,7 +19,7 @@ for (const [key, prep] of tree) {
   const best = await engine.evaluate(fen, 400);
   const c = new Chess(fen); c.move(prep.san);
   const after = await engine.evaluate(c.fen(), 400);
-  const loss = sign * (best.cp - after.cp);
+  const loss = prep.uci === best.best ? 0 : sign * (best.cp - after.cp); // a mating prep move leaves nothing to score
   if (loss > LIMIT) { bad++; console.log(`TRAILS ${loss}cp: ${prep.san} (best ${best.best}) at ${key} [${prep.pinned ? 'pinned' : prep.line}]`); }
 }
 console.log(`${name}: ${tree.size} prep positions, ${bad} trailing by more than ${LIMIT}cp`);
