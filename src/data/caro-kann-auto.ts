@@ -2,14 +2,6 @@
 import type { PrepMove } from './prep';
 
 export const AUTO: Record<string, PrepMove> = {
- "rnbqkbnr/pp1ppppp/2p5/8/2B1P3/8/PPPP1PPP/RNBQK1NR b KQkq -": {
-  "san": "d5",
-  "uci": "d7d5",
-  "loss": 8,
-  "how": "system",
-  "p": 0.191,
-  "line": "e4 c6 Bc4"
- },
  "rnbqkbnr/pp2pppp/2p5/3P4/8/5N2/PPPP1PPP/RNBQKB1R b KQkq -": {
   "san": "cxd5",
   "uci": "c6d5",
@@ -25,14 +17,6 @@ export const AUTO: Record<string, PrepMove> = {
   "how": "system",
   "p": 0.035,
   "line": "e4 c6 Nf3 d5 d3"
- },
- "rnbqkbnr/pp2pppp/2p5/3P4/2B5/8/PPPP1PPP/RNBQK1NR b KQkq -": {
-  "san": "cxd5",
-  "uci": "c6d5",
-  "loss": 10,
-  "how": "system",
-  "p": 0.181,
-  "line": "e4 c6 Bc4 d5 exd5"
  },
  "rnbqkbnr/pp2pppp/2p5/3p4/4P3/1B6/PPPP1PPP/RNBQK1NR b KQkq -": {
   "san": "dxe4",
@@ -185,14 +169,6 @@ export const AUTO: Record<string, PrepMove> = {
   "how": "system",
   "p": 0.127,
   "line": "e4 c6 Bc4 d5 exd5 cxd5 Bb3"
- },
- "rnbqkbnr/pp2pppp/8/1B1p4/8/8/PPPP1PPP/RNBQK1NR b KQkq -": {
-  "san": "Bd7",
-  "uci": "c8d7",
-  "loss": 4,
-  "how": "system",
-  "p": 0.064,
-  "line": "e4 c6 Bc4 d5 exd5 cxd5 Bb5+"
  },
  "rnbqkbnr/pp2pppp/2p5/7Q/4p3/1B6/PPPP1PPP/RNB1K1NR b KQkq -": {
   "san": "e6",
@@ -409,14 +385,6 @@ export const AUTO: Record<string, PrepMove> = {
   "how": "stockfish",
   "p": 0.036,
   "line": "e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Bd3"
- },
- "rn1qkbnr/pp2pppp/2p5/5b2/3PN3/5P2/PPP3PP/R1BQKBNR b KQkq -": {
-  "san": "e6",
-  "uci": "e7e6",
-  "loss": 2,
-  "how": "system",
-  "p": 0.023,
-  "line": "e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 f3"
  },
  "rn1qkbnr/pp2pppp/2p5/2N2b2/3P4/8/PPP2PPP/R1BQKBNR b KQkq -": {
   "san": "e6",
@@ -689,14 +657,6 @@ export const AUTO: Record<string, PrepMove> = {
   "how": "system",
   "p": 0.045,
   "line": "e4 c6 Bc4 d5 exd5 cxd5 Bb5+ Bd7 Bxd7+"
- },
- "rn1qkbnr/pp1bpppp/8/3p4/8/3B4/PPPP1PPP/RNBQK1NR b KQkq -": {
-  "san": "Nc6",
-  "uci": "b8c6",
-  "loss": 25,
-  "how": "system",
-  "p": 0.011,
-  "line": "e4 c6 Bc4 d5 exd5 cxd5 Bb5+ Bd7 Bd3"
  },
  "rn1qkbnr/pp1bpppp/8/1B1p4/8/8/PPPPQPPP/RNB1K1NR b KQkq -": {
   "san": "e6",
@@ -977,14 +937,6 @@ export const AUTO: Record<string, PrepMove> = {
   "how": "stockfish",
   "p": 0.003,
   "line": "e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Bd3 Qxd4 Qf3"
- },
- "rn1qkbnr/pp3ppp/2p1p3/5b2/3PN1P1/5P2/PPP4P/R1BQKBNR b KQkq -": {
-  "san": "Bxe4",
-  "uci": "f5e4",
-  "loss": 0,
-  "how": "stockfish",
-  "p": 0.004,
-  "line": "e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 f3 e6 g4"
  },
  "rn1qkbnr/pp3ppp/2p1p3/5bB1/3PN3/5P2/PPP3PP/R2QKBNR b KQkq -": {
   "san": "Nf6",
@@ -1522,14 +1474,6 @@ export const AUTO: Record<string, PrepMove> = {
   "p": 0.008,
   "line": "e4 c6 Bc4 d5 exd5 cxd5 Bb5+ Bd7 Bxd7+ Nxd7 Nc3"
  },
- "r2qkbnr/pp1bpppp/2n5/3p4/8/3B1N2/PPPP1PPP/RNBQK2R b KQkq -": {
-  "san": "e5",
-  "uci": "e7e5",
-  "loss": 0,
-  "how": "stockfish",
-  "p": 0.005,
-  "line": "e4 c6 Bc4 d5 exd5 cxd5 Bb5+ Bd7 Bd3 Nc6 Nf3"
- },
  "rn1qkbnr/pp1B1ppp/4p3/3p4/8/8/PPPPQPPP/RNB1K1NR b KQkq -": {
   "san": "Nxd7",
   "uci": "b8d7",
@@ -1697,14 +1641,6 @@ export const AUTO: Record<string, PrepMove> = {
   "how": "system",
   "p": 0.002,
   "line": "e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Bd3 Qxd4 Qf3 Bxe4 Bxe4"
- },
- "rn1qkbnr/pp3ppp/2p1p3/8/3PP1P1/8/PPP4P/R1BQKBNR b KQkq -": {
-  "san": "Qh4+",
-  "uci": "d8h4",
-  "loss": 0,
-  "how": "stockfish",
-  "p": 0.004,
-  "line": "e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 f3 e6 g4 Bxe4 fxe4"
  },
  "rn2kbnr/pp3ppp/2p1p3/5b2/3qN3/2PB1P2/PP4PP/R1BQK1NR b KQkq -": {
   "san": "Qb6",
@@ -2066,14 +2002,6 @@ export const AUTO: Record<string, PrepMove> = {
   "p": 0.002,
   "line": "e4 c6 Bc4 d5 exd5 cxd5 Bb5+ Bd7 Bxd7+ Nxd7 d4 e6 Nc3"
  },
- "r2qkbnr/pp1b1ppp/2n5/1B1pp3/8/5N2/PPPP1PPP/RNBQK2R b KQkq -": {
-  "san": "Bd6",
-  "uci": "f8d6",
-  "loss": 18,
-  "how": "system",
-  "p": 0.002,
-  "line": "e4 c6 Bc4 d5 exd5 cxd5 Bb5+ Bd7 Bd3 Nc6 Nf3 e5 Bb5"
- },
  "rn2kbnr/pp1q1ppp/4p3/3p4/3P4/2N2N2/PPP2PPP/R1BQK2R b KQkq -": {
   "san": "Nf6",
   "uci": "g8f6",
@@ -2105,14 +2033,6 @@ export const AUTO: Record<string, PrepMove> = {
   "how": "system",
   "p": 0.003,
   "line": "e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Bd3 Qxd4 Nf3 Qd8 O-O e6 Bg5"
- },
- "rn2kbnr/pp3ppp/2p1p3/8/3PP1Pq/8/PPPK3P/R1BQ1BNR b kq -": {
-  "san": "Nf6",
-  "uci": "g8f6",
-  "loss": 24,
-  "how": "system",
-  "p": 0.003,
-  "line": "e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 f3 e6 g4 Bxe4 fxe4 Qh4+ Kd2"
  },
  "r2qkbnr/pp1n1ppp/2p1p1b1/8/3P4/3B1NN1/PPP2PPP/R1BQ1RK1 b kq -": {
   "san": "Ngf6",

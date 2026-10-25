@@ -6,7 +6,7 @@ import type { DrawBrushes, DrawShape } from 'chessground/draw';
 import type { Key } from 'chessground/types';
 import { Chess, type Move } from 'chess.js';
 import { createDrill, PLAYABLE, type DrillEvent, type TopMove } from '../drill/drill';
-import { DEFAULT_OPENING, OPENINGS, type Stage } from '../data/openings';
+import { DEFAULT_OPENING, OPENINGS, type Stage, type Tier } from '../data/openings';
 import { maiaMoves } from '../chess/maia';
 import { createMaiaRunner } from '../chess/maia-ort';
 import { createStockfish } from '../chess/stockfish-worker';
@@ -72,11 +72,11 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
           <label>Opponent rating
             <select id="rating">${RATINGS.map((r) => `<option${r === 1000 ? ' selected' : ''}>${r}</option>`).join('')}</select>
           </label>
+          <label class="pause"><input type="checkbox" id="pause"> Pause new lines</label>
         </div>
         <div class="rail-section">
           <div class="scoresheet" id="scoresheet"><ol class="moves" id="moves" aria-label="Moves"></ol></div>
           <section class="know" id="know" hidden aria-labelledby="know-h"></section>
-          <div class="level" id="level"></div>
         </div>
         <div class="rail-section">
           <div class="row">
@@ -93,6 +93,11 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
           <p class="typed-error" id="typed-error" aria-live="polite"></p>
           <p class="soft" id="storage-note" role="status" hidden>This browser isn't saving your progress (a private window can do this). Your learned moves will reset when you close it.</p>
         </div>
+        <!-- The line record goes last: it grows with every tier, and the controls above must not move. -->
+        <div class="rail-section">
+          <div class="level-head"><p class="soft" id="due"></p></div>
+          <div class="level" id="level"></div>
+        </div>
       </aside>
     </main>
     <p class="visually-hidden" id="announce" aria-live="polite"></p>`;
@@ -101,7 +106,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   const els = {
     now: $('now'), verdict: $('verdict'), note: $('note'), moves: $('moves'), scoresheet: $('scoresheet'),
     know: $('know'), knowBtn: $('know-btn'), level: $('level'), rating: $<HTMLSelectElement>('rating'), mode: $<HTMLSelectElement>('mode'), reviewGame: $<HTMLButtonElement>('review-game'), opening: $<HTMLSelectElement>('opening'),
-    showPrep: $<HTMLButtonElement>('show-prep'), resign: $<HTMLButtonElement>('resign'), newGame: $<HTMLButtonElement>('new-game'),
+    due: $('due'), pause: $<HTMLInputElement>('pause'), showPrep: $<HTMLButtonElement>('show-prep'), resign: $<HTMLButtonElement>('resign'), newGame: $<HTMLButtonElement>('new-game'),
     typedForm: $<HTMLFormElement>('typed-form'), typed: $<HTMLInputElement>('typed'), typedError: $('typed-error'), announce: $('announce'), storageNote: $('storage-note'),
   };
 
@@ -232,13 +237,22 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   }
 
   const STATUS: Record<Status, string> = { locked: 'Locked', learning: 'Learning', cleared: 'Cleared', proven: 'Proven' };
+  const TIER: Record<Tier, string> = { intro: 'Intro', intermediate: 'Intermediate', advanced: 'Advanced' };
+  const paused = () => saved.paused.includes(opening.id);
   let shown = new Map<string, Status>();
+  /** Notes the student has open; the rail redraws after every move and must not shut them. */
+  const openNotes = new Set<string>();
+  els.level.addEventListener('toggle', (ev) => {
+    const d = ev.target as HTMLDetailsElement;
+    if (d.dataset.stage) d.open ? openNotes.add(d.dataset.stage) : openNotes.delete(d.dataset.stage);
+  }, true); // toggle does not bubble
   /** One row per staged line: a small ladder per move, then the line's status (decision 14c).
    *  Wear and records, never a progress bar (DESIGN.md). A status that just changed gets the stamp. */
   function renderLevel() {
     const views = stageViews(opening, saved.ladder, saved.proven);
-    const due = dueNow(opening, saved.ladder, saved.proven, Date.now());
-    const rows = views.map((v) => {
+    const due = dueNow(opening, saved.ladder, saved.proven, Date.now(), paused());
+    els.pause.checked = paused();
+    const rowOf = (v: (typeof views)[number]) => {
       const svg = v.levels.map((l, i) => {
         let r = '';
         for (let k = 0; k < SECURE; k++) {
@@ -255,10 +269,30 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
       return `<li class="line-row${v.stage === current ? ' current' : ''}">
         <span class="line-name">${v.stage.name}</span>
         <span class="rungs" role="img" aria-label="${known} of ${v.levels.length} moves learned, ${secure} secure"><svg width="${v.levels.length * 9}" height="22" viewBox="0 0 ${v.levels.length * 9} 22" aria-hidden="true">${svg}</svg></span>
-        <span class="${cls}">${STATUS[v.status]}</span></li>`;
-    }).join('');
+        <span class="${cls}">${STATUS[v.status]}</span>${v.stage.note && v.status !== 'locked' ? `<details class="line-more" data-stage="${v.stage.id}"${openNotes.has(v.stage.id) ? ' open' : ''}><summary>More on this line</summary><p></p></details>` : ''}</li>`;
+    };
     shown = new Map(views.map((v) => [v.stage.id, v.status]));
-    els.level.innerHTML = `<p class="soft">${due ? `${due} move${due === 1 ? '' : 's'} due for review` : 'Nothing due for review now'}</p><ol class="lines" aria-label="Staged lines">${rows}</ol>`;
+    // One list per run of equal tiers, in stage order; headings only when the opening has more than one tier.
+    const runs: (typeof views)[] = [];
+    for (const v of views) {
+      if (runs.at(-1)?.[0].stage.tier === v.stage.tier) runs.at(-1)!.push(v);
+      else runs.push([v]);
+    }
+    // A later tier that is still all locked folds to one line, and the headings wait until one opens,
+    // so the rail stays short on a Chromebook.
+    const folded = (run: (typeof views), i: number) => i > 0 && run.every((v) => v.status === 'locked');
+    const headed = runs.some((run, i) => i > 0 && !folded(run, i));
+    els.due.textContent = due ? `${due} move${due === 1 ? '' : 's'} due for review` : 'Nothing due for review now';
+    els.level.innerHTML = runs.map((run, i) => {
+        const tier = run[0].stage.tier;
+        if (folded(run, i)) return `<p class="soft tier-locked">${TIER[tier]}: ${run.length} more lines open after the ${TIER[runs[i - 1][0].stage.tier]} lines.</p>`;
+        return `${headed ? `<h3 class="tier-h" id="tier-${i}">${TIER[tier]}</h3>` : ''}<ol class="lines" ${headed ? `aria-labelledby="tier-${i}"` : 'aria-label="Staged lines"'}>${run.map(rowOf).join('')}</ol>`;
+      }).join('');
+    // Notes are set as text, never markup.
+    for (const v of views) {
+      const p = v.stage.note && els.level.querySelector(`[data-stage="${v.stage.id}"] p`);
+      if (p) p.textContent = v.stage.note!;
+    }
   }
 
   function renderKnow() {
@@ -338,7 +372,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
           const n = opening.stages.indexOf(current) + 1;
           setNow(opening.heading, `Staged line ${n} of ${opening.stages.length}: ${current.name}. ${opp()} plays it move by move, then Maia takes over.`);
         } else {
-          setNow(opening.heading, `Nothing new or due, so this is free play. ${opening.opponentLine(s.rating)} Prep moves still count when they're due.`);
+          setNow(opening.heading, `${paused() ? 'New lines are paused and nothing is due' : 'Nothing new or due'}, so this is free play. ${opening.opponentLine(s.rating)} Prep moves still count when they're due.`);
         }
         setNote(sparring ? 'Play it like a real game. Review it when it ends.' : 'New moves get an arrow. Learned ones are up to you.');
         sync([]);
@@ -434,7 +468,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
     ground.set({ orientation: color() });
     els.typed.placeholder = opening.example[0];
     sparring = els.mode.value === 'spar';
-    current = sparring ? null : pickStage(opening, saved.ladder, saved.proven, Date.now());
+    current = sparring ? null : pickStage(opening, saved.ladder, saved.proven, Date.now(), paused());
     drill.start(Number(els.rating.value), current?.moves, sparring);
     renderLevel();
   }
@@ -465,6 +499,11 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
     if (!drills) return; // the engines are still loading; they start the picked opening when ready
     drill = drills.get(opening.id)!;
     newGame();
+  });
+  els.pause.addEventListener('change', () => {
+    const on = els.pause.checked;
+    persist((s) => ({ ...s, paused: [...s.paused.filter((id) => id !== opening.id), ...(on ? [opening.id] : [])] }));
+    renderLevel(); // the line this round follows stays; the next round picks by the new setting
   });
   els.mode.addEventListener('change', () => { if (drills) newGame(); });
   els.reviewGame.addEventListener('click', () => {

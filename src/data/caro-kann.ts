@@ -45,6 +45,14 @@ export const LINES: string[] = [
   // King's Indian Attack style: 2.d3
   'e4 c6 d3 d5 Nd2 e5 Ngf3 Bd6 g3 Nf6 Bg2 O-O',
   'e4 c6 d3 d5 exd5 cxd5 Nf3 Nc6 Be2 Nf6 O-O Bg4',
+  // Intermediate tier (decision 16 pilot): the Classical continued to move 17
+  'e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Ng3 Bg6 h4 h6 Nf3 Nd7 h5 Bh7 Bd3 Bxd3 Qxd3 e6 Bf4 Ngf6 O-O-O Be7 Kb1 O-O Ne4 c5 dxc5 Nxc5 Nxc5 Bxc5 Qxd8 Raxd8',
+  // Intermediate tier (decision 16 pilot): the Panov continued to move 12
+  'e4 c6 d4 d5 exd5 cxd5 c4 Nf6 Nc3 e6 Nf3 Be7 cxd5 Nxd5 Bd3 Nc6 O-O O-O Re1 Nf6 Be3 b6 Qc2 Nb4',
+  // Intermediate tier (decision 16 pilot): the Fantasy continued to move 8
+  'e4 c6 d4 d5 f3 dxe4 fxe4 e5 Nf3 Bg4 Bc4 Nd7 O-O Ngf6 dxe5 Qb6+',
+  // Intermediate tier (decision 16 pilot): the Two Knights continued to move 8
+  'e4 c6 Nc3 d5 Nf3 Bg4 h3 Bxf3 Qxf3 e6 d3 Nf6 Bg5 Nbd7 exd5 cxd5',
 ];
 
 export const buildTree = ({ auto = true }: { auto?: boolean } = {}): PrepTree =>
