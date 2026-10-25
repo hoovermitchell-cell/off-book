@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: opening** (the tier pilot). Rolling polish PR: #6. Tier pilot (Intermediate London + Caro-Kann, plus the Pause switch and theory notes) bases on `feat/batch1-qg-slav` (#7) until it merges.
+**Next slot: polish.** Rolling polish PR: #6. Next opening: batch 2, re-picked by decision 16's rule after the pilot (provisionally Italian + French), based on `feat/tier-pilot` (#9) until it merges.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -69,6 +69,7 @@ Brainstorm, 2026-10-25 (loop slot 3). Ranked by how much each strengthens the co
 ## Needs shaping
 
 - Repertoire plumbing and batches: now run by the refinement loop above
+- Mitch: the London's pinned 4.Qc1 against 1.d4 Nf6 2.Bf4 c5 3.e3 Qb6 loses d4 (4...cxd4 5.exd4 Qxd4); Stockfish prefers 4.Nc3 by ~71cp at 3 s. Found by the tier pilot (#9); an Intro change, so it waits for you
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
 - Build the levelling from decision 14c (per-move ladder, staged-line unlocks, Proven from real games, per-line status UI); staged lines settled in 14d
@@ -93,3 +94,4 @@ Brainstorm, 2026-10-25 (loop slot 3). Ranked by how much each strengthens the co
 - Loop: batch 1, Queen's Gambit + Slav (decision 16), PR #7 on `feat/batch1-qg-slav`, 2026-10-25
 - Loop: polish batch 2 (loading state, steady status, legal-move hint), on rolling PR #6, 2026-10-25
 - Loop: feature "Drill this line" from a review, PR #8 on `feat/drill-from-review`, 2026-10-25
+- Loop: tier pilot, Intermediate London + Caro-Kann with Pause new lines and theory notes (decision 16 step 2), PR #9 on `feat/tier-pilot`, 2026-10-25
