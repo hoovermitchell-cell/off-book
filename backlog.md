@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: polish.** Rolling polish PR: #6. Next opening: the tier pilot (Intermediate London + Caro-Kann), based on `feat/batch1-qg-slav` (#7) until it merges. Rolling polish PR: #6. Next opening: batch 1 (QG + Slav), based on `feat/repertoire-plumbing` (PR #5) until it merges.
+**Next slot: polish.** Rolling polish PR: #6. Next opening: the tier pilot (Intermediate London + Caro-Kann), based on `feat/batch1-qg-slav` (#7) until it merges.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
