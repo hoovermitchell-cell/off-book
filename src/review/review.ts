@@ -47,7 +47,7 @@ export function walkPrep(sans: string[], { tree, side }: Pick<Opening, 'tree' | 
 /** FEN after `plies` moves of the game. */
 export function fenAt(sans: string[], plies: number): string {
   const chess = new Chess();
-  sans.slice(0, plies).forEach((s) => chess.move(s));
+  sans.slice(0, plies).forEach((s) => { chess.move(s); });
   return chess.fen();
 }
 

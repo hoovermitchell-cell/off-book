@@ -24,15 +24,15 @@ export type MaiaRunner = (tokens: Float32Array, eloSelf: number, eloOppo: number
 export function encode(chess: Chess): Float32Array {
   const tokens = new Float32Array(64 * 12);
   const black = chess.turn() === 'b';
-  chess.board().forEach((row, r) =>
+  chess.board().forEach((row, r) => {
     row.forEach((p, f) => {
       if (!p) return;
       const rank = 7 - r; // board()[0] is rank 8
       const s = f + 8 * (black ? 7 - rank : rank);
       const mine = (p.color === 'w') !== black;
       tokens[s * 12 + PIECES.indexOf(p.type) + (mine ? 0 : 6)] = 1;
-    }),
-  );
+    });
+  });
   return tokens;
 }
 
@@ -66,6 +66,9 @@ export async function maiaMoves(run: MaiaRunner, chess: Chess, eloSelf: number, 
 
 export function sample(moves: MaiaMove[], rand: () => number = Math.random): MaiaMove {
   let r = rand();
-  for (const m of moves) if ((r -= m.p) <= 0) return m;
+  for (const m of moves) {
+    r -= m.p;
+    if (r <= 0) return m;
+  }
   return moves[0];
 }

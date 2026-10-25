@@ -192,7 +192,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
   }
 
   function markCurrent(scroll = true) {
-    els.moves.querySelectorAll('.mv[aria-current]').forEach((b) => b.removeAttribute('aria-current'));
+    els.moves.querySelectorAll('.mv[aria-current]').forEach((b) => { b.removeAttribute('aria-current'); });
     const now = cursor > 0 ? els.moves.querySelector<HTMLElement>(`.mv[data-ply="${cursor - 1}"]`) : null;
     now?.setAttribute('aria-current', 'step');
     if (scroll) now?.scrollIntoView({ block: 'nearest' });
@@ -253,7 +253,8 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
   // ---- analysis --------------------------------------------------------------------------------
   async function run() {
     ctl?.abort();
-    const mine = (ctl = new AbortController());
+    const mine = new AbortController();
+    ctl = mine;
     checks = [];
     status = 'starting';
     renderProg(); renderLesson(); renderMoves();
@@ -263,7 +264,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
       status = 'running';
       await analyze(sans, walk, sf.engine, {
         signal: mine.signal,
-        onProgress: (done, t, check) => {
+        onProgress: (_done, t, check) => {
           if (mine !== ctl) return;
           total = t;
           if (check) checks.push(check);

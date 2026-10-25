@@ -11,6 +11,7 @@
     "prebuild": "node scripts/assets.mjs",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
+    "lint": "biome lint --error-on-warnings",
     "deploy:setup": "npx --yes wrangler@4.151.3 pages project create off-book --production-branch main",
     "deploy": "npm run build && npx --yes wrangler@4.151.3 pages deploy dist --project-name off-book --branch preview"
   },
@@ -21,6 +22,7 @@
     "stockfish": "19.0.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@types/node": "24.19.1",
     "typescript": "6.0.3",
     "vite": "8.2.4",

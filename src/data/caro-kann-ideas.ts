@@ -77,7 +77,7 @@ const MOVES: Record<string, string> = {
 const momentKeys = new Map(
   MOMENTS.map(([line, text]) => {
     const c = new Chess();
-    line.split(' ').forEach((m) => c.move(m));
+    line.split(' ').forEach((m) => { c.move(m); });
     return [posKey(c.fen()), text] as const;
   }),
 );
