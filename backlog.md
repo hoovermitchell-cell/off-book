@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: opening** (batch 1, QG + Slav). Rolling polish PR: #6. Next opening: batch 1 (QG + Slav), based on `feat/repertoire-plumbing` (PR #5) until it merges.
+**Next slot: polish.** Rolling polish PR: #6. Next opening: the tier pilot (Intermediate London + Caro-Kann), based on `feat/batch1-qg-slav` (#7) until it merges. Rolling polish PR: #6. Next opening: batch 1 (QG + Slav), based on `feat/repertoire-plumbing` (PR #5) until it merges.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -94,3 +94,4 @@ Brainstorm, 2026-10-25 (loop slot 3). Ranked by how much each strengthens the co
 - Loop: repertoire plumbing (decision 16, step 0), PR #5 on `feat/repertoire-plumbing`, 2026-10-25
 - Loop: polish batch 1 (9 design-audit fixes, two P1), rolling PR #6 on `refine/polish`, 2026-10-25
 - Loop: feature brainstorm, 6 ranked ideas under `## Feature ideas`, 2026-10-25
+- Loop: batch 1, Queen's Gambit + Slav (decision 16), PR #7 on `feat/batch1-qg-slav`, 2026-10-25
