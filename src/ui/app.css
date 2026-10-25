@@ -95,6 +95,8 @@ button, input, select { font: inherit; color: inherit; }
 
 /* Scoresheet */
 .scoresheet { min-height: calc(3 * var(--rule-height)); max-height: calc(10 * var(--rule-height)); overflow-y: auto; }
+/* The drill's is fixed, so the controls below never move as the game grows. */
+#scoresheet { height: calc(3 * var(--rule-height)); }
 .moves {
   list-style: none; margin: 0; padding: 0;
   font: var(--text-md) / var(--rule-height) var(--font-notation);
@@ -137,6 +139,7 @@ button, input, select { font: inherit; color: inherit; }
   color: var(--mark-good); border: 2px solid currentColor; border-radius: var(--radius);
   padding: 2px var(--space-2); transform: rotate(-4deg); white-space: nowrap;
 }
+.line-row.current .badge-level { color: var(--ink); } /* mark-good on the highlighter is 4.3:1 */
 .badge-level.stamp { animation: stamp var(--dur-stamp) var(--ease-stamp); }
 @keyframes stamp { from { transform: rotate(-4deg) scale(1.6); opacity: 0; } to { transform: rotate(-4deg) scale(1); opacity: 1; } }
 
@@ -170,6 +173,7 @@ button[hidden] { display: none; }
 .import h2, .lesson h3 { margin: 0; font-size: var(--text-xl); line-height: 1.25; }
 .import h2:focus { outline: none; }
 .import p { margin: 0; }
+#im-start:not([hidden]), #im-list:not([hidden]), #im-confirm:not([hidden]) { display: grid; gap: var(--space-3); }
 .import input[type="text"] { width: 22ch; font-family: var(--font-ui); }
 .import [hidden] { display: none; }
 .seg button[aria-pressed="true"] { box-shadow: inset 0 -3px 0 var(--pen); font-weight: 700; }
@@ -206,7 +210,7 @@ textarea {
 .rv-moves li { grid-template-columns: 4ch 1fr 1fr; }
 .rv-moves .mv {
   min-height: var(--rule-height); padding: 0 2px; border: 0; border-radius: 0; background: transparent;
-  color: var(--ink); font: inherit; font-weight: 400; text-align: left;
+  width: 100%; color: var(--ink); font: inherit; font-weight: 400; text-align: left;
 }
 .rv-moves .mv[aria-current="step"] { box-shadow: inset 0 0 0 2px var(--ink); }
 .rv-moves .prep-ends-row { display: flex; align-items: center; gap: var(--space-2); grid-template-columns: none; font: var(--text-md) / var(--rule-height) var(--font-hand); color: var(--pen); }

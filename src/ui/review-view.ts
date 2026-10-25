@@ -57,6 +57,7 @@ export function mountReview(root: HTMLElement): { open(game: ImportedGame): void
     importEl.hidden = true;
     screen.hidden = false;
     teardown = review(screen, game, leave, () => !!screen.closest('[hidden]'));
+    screen.querySelector<HTMLElement>('#rv-now')?.focus();
   }
 
   return { open: openGame };
@@ -87,7 +88,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
   host.innerHTML = `
     <main class="review">
       <section class="play" aria-label="Game review">
-        <p class="now" id="rv-now"></p>
+        <p class="now" id="rv-now" tabindex="-1"></p>
         <div class="board" id="rv-board"></div>
         <div class="under">
           <p class="fb" id="rv-step" role="status"></p>
@@ -127,8 +128,8 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
     highlight: { lastMove: true, check: true },
     drawable: {
       brushes: {
-        prep: { key: 'ob-prep', color: token('--mark-good'), opacity: 0.85, lineWidth: 12 },
-        better: { key: 'ob-better', color: token('--mark-mistake'), opacity: 0.85, lineWidth: 12 },
+        prep: { key: 'ob-rv-prep', color: token('--mark-good'), opacity: 0.85, lineWidth: 12 },
+        better: { key: 'ob-rv-better', color: token('--mark-mistake'), opacity: 0.85, lineWidth: 12 },
       } as Partial<DrawBrushes> as DrawBrushes,
     },
   });

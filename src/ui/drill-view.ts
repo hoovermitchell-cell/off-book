@@ -341,6 +341,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         break;
       case 'judging':
         badge = null;
+        els.verdict.hidden = true; // it described the last move; the next one is being judged
         setNow('Checking with Stockfish…');
         sync();
         break;
@@ -381,6 +382,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
       case 'opponent-move':
         know = e.staged && current ? { kind: 'staged', san: e.san, ply, line: current.name } : { kind: 'maia', san: e.san, ply, top: e.top, rating: e.rating, p: e.p };
         setNow(s.offBook ? 'Your move. You\'re off book: play it out.' : 'Your move. Stay in your prep.', `${opp()} played ${label(ply, e.san)}.`);
+        if (badge && lastTo() === badge.sq) badge = null; // a capture there would leave the badge on their piece
         sync([]);
         break;
       case 'off-book':
@@ -396,7 +398,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         setVerdict(m.g, m.cls, `${label(ply, e.played)}. ${m.word}. ${label(ply, e.better)} was better.`, `${drop(e.loss)} lower`);
         know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${drop(e.loss)} lower than its choice, ${e.better}. A drop of 1.0 or more counts as a mistake; 3.0 or more as a blunder.`, depth: e.depth, nodes: e.nodes };
         setNow(`${opp()} is thinking…`);
-        sync([{ orig: e.betterUci.slice(0, 2) as Key, dest: e.betterUci.slice(2, 4) as Key, brush: 'better' }]);
+        sync(sparring ? [] : [{ orig: e.betterUci.slice(0, 2) as Key, dest: e.betterUci.slice(2, 4) as Key, brush: 'better' }]);
         break;
       }
       case 'engine-error':
