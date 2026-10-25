@@ -17,7 +17,9 @@ First, each tick: check open loop PRs' CI and fix any red ones.
   Full autonomy: write the coverage matrix yourself into the plan doc and keep
   going; Mitch reviews the texts and matrix at the PR. A step too big for one
   iteration keeps the pointer on "opening" with a note on where it stopped. Own
-  branch and PR per step.
+  branch and PR per step. Engine check: re-test a trailing move at about 3 s
+  before pinning (400 ms is noisy at ±60cp), and regenerate with `KEEP=1` so a
+  pin doesn't re-roll the rest of the tree (batch 1 took six rounds without).
 - **Polish.** Run the app, find the most valuable rough edge (or take one from
   `## Polish ideas`). Small (a few lines, no behaviour change worth a review):
   commit to the rolling branch `refine/polish`, one PR kept open. Larger: its own
