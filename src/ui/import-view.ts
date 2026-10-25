@@ -4,6 +4,7 @@ import { OPENINGS } from '../data/openings';
 import { detectPrep, parsePgn, plyLabel, type GameSource, type ImportedGame } from '../import/pgn';
 import { loadRecent, saveRecent } from '../import/recent';
 import { fetchChessCom, fetchLichess, ImportError } from '../import/sources';
+import { mountBoardEntry } from './board-entry';
 
 const SITES: Record<GameSource, string> = { lichess: 'Lichess', chesscom: 'Chess.com', paste: 'pasted PGN', spar: 'sparring game' };
 const SIDE = { w: 'White', b: 'Black' } as const;
@@ -22,6 +23,7 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
         <p class="soft">Bring a game you played in your London as White or your Caro-Kann as Black. Off Book finds where your prep ended, who left it first, and whether leaving cost you anything. The only request that leaves this browser is the one to Lichess or Chess.com that you start.</p>
         <div class="seg row" role="group" aria-label="Where is the game from?">
           ${(['lichess', 'chesscom', 'paste'] as const).map((s) => `<button type="button" class="quiet" data-src="${s}">${s === 'paste' ? 'Paste a PGN' : SITES[s]}</button>`).join('')}
+          <button type="button" class="quiet" id="im-board-go">Enter on a board</button>
         </div>
         <form class="row" id="im-user">
           <label>Username <input type="text" id="im-name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="30"></label>
@@ -37,10 +39,11 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
       </div>
       <div id="im-list" hidden></div>
       <div id="im-confirm" hidden></div>
+      <div id="im-board" hidden></div>
     </section>`;
 
   const $ = <T extends HTMLElement>(id: string) => root.querySelector<T>(`#${id}`)!;
-  const els = { start: $('im-start'), list: $('im-list'), confirm: $('im-confirm'), msg: $('im-msg'), recent: $('im-recent'), name: $<HTMLInputElement>('im-name'), go: $<HTMLButtonElement>('im-go'), pgn: $<HTMLTextAreaElement>('im-pgn'), user: $<HTMLFormElement>('im-user'), paste: $<HTMLFormElement>('im-paste') };
+  const els = { start: $('im-start'), list: $('im-list'), confirm: $('im-confirm'), board: $('im-board'), msg: $('im-msg'), recent: $('im-recent'), name: $<HTMLInputElement>('im-name'), go: $<HTMLButtonElement>('im-go'), pgn: $<HTMLTextAreaElement>('im-pgn'), user: $<HTMLFormElement>('im-user'), paste: $<HTMLFormElement>('im-paste') };
   const sourceButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-src]')];
 
   let source: GameSource = 'lichess';
@@ -51,12 +54,16 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
   let side: 'w' | 'b' = 'w'; // the side chosen on the confirm step
   let skipped = ''; // why some pasted games were left out
 
-  function step(which: 'start' | 'list' | 'confirm') {
+  function step(which: 'start' | 'list' | 'confirm' | 'board') {
     els.start.hidden = which !== 'start';
     els.list.hidden = which !== 'list';
     els.confirm.hidden = which !== 'confirm';
+    els.board.hidden = which !== 'board';
     (root.querySelector<HTMLElement>(`#im-${which} h2`))?.focus();
   }
+
+  // A game entered on a board goes to the confirm step as a pasted single game would.
+  const entry = mountBoardEntry(els.board, (game) => { games = [game]; renderConfirm(game); }, () => step('start'));
 
   function setSource(s: GameSource) {
     source = s;
@@ -129,6 +136,7 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
   }
 
   // ---- events ----------------------------------------------------------------------------------
+  $('im-board-go').addEventListener('click', () => { step('board'); entry.open(true); });
   for (const b of sourceButtons) b.addEventListener('click', () => setSource(b.dataset.src as GameSource));
 
   els.user.addEventListener('submit', async (ev) => {
@@ -183,7 +191,11 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
       root.querySelector<HTMLElement>(`[data-side="${side}"]`)!.focus();
     }
     if (id === 'im-yes' && picked) onReview({ ...picked, side, ...prepFor(picked, side) });
-    if (id === 'im-no') { if (games.length > 1) renderList(); else step('start'); }
+    if (id === 'im-no') {
+      if (picked?.id.startsWith('board-')) { step('board'); entry.open(false); } // back to fix the moves, not to start over
+      else if (games.length > 1) renderList();
+      else step('start');
+    }
   });
 
   setSource('lichess');

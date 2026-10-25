@@ -1,6 +1,6 @@
 // PGN reading for game import (decision 1b). Pure: no DOM, no network.
 // Own tokenizer instead of chess.js loadPgn so a bad move can be reported by move number.
-import { Chess } from 'chess.js';
+import { Chess, type Move } from 'chess.js';
 import { OPENINGS } from '../data/openings';
 import { walkPrep } from '../review/review';
 
@@ -159,4 +159,24 @@ export function parsePgn(text: string, source: GameSource, idPrefix = source, st
     }
   }
   return out;
+}
+
+/** One move of a board entry: a piece dragged or clicked (`from`, `to`) or typed text (SAN, or from-to like e2e4).
+ *  Null when it is not legal. A pawn reaching the last rank queens, typed or not, unless the typed text names a piece.
+ *  ponytail: promotion auto-queens; add a picker if a game ever needs one (a typed "e8=N" already works). */
+export function boardMove(chess: Chess, move: string | { from: string; to: string }): Move | null {
+  try {
+    if (typeof move !== 'string') return chess.move({ ...move, promotion: 'q' });
+    const m = new Chess(chess.fen()).move(move); // "e7e8" alone would come out as a knight, so read the squares and decide here
+    return chess.move({ from: m.from, to: m.to, promotion: /[qrbn][+#]?$/i.test(move) ? m.promotion : 'q' });
+  } catch {
+    return null;
+  }
+}
+
+/** A game entered on a board (decision 1b), read exactly as a pasted single game with no tag lines would be:
+ *  the student's side is asked at the confirm step. `sans` are the moves already played legally on a board. */
+export function boardGame(sans: string[], result: string, id: string): ImportedGame {
+  const moves = sans.map((san, i) => (i % 2 ? san : `${i / 2 + 1}. ${san}`)).join(' ');
+  return parseGame(`${moves} ${result}`, 'paste', id);
 }

@@ -1,5 +1,6 @@
+import { Chess } from 'chess.js';
 import { describe, expect, it, vi } from 'vitest';
-import { detectPrep, guessSide, parseGame, parsePgn, PgnError, splitPgn } from './pgn';
+import { boardGame, boardMove, detectPrep, guessSide, parseGame, parsePgn, PgnError, splitPgn } from './pgn';
 import { loadRecent, RECENT_KEY, saveRecent, type RecentImport } from './recent';
 import { fetchChessCom, fetchLichess, ImportError, validateUsername } from './sources';
 
@@ -280,5 +281,46 @@ describe('recent games store', () => {
     expect(loadRecent({ getItem: () => { throw new Error('blocked'); } })).toBeNull();
     expect(loadRecent({ getItem: () => '{not json' })).toBeNull();
     expect(loadRecent({ getItem: () => JSON.stringify({ label: 'x', at: 1, games: [{ white: 1 }] }) })).toBeNull();
+  });
+});
+
+describe('board entry', () => {
+  /** Plays `moves` (typed text) on a fresh board. */
+  const entered = (moves: string[]) => {
+    const chess = new Chess();
+    for (const m of moves) expect(boardMove(chess, m)).not.toBeNull();
+    return chess;
+  };
+
+  it('builds the game a pasted PGN of the same moves would', () => {
+    const chess = new Chess();
+    expect(boardMove(chess, { from: 'd2', to: 'd4' })?.san).toBe('d4');
+    for (const m of ['d5', 'Bf4', 'Nf6', 'e3', 'e6', 'Bd3']) expect(boardMove(chess, m)).not.toBeNull();
+    const g = boardGame(chess.history(), '*', 'board-1');
+    const pasted = parseGame('1.d4 d5 2.Bf4 Nf6 3.e3 e6 4.Bd3', 'paste', 'board-1');
+    expect(g).toEqual(pasted);
+    expect(g).toMatchObject({ source: 'paste', white: 'White', black: 'Black', date: '', result: '*', side: 'w', prep: 'london', prepFrom: 'book' });
+  });
+
+  it('carries the result through', () => {
+    const sans = entered(['d4', 'd5']).history();
+    expect(['1-0', '0-1', '1/2-1/2', '*'].map((r) => boardGame(sans, r, 'x').result)).toEqual(['1-0', '0-1', '1/2-1/2', '*']);
+  });
+
+  it('refuses an illegal move and leaves the game as it was', () => {
+    const chess = entered(['d4']);
+    expect(boardMove(chess, 'Nf3')).toBeNull(); // Black is to move
+    expect(boardMove(chess, { from: 'a7', to: 'a3' })).toBeNull();
+    expect(chess.history()).toEqual(['d4']);
+  });
+
+  it('queens a promotion, however it is entered, unless the text names a piece', () => {
+    const fen = '8/4P3/8/8/8/8/k6K/8 w - - 0 1';
+    const play = (m: Parameters<typeof boardMove>[1]) => boardMove(new Chess(fen), m)?.san;
+    expect([play({ from: 'e7', to: 'e8' }), play('e7e8'), play('e8=Q')]).toEqual(['e8=Q', 'e8=Q', 'e8=Q']);
+    expect(play('e8=N')).toBe('e8=N');
+    const chess = new Chess(fen);
+    boardMove(chess, { from: 'e7', to: 'e8' });
+    expect(chess.get('e8')).toMatchObject({ type: 'q', color: 'w' });
   });
 });
