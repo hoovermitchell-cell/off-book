@@ -12,7 +12,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
-- Design the three-stage levelling from decision 14 (main line, alternatives, real matches)
+- Build the levelling from decision 14c (per-move ladder, staged-line unlocks, Proven from real games, per-line status UI). Needs the staged-lines list reviewed first (`docs/review/staged-lines.md`)
 - Define this project's "done" gate beyond green CI, if any
 - Low priority, since the app is for a talk, not a rollout (Mitch, 2026-10-23): Chromebook load time and engine speed; questions for the school about devices and accounts
 
