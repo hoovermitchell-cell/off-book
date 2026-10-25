@@ -24,7 +24,7 @@ describe('openings', () => {
 
   it.each(OPENINGS)('$id: the typed-move example is legal at the first student position', (o) => {
     const chess = new Chess();
-    o.openingMoves.forEach((san) => chess.move(san));
+    o.openingMoves.forEach((san) => { chess.move(san); });
     expect(() => chess.move(o.example[0])).not.toThrow();
     expect(o.heading).toContain(o.side === 'w' ? 'White' : 'Black');
   });

@@ -154,7 +154,7 @@ export function createDrill(deps: DrillDeps): Drill {
   // A wrong prep move is on the board while Stockfish judges it; resign() must take it back.
   let pendingMiss = false;
 
-  const emit = (e: DrillEvent) => listeners.forEach((l) => l(e));
+  const emit = (e: DrillEvent) => listeners.forEach((l) => { l(e); });
   const isOver = () => phase === 'over';
 
   function getState(): DrillState {
@@ -307,7 +307,7 @@ export function createDrill(deps: DrillDeps): Drill {
 
   async function runPlay(move: StudentMove, myRound: number): Promise<boolean> {
     const before = chess.fen();
-    let played;
+    let played: ReturnType<Chess['move']>;
     try {
       played = chess.move({ from: move.from, to: move.to, promotion: move.promotion ?? 'q' });
     } catch {

@@ -132,7 +132,7 @@ export function mountDrill(root: HTMLElement) {
     ground.setAutoShapes(b ? [...arrows, b] : arrows);
   }
   /** Destination square of the last move on the board, for the badge. */
-  const lastTo = () => { const c = new Chess(); drill.getState().history.forEach((m) => c.move(m)); return c.history({ verbose: true }).at(-1)?.to as Key; };
+  const lastTo = () => { const c = new Chess(); drill.getState().history.forEach((m) => { c.move(m); }); return c.history({ verbose: true }).at(-1)?.to as Key; };
   let know: { kind: 'maia'; san: string; ply: number; top: TopMove[]; rating: number; p: number }
     | { kind: 'staged'; san: string; ply: number; line: string }
     | { kind: 'stockfish'; text: string; depth?: number; nodes?: number } | null = null;
@@ -278,7 +278,7 @@ export function mountDrill(root: HTMLElement) {
 
   function sync(shapes?: DrawShape[]) {
     const s = drill.getState();
-    const c = new Chess(); s.history.forEach((m) => c.move(m));
+    const c = new Chess(); s.history.forEach((m) => { c.move(m); });
     const verbose = c.history({ verbose: true });
     const last = verbose.at(-1);
     ground.set({
@@ -301,7 +301,7 @@ export function mountDrill(root: HTMLElement) {
     // Announce new moves for screen readers.
     if (verbose.length < announced) announced = 0;
     const fresh = verbose.slice(announced).map(describe);
-    if (fresh.length) els.announce.textContent = fresh.join('. ') + '.';
+    if (fresh.length) els.announce.textContent = `${fresh.join('. ')}.`;
     announced = verbose.length;
     const over = s.phase === 'over';
     els.resign.hidden = over;

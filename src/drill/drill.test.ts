@@ -308,7 +308,7 @@ describe('drill: game end', () => {
 describe('drill: Black student', () => {
   const keyAfter = (...sans: string[]) => {
     const c = new Chess();
-    sans.forEach((san) => c.move(san));
+    sans.forEach((san) => { c.move(san); });
     return posKey(c.fen());
   };
   const afterE4 = keyAfter('e4');

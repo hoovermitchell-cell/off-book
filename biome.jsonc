@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    // spike/, dist/ and public/ sit outside these globs; the *-auto.ts files are generated.
+    "includes": ["src/**", "scripts/**", "!src/data/*-auto.ts"]
+  },
+  // Lint only: turning the formatter on would reformat the whole repo.
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        // `!` marks DOM lookups of markup the view just rendered and Map gets of known keys; strict tsc already polices the rest.
+        "noNonNullAssertion": "off",
+        // app.css puts scoped overrides (.setup label) before base element rules on purpose; specificity, not order, decides them.
+        "noDescendingSpecificity": "off"
+      }
+    }
+  }
+}

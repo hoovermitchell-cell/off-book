@@ -60,7 +60,7 @@ describe('maiaMoves', () => {
   });
   it('passes the ratings to the runner', async () => {
     const seen: number[] = [];
-    await maiaMoves(async (_t, a, b) => (seen.push(a, b), new Float32Array(4352)), new Chess(), 900, 1300);
+    await maiaMoves(async (_t, a, b) => { seen.push(a, b); return new Float32Array(4352); }, new Chess(), 900, 1300);
     expect(seen).toEqual([900, 1300]);
   });
 });
