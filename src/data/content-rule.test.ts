@@ -9,8 +9,12 @@ import { buildTree as londonTree } from './london';
 import { AUTO as londonAuto } from './london-auto';
 import { OPENINGS } from './openings';
 import type { PrepMove, PrepTree } from './prep';
+import { buildTree as qgdTree } from './qgd';
+import { AUTO as qgdAuto } from './qgd-auto';
 import { buildTree as queensGambitTree } from './queens-gambit';
 import { AUTO as queensGambitAuto } from './queens-gambit-auto';
+import { buildTree as scotchTree } from './scotch';
+import { AUTO as scotchAuto } from './scotch-auto';
 import { buildTree as slavTree } from './slav';
 import { AUTO as slavAuto } from './slav-auto';
 
@@ -24,6 +28,8 @@ const SOURCES: Record<string, { pinned: PrepTree; auto: Record<string, PrepMove>
   slav: { pinned: slavTree({ auto: false }), auto: slavAuto },
   italian: { pinned: italianTree({ auto: false }), auto: italianAuto },
   french: { pinned: frenchTree({ auto: false }), auto: frenchAuto },
+  scotch: { pinned: scotchTree({ auto: false }), auto: scotchAuto },
+  qgd: { pinned: qgdTree({ auto: false }), auto: qgdAuto },
 };
 
 describe('content rule', () => {

@@ -129,6 +129,29 @@ describe('opening and side', () => {
     expect(detectPrep(sans('1. e4 c6 2. d4 d5'), 'b')).toEqual({ prep: 'caro-kann', prepFrom: 'book' }); // the French answers 1.e4 too, but ...c6 is not its move
   });
 
+  it("detects the Scotch for White and the Queen's Gambit Declined for Black", () => {
+    expect(detectPrep(sans('1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Bc5'), 'w')).toEqual({ prep: 'scotch', prepFrom: 'book' });
+    expect(detectPrep(sans('1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 Nbd7'), 'b')).toEqual({ prep: 'qgd', prepFrom: 'book' });
+    expect(detectPrep(sans('1. d4 d5 2. c4 e6 3. Nc3 Nf6'), 'w')).toEqual({ prep: 'queens-gambit', prepFrom: 'book' }); // the same moves are the QG's for White
+    expect(parsePgn('1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Bc5', 'paste').games[0]).toMatchObject({ side: 'w', prep: 'scotch', prepFrom: 'book' });
+  });
+
+  it('a Slav game still reads as the Slav, and an Italian game as the Italian', () => {
+    expect(detectPrep(sans('1. d4 d5 2. c4 c6 3. Nf3 Nf6 4. Nc3 dxc4'), 'b')).toEqual({ prep: 'slav', prepFrom: 'book' });
+    expect(detectPrep(sans('1. d4 d5 2. c4 e6 3. Nc3 Nf6'), 'b').prep).toBe('qgd'); // ...e6 is the QGD's move where the Slav plays ...c6
+    expect(detectPrep(sans('1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d3'), 'w')).toEqual({ prep: 'italian', prepFrom: 'book' });
+    expect(detectPrep(sans('1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4'), 'w').prep).toBe('scotch'); // 3.d4 is not the Italian's move
+  });
+
+  it('a game that stays on a route the Italian and the Scotch share is a tie, and the Italian is named first', () => {
+    // The Scotch reuses the Italian's Philidor, Petroff and starter routes move for move (docs/review/scotch-qgd-lines.md),
+    // so a game on one of them fits both equally. The opening named is still the Italian, as before; what changed is that
+    // the review now asks, and a tie earns no Proven until the student picks.
+    expect(detectPrep(sans('1. e4 e5 2. Nf3 d6 3. d4 exd4 4. Nxd4 Nf6 5. Nc3 Be7'), 'w')).toEqual({ prep: 'italian', prepFrom: 'tie' });
+    expect(detectPrep(sans('1. e4 e5 2. Nf3 Nf6 3. Nxe5 Nxe4 4. Qe2'), 'w')).toEqual({ prep: 'italian', prepFrom: 'tie' });
+    expect(detectPrep(sans('1. e4 e5 2. Nf3 Nc6'), 'w')).toEqual({ prep: 'italian', prepFrom: 'tie' }); // both answer 2...Nc6 with a different third move
+  });
+
   it('a paste has no username: the side is guessed, and White when nothing is recognised', () => {
     expect(parsePgn('1. e4 c6 2. d4 d5', 'paste').games[0]).toMatchObject({ side: 'b', prep: 'caro-kann' });
     expect(parsePgn('1. d4 d5 2. Bf4 Nf6', 'paste').games[0]).toMatchObject({ side: 'w', prep: 'london' });
@@ -140,7 +163,7 @@ describe('opening and side', () => {
     // The student as White plays 1.e4 and meets ...c6: still White, and no prep to show.
     expect(parseGame(pgn('Student1', 'rival', '1. e4 c6 2. d4 d5'), 'lichess', 'x', 'student1')).toMatchObject({ side: 'w', prep: null });
     expect(parseGame(pgn('rival', 'student1', '1. e4 c6 2. d4 d5'), 'lichess', 'x', 'STUDENT1')).toMatchObject({ side: 'b', prep: 'caro-kann' });
-    expect(parseGame(pgn('rival', 'Student1', '1. d4 d5 2. Bf4 Nf6'), 'chesscom', 'x', 'student1')).toMatchObject({ side: 'b', prep: 'slav' }); // Black's ...d5 and ...Nf6 against 2.Bf4 are the Slav's answer to the London
+    expect(parseGame(pgn('rival', 'Student1', '1. d4 d5 2. Bf4 Nf6'), 'chesscom', 'x', 'student1')).toMatchObject({ side: 'b', prep: 'slav', prepFrom: 'tie' }); // ...d5 and ...Nf6 against 2.Bf4 are the Slav's answer to the London and the QGD's, so it is a tie and the Slav is named first
     expect(parseGame(pgn('Student1', 'rival', '1. d4 d5 2. Bf4 Nf6'), 'chesscom', 'x', 'student1')).toMatchObject({ side: 'w', prep: 'london' });
   });
 });
