@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: opening**. Rolling polish PR: #6. Next opening: **Advanced tiers for the London and Caro-Kann** (Mitch, 2026-10-26: "Queue Advanced tiers for the London and Caro-Kann as the next opening slot"), per decision 16's tier rules and the Intermediate pilot (#9), based on `feat/batch3-scotch-qgd` (#14) until the stack merges. After that, no opening is queued: stop the loop and ask when the pointer reaches opening again.
+**Next slot: polish**. Rolling polish PR: #6. Next opening: **none queued.** Advanced London + Caro-Kann (#16) was the last one Mitch queued. If the pointer reaches opening, stop the loop and ask.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -75,6 +75,7 @@ Feature slots build from the top.
 
 - Repertoire plumbing and batches: now run by the refinement loop above
 - Mitch: Italian/Scotch detection ties (#14): 303 of 445 Italian book paths now fit the Scotch equally and earn no Proven until the student picks. Options in `docs/review/scotch-qgd-lines.md`; Claude leans to breaking ties toward the opening selected in the drill
+- Mitch: prep holes found by the Advanced tier (#16): London 1.d4 c6 (1.6% of Maia games) and 1.d4 b6 (1.5%); Caro-Kann 2.Qf3 (2.4%), 2.e5 (1.9%), 2.f4 (1.6%). Setups rather than tactics, so likely Intermediate lines
 - Mitch: the London's pinned 4.Qc1 against 1.d4 Nf6 2.Bf4 c5 3.e3 Qb6 loses d4 (4...cxd4 5.exd4 Qxd4); Stockfish prefers 4.Nc3 by ~71cp at 3 s. Found by the tier pilot (#9); an Intro change, so it waits for you
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
@@ -110,3 +111,4 @@ Feature slots build from the top.
 - Loop: batch 3, Scotch + Queen's Gambit Declined with idea texts (decision 16), PR #14 on `feat/batch3-scotch-qgd`, 2026-10-26
 - Loop: polish, each drill move and review step announced once to screen readers, on rolling PR #6, 2026-10-26
 - Loop: feature, talk demo backup and a game that proves a line live (decision 14c), PR #15 on `feat/demo-backup`, 2026-10-26
+- Loop: Advanced tier, 4 lines each for the London and Caro-Kann, no existing prep move changed (decision 16), PR #16 on `feat/advanced-london-caro`, 2026-10-26
