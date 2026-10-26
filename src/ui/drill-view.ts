@@ -5,7 +5,7 @@ import type { Api } from 'chessground/api';
 import type { DrawBrushes, DrawShape } from 'chessground/draw';
 import type { Key } from 'chessground/types';
 import { Chess, type Move } from 'chess.js';
-import { createDrill, PLAYABLE, type DrillEvent, type TopMove } from '../drill/drill';
+import { createDrill, PLAYABLE, readTypedMove, type DrillEvent, type TopMove } from '../drill/drill';
 import { DEFAULT_OPENING, OPENINGS, type Stage } from '../data/openings';
 import { maiaMoves } from '../chess/maia';
 import { createMaiaRunner } from '../chess/maia-ort';
@@ -87,7 +87,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
             <button type="button" id="new-game" hidden disabled>New game</button>
           </div>
           <form class="row" id="typed-form">
-            <label>Type a move <input type="text" id="typed" autocomplete="off" spellcheck="false" disabled></label>
+            <label>Type a move <input type="text" id="typed" autocomplete="off" autocapitalize="off" spellcheck="false" disabled></label>
             <button type="submit" class="quiet" disabled>Play</button>
           </form>
           <p class="typed-error" id="typed-error" aria-live="polite"></p>
@@ -450,8 +450,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
     ev.preventDefault();
     const text = els.typed.value.trim();
     if (!text || !drill) return;
-    let m: Move | undefined;
-    try { m = new Chess(drill.getState().fen).move(text); } catch { m = undefined; }
+    const m = readTypedMove(drill.getState().fen, text);
     const teach = drill.getState().teach;
     if (m && teach && m.san !== teach.san) {
       els.typedError.textContent = `This one's new. Play the shown move: ${teach.san}.`;
