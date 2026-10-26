@@ -1,7 +1,7 @@
 // Device-only progress (decision 3). Every read and write is guarded: storage can be blocked or full.
 import { OPENINGS } from './data/openings';
 import { ladderKey } from './data/prep';
-import type { Ladder } from './levels';
+import type { Games, Ladder } from './levels';
 
 export const STORAGE_KEY = 'offbook.v1';
 
@@ -10,9 +10,11 @@ export interface Saved {
   ladder: Ladder;
   /** Staged lines (Stage.id) a clean real game has proven. */
   proven: string[];
+  /** Reviewed real games that count toward a line's battle record, by game key (decisions 5 and 14c). */
+  games: Games;
 }
 
-const empty = (): Saved => ({ ladder: {}, proven: [] });
+const empty = (): Saved => ({ ladder: {}, proven: [], games: {} });
 
 export function safeStorage(): Storage | undefined {
   try {
@@ -66,7 +68,7 @@ function migrate(ladder: Ladder): Ladder {
  *  The first format ({ correct, learned }) carries over: learned moves start the ladder, due now.
  *  Legacy four-field ladder keys are migrated (see migrate). */
 function sanitize(parsed: unknown): Saved {
-  const p = parsed as { ladder?: unknown; proven?: unknown; learned?: unknown } | null;
+  const p = parsed as { ladder?: unknown; proven?: unknown; learned?: unknown; games?: unknown } | null;
   const ladder: Ladder = {};
   if (p?.ladder && typeof p.ladder === 'object') {
     for (const [k, r] of Object.entries(p.ladder as Record<string, { level?: unknown; due?: unknown }>)) {
@@ -77,7 +79,14 @@ function sanitize(parsed: unknown): Saved {
     for (const k of p.learned) if (typeof k === 'string') ladder[k] = { level: 0, due: 0 };
   }
   const proven = Array.isArray(p?.proven) ? p.proven.filter((k): k is string => typeof k === 'string') : [];
-  return { ladder: migrate(ladder), proven };
+  // Older saves and backups have no games: they restore with empty records.
+  const games: Games = {};
+  if (p?.games && typeof p.games === 'object' && !Array.isArray(p.games)) {
+    for (const [k, g] of Object.entries(p.games as Record<string, { stage?: unknown; result?: unknown } | null>)) {
+      if (typeof g?.stage === 'string' && (g.result === 'w' || g.result === 'd' || g.result === 'l')) games[k] = { stage: g.stage, result: g.result };
+    }
+  }
+  return { ladder: migrate(ladder), proven, games };
 }
 
 export function loadSaved(store: Pick<Storage, 'getItem'> | undefined = safeStorage()): Saved {

@@ -13,30 +13,49 @@ describe('storage', () => {
 
   it('round-trips the ladder and proven lines', () => {
     const store = memory();
-    save({ ladder: lad, proven: ['textbook'] }, store);
-    expect(loadSaved(store)).toEqual({ ladder: lad, proven: ['textbook'] });
+    save({ ladder: lad, proven: ['textbook'], games: {} }, store);
+    expect(loadSaved(store)).toEqual({ ladder: lad, proven: ['textbook'], games: {} });
   });
 
   it('carries the first format over: learned moves start the ladder, due now', () => {
     const store = memory();
     store.setItem(STORAGE_KEY, JSON.stringify({ correct: 5, learned: ['a', 'b'] }));
-    expect(loadSaved(store)).toEqual({ ladder: { a: { level: 0, due: 0 }, b: { level: 0, due: 0 } }, proven: [] });
+    expect(loadSaved(store)).toEqual({ ladder: { a: { level: 0, due: 0 }, b: { level: 0, due: 0 } }, proven: [], games: {} });
   });
 
   it('survives junk', () => {
     const store = memory();
     store.setItem(STORAGE_KEY, '{not json');
-    expect(loadSaved(store)).toEqual({ ladder: {}, proven: [] });
+    expect(loadSaved(store)).toEqual({ ladder: {}, proven: [], games: {} });
     store.setItem(STORAGE_KEY, JSON.stringify({ ladder: { a: { level: -1, due: 0 }, b: { level: 1, due: 'x' }, c: { level: 1, due: 5 } }, proven: ['x', 3] }));
-    expect(loadSaved(store)).toEqual({ ladder: { c: { level: 1, due: 5 } }, proven: ['x'] });
+    expect(loadSaved(store)).toEqual({ ladder: { c: { level: 1, due: 5 } }, proven: ['x'], games: {} });
   });
 
   it("updates apply to the latest save, so another tab's progress survives", () => {
     const store = memory();
-    save({ ladder: lad, proven: [] }, store); // another tab wrote this after we loaded
+    save({ ladder: lad, proven: [], games: {} }, store); // another tab wrote this after we loaded
     const { saved, ok } = updateSaved((s) => ({ ...s, proven: [...s.proven, 'textbook'] }), store);
     expect(ok).toBe(true);
-    expect(saved).toEqual({ ladder: lad, proven: ['textbook'] });
+    expect(saved).toEqual({ ladder: lad, proven: ['textbook'], games: {} });
+  });
+
+  it('keeps the battle record, and drops malformed game entries', () => {
+    const store = memory();
+    const good = { stage: 'textbook', result: 'w' };
+    store.setItem(STORAGE_KEY, JSON.stringify({ ladder: lad, proven: [], games: {
+      a: good, b: { stage: 'textbook', result: 'x' }, c: { stage: 7, result: 'l' }, d: null, e: 'w', f: { result: 'd' }, g: { stage: 'nc6-bf5', result: 'd' },
+    } }));
+    expect(loadSaved(store).games).toEqual({ a: good, g: { stage: 'nc6-bf5', result: 'd' } });
+    store.setItem(STORAGE_KEY, JSON.stringify({ ladder: lad, proven: [], games: ['w'] }));
+    expect(loadSaved(store).games).toEqual({});
+    store.setItem(STORAGE_KEY, JSON.stringify({ ladder: lad, proven: [], games: 'nope' }));
+    expect(loadSaved(store).games).toEqual({});
+  });
+
+  it('a save from before the battle record has no games, and loads with empty records', () => {
+    const store = memory();
+    store.setItem(STORAGE_KEY, JSON.stringify({ ladder: lad, proven: ['textbook'] }));
+    expect(loadSaved(store)).toEqual({ ladder: lad, proven: ['textbook'], games: {} });
   });
 
   it('reports when the browser refuses to store progress', () => {
@@ -45,7 +64,7 @@ describe('storage', () => {
   });
 
   describe('backup file', () => {
-    const data = { ladder: lad, proven: ['textbook'] };
+    const data = { ladder: lad, proven: ['textbook'], games: { g: { stage: 'textbook', result: 'w' as const } } };
     const file = (over: object = {}, d: unknown = data) =>
       JSON.stringify({ app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: 'x', data: d, ...over });
     const reason = (text: string) => {
@@ -61,15 +80,20 @@ describe('storage', () => {
 
     it('restores through updateSaved over what was there', () => {
       const store = memory();
-      save({ ladder: { old: { level: 4, due: 0 } }, proven: [] }, store);
+      save({ ladder: { old: { level: 4, due: 0 } }, proven: [], games: {} }, store);
       const r = parseBackup(file());
       if (!r.ok) throw new Error(r.reason);
       updateSaved(() => r.saved, store);
       expect(loadSaved(store)).toEqual(data);
     });
 
+    it('restores a version 3 backup made before the battle record with empty records', () => {
+      const old = file({}, { ladder: lad, proven: ['textbook'] });
+      expect(parseBackup(old)).toEqual({ ok: true, saved: { ladder: lad, proven: ['textbook'], games: {} } });
+    });
+
     it('still restores a version 1 file', () => {
-      expect(parseBackup(file({ version: 1 }, { correct: 12, learned: ['a'] }))).toEqual({ ok: true, saved: { ladder: { a: { level: 0, due: 0 } }, proven: [] } });
+      expect(parseBackup(file({ version: 1 }, { correct: 12, learned: ['a'] }))).toEqual({ ok: true, saved: { ladder: { a: { level: 0, due: 0 } }, proven: [], games: {} } });
     });
 
     it('rejects malformed JSON', () => {
@@ -111,12 +135,12 @@ describe('legacy ladder keys', () => {
 
   it('a version 2 backup restores with exactly its earned rungs under the new keys', () => {
     // 1.h4 is in neither tree, so that rung is dropped rather than guessed at.
-    expect(parseBackup(v2)).toEqual({ ok: true, saved: { ladder: migrated, proven: ['textbook'] } });
+    expect(parseBackup(v2)).toEqual({ ok: true, saved: { ladder: migrated, proven: ['textbook'], games: {} } });
   });
 
   it('the first format (learned list) migrates too', () => {
     const v1 = JSON.stringify({ app: BACKUP_APP, version: 1, exportedAt: 'x', data: { correct: 3, learned: [at(), at('h4')] } });
-    expect(parseBackup(v1)).toEqual({ ok: true, saved: { ladder: { [`${at()} d2d4`]: { level: 0, due: 0 } }, proven: [] } });
+    expect(parseBackup(v1)).toEqual({ ok: true, saved: { ladder: { [`${at()} d2d4`]: { level: 0, due: 0 } }, proven: [], games: {} } });
   });
 
   it('a saved ladder with old keys migrates on load, and migrating twice changes nothing', () => {

@@ -12,7 +12,7 @@ import { createMaiaRunner } from '../chess/maia-ort';
 import { createStockfish } from '../chess/stockfish-worker';
 import type { ImportedGame } from '../import/pgn';
 import { loadOpening, loadSaved, saveOpening, updateSaved, type Saved } from '../storage';
-import { dueNow, learn, pickStage, review, SECURE, stageViews, type Status } from '../levels';
+import { dueNow, learn, pickStage, recordText, recordWords, records, review, SECURE, stageViews, type Status } from '../levels';
 import prepEndsSvg from '../../design/icons/prep-ends.svg?raw';
 import badgeBook from '../../design/icons/badges/book.svg?raw';
 import badgeGood from '../../design/icons/badges/good.svg?raw';
@@ -238,6 +238,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   function renderLevel() {
     const views = stageViews(opening, saved.ladder, saved.proven);
     const due = dueNow(opening, saved.ladder, saved.proven, Date.now());
+    const battles = records(saved.games);
     const rows = views.map((v) => {
       const svg = v.levels.map((l, i) => {
         let r = '';
@@ -252,9 +253,12 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
       const was = shown.get(v.stage.id);
       const stamp = was !== undefined && was !== v.status ? ' stamp' : '';
       const cls = v.status === 'cleared' || v.status === 'proven' ? `badge-level${stamp}` : `soft${stamp}`;
-      return `<li class="line-row${v.stage === current ? ' current' : ''}">
-        <span class="line-name">${v.stage.name}</span>
-        <span class="rungs" role="img" aria-label="${known} of ${v.levels.length} moves learned, ${secure} secure"><svg width="${v.levels.length * 9}" height="22" viewBox="0 0 ${v.levels.length * 9} 22" aria-hidden="true">${svg}</svg></span>
+      const t = battles[v.stage.id];
+      // A line with no games gets no extra cell, so its row is exactly what it was.
+      const rec = t ? `<span class="record" role="img" aria-label="${recordWords(t)}">${recordText(t)}</span>` : '';
+      return `<li class="line-row${t ? ' has-record' : ''}${v.stage === current ? ' current' : ''}">
+        <span class="line-name" title="${v.stage.name}">${v.stage.name}</span>
+        <span class="rungs" role="img" aria-label="${known} of ${v.levels.length} moves learned, ${secure} secure"><svg width="${v.levels.length * 9}" height="22" viewBox="0 0 ${v.levels.length * 9} 22" aria-hidden="true">${svg}</svg></span>${rec}
         <span class="${cls}">${STATUS[v.status]}</span></li>`;
     }).join('');
     shown = new Map(views.map((v) => [v.stage.id, v.status]));

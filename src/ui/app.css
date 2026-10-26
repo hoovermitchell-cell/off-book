@@ -130,6 +130,9 @@ button, input, select { font: inherit; color: inherit; }
 .line-row.current { background: var(--highlighter); }
 .line-row .line-name { font-family: var(--font-notation); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .line-row .rungs svg { display: block; }
+/* Battle record (decisions 5 and 14c): wins-draws-losses in real games, in notation type. A tally, not a badge. */
+.line-row.has-record { grid-template-columns: 1fr auto auto 5.5rem; }
+.line-row .record { font-family: var(--font-notation); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .line-row > :last-child { justify-self: start; }
 .line-row .soft.stamp { animation: stamp var(--dur-stamp) var(--ease-stamp); display: inline-block; }
 .badge-level {

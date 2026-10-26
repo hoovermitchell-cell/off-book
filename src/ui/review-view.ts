@@ -11,7 +11,7 @@ import { loadRecent, saveRecent } from '../import/recent';
 import { analyze, chooseLesson, walkPrep, type MoveCheck } from '../review/review';
 import { boundaryText, lessonText, pendingText, SCORE_NOTE, stepText, type Text } from '../review/templates';
 import { createStockfish, type StockfishHandle } from '../chess/stockfish-worker';
-import { provenStage } from '../levels';
+import { battleEntry, gameKey, provenStage, records, recordText, setGame, type GameRecord, type Tally } from '../levels';
 import { updateSaved } from '../storage';
 import { mountImport } from './import-view';
 import prepEndsSvg from '../../design/icons/prep-ends.svg?raw';
@@ -63,16 +63,37 @@ export function mountReview(root: HTMLElement): { open(game: ImportedGame): void
   return { open: openGame };
 }
 
+/** The second line of the Proven note: where the line stands in real games, or why this game isn't in it. */
+function recordNote(line: string, entry: GameRecord | null, tally: Tally | undefined): string {
+  if (!entry) return `<p class="note">This game has no final result, so it doesn't count toward your record.</p>`;
+  return tally ? `<p class="note">Your ${line} line is now ${recordText(tally)} in real games (wins, draws, losses).</p>` : '';
+}
+
 /** Builds the review screen for one game inside `host`. Returns a function that stops everything it started. */
 function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, onReopen: (game: ImportedGame) => void, isHidden: () => boolean): () => void {
   const { sans, side } = game;
   const opening = OPENINGS.find((o) => o.id === game.prep)!; // the import step only opens games with an opening
   const walk = walkPrep(sans, opening);
-  // A clean real game proves the staged line it followed (decision 14c). Recorded once, on opening the review.
-  // A sparring game is not a real game, and a tie between openings is not known to be this one: neither proves anything.
+  // A clean real game proves the staged line it followed (decision 14c) and, once finished, adds to that
+  // line's battle record. Recorded on opening the review. A sparring game is not a real game, and a tie
+  // between openings is not known to be this one: neither proves anything.
   const proven = game.source === 'spar' || game.prepFrom === 'tie' ? undefined : provenStage(sans, opening);
-  const newlyProven = !!proven && updateSaved((s) => (s.proven.includes(proven.id) ? s : { ...s, proven: [...s.proven, proven.id] })).ok;
-  if (newlyProven) window.dispatchEvent(new Event('storage')); // the drill reloads its line list on this event
+  const entry = battleEntry(game, opening);
+  let saveOk = false;
+  let tally: Tally | undefined;
+  if (game.source !== 'spar') {
+    // The entry is set, replaced (a game reviewed again, or as another opening) or dropped; Proven only ever grows.
+    const key = gameKey(game);
+    const r = updateSaved((s) => ({
+      ...s,
+      proven: proven && !s.proven.includes(proven.id) ? [...s.proven, proven.id] : s.proven,
+      games: setGame(s.games, key, entry),
+    }));
+    saveOk = r.ok;
+    if (proven) tally = records(r.saved.games)[proven.id];
+    if (saveOk) window.dispatchEvent(new Event('storage')); // the drill reloads its line list on this event
+  }
+  const newlyProven = !!proven && saveOk;
 
   // One replay of the game: the position, last move and check state after every ply.
   const replay = new Chess();
@@ -102,7 +123,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, onRe
         <div class="board" id="rv-board"></div>
         <div class="under">
           <p class="fb" id="rv-step" role="status"></p>
-          ${proven ? `<p class="note">This game proves your ${proven.name} line: you played your prep right until it ended or your opponent left it.${newlyProven ? '' : " This browser couldn't save that."}</p>` : ''}
+          ${proven ? `<p class="note">This game proves your ${proven.name} line: you played your prep right until it ended or your opponent left it.${newlyProven ? '' : " This browser couldn't save that."}</p>${recordNote(proven.name, entry, saveOk ? tally : undefined)}` : ''}
         </div>
       </section>
       <aside class="rail" aria-label="Lesson, moves and steps">${reviewedAs}
