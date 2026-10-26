@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: polish**. Rolling polish PR: #6. Next opening: **none queued.** Advanced London + Caro-Kann (#16) was the last one Mitch queued. If the pointer reaches opening, stop the loop and ask.
+**Next slot: feature**. Rolling polish PR: #6. Next opening: **none queued.** Advanced London + Caro-Kann (#16) was the last one Mitch queued. If the pointer reaches opening, stop the loop and ask.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -39,6 +39,7 @@ From the design audit of 2026-10-25 (`refine/polish`, first polish slot). Best f
 
 - P2, copy (Mitch): the 6.Nbd2 idea in `london-ideas.ts` says "so the c-pawn can still move to c3" when c3 is already played in the Textbook line
 - P3: drill and review show a slightly different loss for the same move (4.2 vs 4.3). Not rounding: each runs its own 0.3 s Stockfish search. The fix is to carry the drill's verdict into the review of a sparring game, so not a few-line polish
+- P3, phone width: the drill reserves two empty bands (above the board and under the note, about 200px together), which push the typed-move box below the fold at 375px. Low priority while the app is for the talk
 
 ## Feature ideas
 
@@ -112,3 +113,4 @@ Feature slots build from the top.
 - Loop: polish, each drill move and review step announced once to screen readers, on rolling PR #6, 2026-10-26
 - Loop: feature, talk demo backup and a game that proves a line live (decision 14c), PR #15 on `feat/demo-backup`, 2026-10-26
 - Loop: Advanced tier, 4 lines each for the London and Caro-Kann, no existing prep move changed (decision 16), PR #16 on `feat/advanced-london-caro`, 2026-10-26
+- Loop: polish, typed moves accept a phone's capital first letter (D4) and a move number (1.d4), on rolling PR #6, 2026-10-26
