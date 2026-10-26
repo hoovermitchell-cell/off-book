@@ -190,10 +190,11 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   });
 
   // ---- rendering -------------------------------------------------------------------------------
-  function setNow(text: string, sub = '') {
+  /** `quietSub` hides the sub line from screen readers when #announce already reads the same move aloud. */
+  function setNow(text: string, sub = '', quietSub = false) {
     els.now.innerHTML = '';
     els.now.append(text);
-    if (sub) { const s = document.createElement('small'); s.textContent = sub; els.now.append(s); }
+    if (sub) { const s = document.createElement('small'); s.textContent = sub; if (quietSub) s.setAttribute('aria-hidden', 'true'); els.now.append(s); }
   }
 
   function setVerdict(g: string, cls: string, text: string, num: string) {
@@ -384,7 +385,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
       }
       case 'opponent-move':
         know = e.staged && current ? { kind: 'staged', san: e.san, ply, line: current.name } : { kind: 'maia', san: e.san, ply, top: e.top, rating: e.rating, p: e.p };
-        setNow(s.offBook ? 'Your move. Off book: play it out.' : 'Your move. Stay in your prep.', `${opp()} played ${label(ply, e.san)}.`);
+        setNow(s.offBook ? 'Your move. Off book: play it out.' : 'Your move. Stay in your prep.', `${opp()} played ${label(ply, e.san)}.`, true);
         if (badge && lastTo() === badge.sq) badge = null; // a capture there would leave the badge on their piece
         sync([]);
         break;

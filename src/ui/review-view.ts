@@ -91,7 +91,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
         <p class="now" id="rv-now" tabindex="-1"></p>
         <div class="board" id="rv-board"></div>
         <div class="under">
-          <p class="fb" id="rv-step" role="status"></p>
+          <p class="fb" id="rv-step"></p>
           ${proven ? `<p class="note">This game proves your ${proven.name} line: you played your prep right until it ended or your opponent left it.${newlyProven ? '' : " This browser couldn't save that."}</p>` : ''}
         </div>
       </section>
