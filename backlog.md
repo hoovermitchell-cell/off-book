@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: opening**. Rolling polish PR: #6. Next opening: batch 3 (decision 16's order), based on `feat/batch2-italian-french` (#12) until it merges.
+**Next slot: polish**. Rolling polish PR: #6. Next opening: **none queued.** Batch 3 (#14) finished decision 16's order; the plan's next steps (Advanced tiers, or the Sicilian + King's Indian) need Mitch's pick. If the pointer reaches opening first, stop the loop and ask.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -79,6 +79,7 @@ Feature slots build from the top.
 ## Needs shaping
 
 - Repertoire plumbing and batches: now run by the refinement loop above
+- Mitch: Italian/Scotch detection ties (#14): 303 of 445 Italian book paths now fit the Scotch equally and earn no Proven until the student picks. Options in `docs/review/scotch-qgd-lines.md`; Claude leans to breaking ties toward the opening selected in the drill
 - Mitch: the London's pinned 4.Qc1 against 1.d4 Nf6 2.Bf4 c5 3.e3 Qb6 loses d4 (4...cxd4 5.exd4 Qxd4); Stockfish prefers 4.Nc3 by ~71cp at 3 s. Found by the tier pilot (#9); an Intro change, so it waits for you
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
@@ -111,3 +112,4 @@ Feature slots build from the top.
 - Loop: batch 2, Italian + French with idea texts (decision 16), PR #12 on `feat/batch2-italian-french`, 2026-10-26
 - Loop: polish, How did it know? keeps Stockfish's verdict after the reply and no longer hides the scoresheet, PR #13 on `fix/know-panel`, 2026-10-26
 - Loop: feature brainstorm top-up, 3 new ideas ranked into `## Feature ideas` (7 total), 2026-10-26
+- Loop: batch 3, Scotch + Queen's Gambit Declined with idea texts (decision 16), PR #14 on `feat/batch3-scotch-qgd`, 2026-10-26
