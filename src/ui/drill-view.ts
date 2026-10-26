@@ -467,14 +467,28 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
     void play(m.from, m.to, m.promotion);
   });
 
+  /** Resigning or switching throws the current game away; ask first, but only once there is a game worth
+   *  keeping. ponytail: native confirm(), accessible and one line; an inline prompt if it feels out of place. */
+  const discardOk = (question: string) => {
+    const s = drill?.getState();
+    return !s || s.phase === 'over' || s.history.length < 4 || confirm(question);
+  };
+  let shownOpening = els.opening.value;
+  let shownMode = els.mode.value;
   els.opening.addEventListener('change', () => {
+    if (!discardOk('Switch openings? The game in progress will be lost.')) { els.opening.value = shownOpening; return; }
+    shownOpening = els.opening.value;
     opening = OPENINGS.find((o) => o.id === els.opening.value) ?? DEFAULT_OPENING;
     saveOpening(opening.id);
     if (!drills) return; // the engines are still loading; they start the picked opening when ready
     drill = drills.get(opening.id)!;
     newGame();
   });
-  els.mode.addEventListener('change', () => { if (drills) newGame(); });
+  els.mode.addEventListener('change', () => {
+    if (!discardOk('Switch mode? The game in progress will be lost.')) { els.mode.value = shownMode; return; }
+    shownMode = els.mode.value;
+    if (drills) newGame();
+  });
   els.reviewGame.addEventListener('click', () => {
     const s = drill.getState();
     const result = s.result === 'draw' ? '1/2-1/2' : (s.result === 'won') === (opening.side === 'w') ? '1-0' : '0-1';
@@ -485,7 +499,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
     });
   });
   els.rating.addEventListener('change', () => drill?.setRating(Number(els.rating.value)));
-  els.resign.addEventListener('click', () => drill?.resign());
+  els.resign.addEventListener('click', () => { if (discardOk('Resign this game?')) drill?.resign(); });
   els.newGame.addEventListener('click', () => { if (!drill) return; newGame(); els.typed.focus(); });
   els.showPrep.addEventListener('click', () => {
     const hint = drill?.revealPrep();
