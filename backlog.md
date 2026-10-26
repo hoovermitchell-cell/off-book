@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: opening** (blocked: none queued, see below). Rolling polish PR: #6. Next opening: **none queued.** Batch 3 (#14) finished decision 16's order; the plan's next steps (Advanced tiers, or the Sicilian + King's Indian) need Mitch's pick. If the pointer reaches opening first, stop the loop and ask.
+**Next slot: opening**. Rolling polish PR: #6. Next opening: **Advanced tiers for the London and Caro-Kann** (Mitch, 2026-10-26: "Queue Advanced tiers for the London and Caro-Kann as the next opening slot"), per decision 16's tier rules and the Intermediate pilot (#9), based on `feat/batch3-scotch-qgd` (#14) until the stack merges. After that, no opening is queued: stop the loop and ask when the pointer reaches opening again.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
