@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: polish**. Rolling polish PR: #6. Next opening: **none queued.** Batch 3 (#14) finished decision 16's order; the plan's next steps (Advanced tiers, or the Sicilian + King's Indian) need Mitch's pick. If the pointer reaches opening first, stop the loop and ask.
+**Next slot: feature**. Rolling polish PR: #6. Next opening: **none queued.** Batch 3 (#14) finished decision 16's order; the plan's next steps (Advanced tiers, or the Sicilian + King's Indian) need Mitch's pick. If the pointer reaches opening first, stop the loop and ask.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -38,8 +38,7 @@ skips `predev`, so copy `public/vendor` and `public/models` in from another one 
 From the design audit of 2026-10-25 (`refine/polish`, first polish slot). Best first.
 
 - P2, copy (Mitch): the 6.Nbd2 idea in `london-ideas.ts` says "so the c-pawn can still move to c3" when c3 is already played in the Textbook line
-- P3: three live regions announce each drill move; the review step line is announced twice
-- P3: drill and review round the same loss differently (4.2 vs 4.3)
+- P3: drill and review show a slightly different loss for the same move (4.2 vs 4.3). Not rounding: each runs its own 0.3 s Stockfish search. The fix is to carry the drill's verdict into the review of a sparring game, so not a few-line polish
 
 ## Feature ideas
 
@@ -113,3 +112,4 @@ Feature slots build from the top.
 - Loop: polish, How did it know? keeps Stockfish's verdict after the reply and no longer hides the scoresheet, PR #13 on `fix/know-panel`, 2026-10-26
 - Loop: feature brainstorm top-up, 3 new ideas ranked into `## Feature ideas` (7 total), 2026-10-26
 - Loop: batch 3, Scotch + Queen's Gambit Declined with idea texts (decision 16), PR #14 on `feat/batch3-scotch-qgd`, 2026-10-26
+- Loop: polish, each drill move and review step announced once to screen readers, on rolling PR #6, 2026-10-26
