@@ -30,7 +30,8 @@ First, each tick: check open loop PRs' CI and fix any red ones.
 Every slot: work in a worktree under `.claude/worktrees/`, keep this checkout on
 `main`. Base on `feat/levelling` until PR #3 merges, then on `main`. Run `cycle`,
 green CI, never merge (`propose`). Log one line under `## Done`. Removing a
-worktree: delete its `node_modules` junction first.
+worktree: delete its `node_modules` junction first. A new worktree run with vite directly
+skips `predev`, so copy `public/vendor` and `public/models` in from another one or the engines won't load.
 
 ## Polish ideas
 
