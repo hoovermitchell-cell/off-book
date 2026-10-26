@@ -2,7 +2,8 @@ import { Chess } from 'chess.js';
 import { describe, expect, it } from 'vitest';
 import { OPENINGS } from './data/openings';
 import { posKey } from './data/prep';
-import { dueNow, learn, pickStage, provenStage, review, RUNG_MS, SECURE, stageKeys, stageViews, UNLOCK, type Ladder } from './levels';
+import { battleEntry, dueNow, gameKey, learn, pickStage, provenStage, recordText, records, recordWords, review, RUNG_MS, SECURE, setGame, stageKeys, stageViews, UNLOCK, type Games, type Ladder } from './levels';
+import type { ImportedGame } from './import/pgn';
 
 const [london, caro] = OPENINGS;
 const H = 3_600_000;
@@ -69,5 +70,98 @@ describe('stages', () => {
     expect(provenStage(['d4', 'd5', 'Bf4', 'Nf6', 'Nf3'], london)).toBeNull(); // 3.Nf3 is not the prep 3.e3
     expect(provenStage(['d4', 'g6', 'Bf4'], london)).toBeNull(); // too little of any line
     expect(provenStage([...caro.stages[4].moves, 'c3'], caro)?.id).toBe('advance');
+  });
+});
+
+describe('battle record', () => {
+  const textbook = [...london.stages[0].moves, 'Nb4']; // prep to the end, then Black leaves book
+  const game = (over: Partial<ImportedGame> = {}): ImportedGame => ({
+    id: 'paste-0', source: 'paste', white: 'Me', black: 'Them', result: '1-0', date: '2026-10-20', sans: textbook, side: 'w', prep: 'london', prepFrom: 'book', ...over,
+  });
+
+  describe('which games count', () => {
+    it('a finished game that proves a line counts, from the student side', () => {
+      expect(battleEntry(game(), london)).toEqual({ stage: 'textbook', result: 'w' });
+      expect(battleEntry(game({ result: '0-1' }), london)).toEqual({ stage: 'textbook', result: 'l' });
+      expect(battleEntry(game({ result: '1/2-1/2' }), london)).toEqual({ stage: 'textbook', result: 'd' });
+    });
+
+    it('as Black, 0-1 is a win and 1-0 a loss', () => {
+      const asBlack = game({ side: 'b', sans: [...caro.stages[4].moves, 'c3'], prep: 'caro-kann' });
+      expect(battleEntry({ ...asBlack, result: '0-1' }, caro)).toEqual({ stage: 'advance', result: 'w' });
+      expect(battleEntry({ ...asBlack, result: '1-0' }, caro)).toEqual({ stage: 'advance', result: 'l' });
+    });
+
+    it('an unfinished game proves a line but adds nothing to the record', () => {
+      expect(provenStage(textbook, london)?.id).toBe('textbook');
+      expect(battleEntry(game({ result: '*' }), london)).toBeNull();
+    });
+
+    it('a sparring game, a tie between openings and a game that proves nothing do not count', () => {
+      expect(battleEntry(game({ source: 'spar' }), london)).toBeNull();
+      expect(battleEntry(game({ prepFrom: 'tie' }), london)).toBeNull();
+      expect(battleEntry(game({ sans: ['d4', 'd5', 'Bf4', 'Nf6', 'Nf3'] }), london)).toBeNull(); // the student left prep
+      expect(battleEntry(game({ sans: ['d4', 'g6', 'Bf4'] }), london)).toBeNull(); // too little of any line
+    });
+
+    it('the student picking the opening counts as the book walk does', () => {
+      expect(battleEntry(game({ prepFrom: 'student' }), london)?.stage).toBe('textbook');
+    });
+  });
+
+  describe('game keys', () => {
+    it('a fetched game is keyed by its link', () => {
+      expect(gameKey(game({ url: 'https://lichess.org/abc' }))).toBe('https://lichess.org/abc');
+    });
+
+    it('pastes share list ids (paste-0), so the key reads the game itself', () => {
+      expect(gameKey(game())).toBe(gameKey(game({ id: 'paste-3' }))); // the same game pasted again is the same key
+      expect(gameKey(game())).not.toBe(gameKey(game({ sans: [...textbook, 'Qd3'] })));
+      expect(gameKey(game())).not.toBe(gameKey(game({ date: '2026-10-21' })));
+      expect(gameKey(game())).not.toBe(gameKey(game({ black: 'Someone else' })));
+      expect(gameKey(game())).not.toBe(gameKey(game({ result: '0-1' })));
+    });
+  });
+
+  describe('set, replace, drop', () => {
+    const win = { stage: 'textbook', result: 'w' as const };
+    it('sets, replaces and removes one key, leaving the rest alone', () => {
+      let g: Games = { other: { stage: 'advance', result: 'l' } };
+      g = setGame(g, 'k', win);
+      expect(g).toEqual({ other: { stage: 'advance', result: 'l' }, k: win });
+      g = setGame(g, 'k', win); // reviewed again: still one entry
+      expect(Object.keys(g)).toEqual(['other', 'k']);
+      g = setGame(g, 'k', { stage: 'nc6-bf5', result: 'd' }); // reviewed as another line: replaced
+      expect(g.k).toEqual({ stage: 'nc6-bf5', result: 'd' });
+      g = setGame(g, 'k', null); // no longer proves a line: dropped
+      expect(g).toEqual({ other: { stage: 'advance', result: 'l' } });
+    });
+
+    it('does not change the games it was given', () => {
+      const g: Games = { k: win };
+      setGame(g, 'k', null);
+      expect(g).toEqual({ k: win });
+    });
+  });
+
+  describe('records()', () => {
+    it('counts wins, draws and losses per line', () => {
+      const g: Games = {
+        a: { stage: 'textbook', result: 'w' }, b: { stage: 'textbook', result: 'w' }, c: { stage: 'textbook', result: 'l' },
+        d: { stage: 'advance', result: 'd' },
+      };
+      expect(records(g)).toEqual({ textbook: { w: 2, d: 0, l: 1 }, advance: { w: 0, d: 1, l: 0 } });
+    });
+
+    it('has no entry for a line without games, and none at all for no games', () => {
+      expect(records({})).toEqual({});
+      expect(records({ a: { stage: 'textbook', result: 'w' } }).advance).toBeUndefined();
+    });
+
+    it('reads as 2–0–1 and says so for a screen reader', () => {
+      expect(recordText({ w: 2, d: 0, l: 1 })).toBe('2–0–1');
+      expect(recordWords({ w: 2, d: 0, l: 1 })).toBe('2 wins, 0 draws, 1 loss in real games');
+      expect(recordWords({ w: 1, d: 1, l: 2 })).toBe('1 win, 1 draw, 2 losses in real games');
+    });
   });
 });

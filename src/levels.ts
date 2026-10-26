@@ -4,6 +4,7 @@
 import { Chess } from 'chess.js';
 import type { Opening, Stage } from './data/openings';
 import { ladderKey } from './data/prep';
+import type { ImportedGame } from './import/pgn';
 import { walkPrep } from './review/review';
 
 const uciOf = (m: { from: string; to: string; promotion?: string }) => m.from + m.to + (m.promotion ?? '');
@@ -123,3 +124,60 @@ export function provenStage(sans: string[], opening: Opening): Stage | null {
   }
   return best;
 }
+
+// ---- Battle record (decisions 5 and 14c): what real games did on each staged line ----------------
+
+/** One reviewed real game that counts: the staged line it proved, and how it ended for the student. */
+export interface GameRecord {
+  stage: string;
+  result: 'w' | 'd' | 'l';
+}
+/** Game key (see gameKey) to its entry. A game appears once however often it is reviewed. */
+export type Games = Record<string, GameRecord>;
+export interface Tally {
+  w: number;
+  d: number;
+  l: number;
+}
+
+/** A stable id for one game, so reviewing it again replaces its entry instead of adding a second.
+ *  A fetched game carries its web link. A paste or board entry only has a position in the list
+ *  (paste-0), shared by every paste, so its key is built from what the game says about itself:
+ *  date, players, result and every move. */
+export const gameKey = (g: Pick<ImportedGame, 'url' | 'date' | 'white' | 'black' | 'result' | 'sans'>): string =>
+  g.url ?? `game|${g.date}|${g.white}|${g.black}|${g.result}|${g.sans.join(' ')}`;
+
+/** The entry a reviewed game earns, or null. It counts exactly when the review marks the line Proven
+ *  (a real game, not a tie between openings, the student kept prep until it ended or the opponent
+ *  left it) and the game is finished. The result is from the student's side. */
+export function battleEntry(game: ImportedGame, opening: Opening): GameRecord | null {
+  if (game.source === 'spar' || game.prepFrom === 'tie') return null;
+  const white = game.result === '1-0', black = game.result === '0-1';
+  if (!white && !black && game.result !== '1/2-1/2') return null;
+  const stage = provenStage(game.sans, opening);
+  if (!stage) return null;
+  return { stage: stage.id, result: !white && !black ? 'd' : white === (game.side === 'w') ? 'w' : 'l' };
+}
+
+/** `games` with this game's entry set or replaced, or removed when it no longer counts. */
+export function setGame(games: Games, key: string, entry: GameRecord | null): Games {
+  const { [key]: _old, ...rest } = games;
+  return entry ? { ...rest, [key]: entry } : rest;
+}
+
+/** Wins, draws and losses per staged line id. A line with no games has no entry. */
+export function records(games: Games): Record<string, Tally> {
+  const out: Record<string, Tally> = {};
+  for (const { stage, result } of Object.values(games)) {
+    out[stage] ??= { w: 0, d: 0, l: 0 };
+    out[stage][result]++;
+  }
+  return out;
+}
+
+/** "2–0–1" (wins, draws, losses). */
+export const recordText = (t: Tally) => `${t.w}–${t.d}–${t.l}`;
+
+const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+/** The spoken form of a record, for an accessible name. */
+export const recordWords = (t: Tally) => `${count(t.w, 'win')}, ${count(t.d, 'draw')}, ${count(t.l, 'loss', 'losses')} in real games`;
