@@ -7,6 +7,10 @@ import { buildTree as queensGambitTree } from './queens-gambit';
 import { ideaFor as queensGambitIdea } from './queens-gambit-ideas';
 import { buildTree as slavTree } from './slav';
 import { ideaFor as slavIdea } from './slav-ideas';
+import { buildTree as italianTree } from './italian';
+import { ideaFor as italianIdea } from './italian-ideas';
+import { buildTree as frenchTree } from './french';
+import { ideaFor as frenchIdea } from './french-ideas';
 import type { PrepMove, PrepTree } from './prep';
 
 /** How deep a staged line goes (decision 16). Every line so far is an intro. */
@@ -144,6 +148,47 @@ export const OPENINGS: Opening[] = [
       stage('nc3-e4', '2.Nc3 and e4', 'd4 d5 Nc3 c6 e4 dxe4 Nxe4 Nf6 Nxf6+ exf6 Nf3 Bf5 Bd3 Bd6 Bxf5 Qa5+'),
       stage('e3-bd3', '2.e3 and Bd3', 'd4 d5 e3 Nf6 Nf3 c6 Bd3 Bg4 Nbd2 e6 O-O Nbd7'),
       stage('london-bf4', '2.Bf4, the London', 'd4 d5 Bf4 Nf6 e3 c6 Nf3 Bf5 Bd3 Bxd3 Qxd3 e6 Nbd2 Nbd7'),
+    ],
+  },
+  {
+    id: 'italian',
+    name: 'Italian',
+    side: 'w',
+    tree: italianTree(),
+    ideaFor: italianIdea,
+    // The tree covers 1.e4 e5 (decision 16); the drill forces 1...e5 and Maia takes over after it.
+    // The two starter-route stages open differently, and a staged line wins over the forced reply.
+    forcedReplies: ['e5'],
+    heading: 'Play your Italian as White.',
+    opponentLine: (rating) => `Black answers 1.e4 with ...e5, then replies like a ${rating}-rated player.`,
+    example: ['Nf3', 'e2e4'],
+    // docs/review/italian-french-lines.md: the slow Giuoco Piano first, then the setups Maia meets most (decision 14d).
+    stages: [
+      stage('giuoco-piano', 'Giuoco Piano', 'e4 e5 Nf3 Nc6 Bc4 Bc5 c3 Nf6 d3 d6 O-O O-O Re1 a6 Bb3'),
+      stage('philidor', '2...d6, the Philidor', 'e4 e5 Nf3 d6 d4 exd4 Nxd4 Nf6 Nc3 Be7 Bc4 O-O O-O'), // ends before 7...c5: the tree's prep there is 8.Nf5, a Stockfish pick
+      stage('starter-scandinavian', '1...d5, the Scandinavian', 'e4 d5 exd5 Qxd5 Nc3 Qa5 d4 Nf6 Nf3 c6 Bc4'),
+      stage('starter-french', '1...e6, the French', 'e4 e6 d4 d5 e5 c5 c3 Nc6 Nf3 Qb6 a3'),
+      stage('two-knights-nf6', '3...Nf6, Two Knights', 'e4 e5 Nf3 Nc6 Bc4 Nf6 d3 Bc5 c3 O-O O-O d6 Re1 Bg4 Bb3'),
+    ],
+  },
+  {
+    id: 'french',
+    name: 'French',
+    side: 'b',
+    tree: frenchTree(),
+    ideaFor: frenchIdea,
+    // The tree covers only 1.e4 (decision 16); Maia takes over after move 1, as in the Caro-Kann.
+    forcedReplies: ['e4'],
+    heading: 'Play your French as Black.',
+    opponentLine: (rating) => `White opens 1.e4, then answers like a ${rating}-rated player.`,
+    example: ['Nf6', 'e7e5'],
+    // docs/review/italian-french-lines.md: the Rubinstein first, then the setups Maia meets most (decision 14d).
+    stages: [
+      stage('rubinstein', 'Rubinstein', 'e4 e6 d4 d5 Nc3 dxe4 Nxe4 Nd7 Nf3 Ngf6 Nxf6+ Nxf6 Bd3 c5 dxc5 Bxc5 O-O O-O'),
+      stage('french-exchange-nf3', '2.Nf3 and the Exchange', 'e4 e6 Nf3 d5 exd5 exd5 d4 Nc6 Bb5 Nf6 O-O Be7 Re1 O-O'),
+      stage('french-bc4', '2.Bc4', 'e4 e6 Bc4 d5 exd5 exd5 Bb3 c5 Nf3 Nc6 O-O Nf6'),
+      stage('french-advance-nf3', '3.e5, the Advance', 'e4 e6 d4 d5 e5 c5 Nf3 cxd4 Nxd4 Nc6 Nxc6 bxc6 Nc3 Bd7'),
+      stage('french-kia', "2.d3, King's Indian Attack", 'e4 e6 d3 d5 Nd2 Nf6 Ngf3 c5 g3 Nc6 Bg2 Be7 O-O O-O'),
     ],
   },
 ];
