@@ -11,6 +11,10 @@ import { buildTree as italianTree } from './italian';
 import { ideaFor as italianIdea } from './italian-ideas';
 import { buildTree as frenchTree } from './french';
 import { ideaFor as frenchIdea } from './french-ideas';
+import { buildTree as scotchTree } from './scotch';
+import { ideaFor as scotchIdea } from './scotch-ideas';
+import { buildTree as qgdTree } from './qgd';
+import { ideaFor as qgdIdea } from './qgd-ideas';
 import type { PrepMove, PrepTree } from './prep';
 
 /** How deep a staged line goes (decision 16). Every line so far is an intro. */
@@ -189,6 +193,48 @@ export const OPENINGS: Opening[] = [
       stage('french-bc4', '2.Bc4', 'e4 e6 Bc4 d5 exd5 exd5 Bb3 c5 Nf3 Nc6 O-O Nf6'),
       stage('french-advance-nf3', '3.e5, the Advance', 'e4 e6 d4 d5 e5 c5 Nf3 cxd4 Nxd4 Nc6 Nxc6 bxc6 Nc3 Bd7'),
       stage('french-kia', "2.d3, King's Indian Attack", 'e4 e6 d3 d5 Nd2 Nf6 Ngf3 c5 g3 Nc6 Bg2 Be7 O-O O-O'),
+    ],
+  },
+  {
+    id: 'scotch',
+    name: 'Scotch',
+    side: 'w',
+    tree: scotchTree(),
+    ideaFor: scotchIdea,
+    // The tree covers 1.e4 e5 (decision 16); the drill forces 1...e5 and Maia takes over after it. An alternative
+    // to the Italian: the two part ways at 2...Nc6 and share the Italian's support routes (docs/review/scotch-qgd-lines.md).
+    // The two starter-route stages open differently, and a staged line wins over the forced reply.
+    forcedReplies: ['e5'],
+    heading: 'Play your Scotch as White.',
+    opponentLine: (rating) => `Black answers 1.e4 with ...e5, then replies like a ${rating}-rated player.`,
+    example: ['Nf3', 'e2e4'],
+    // docs/review/scotch-qgd-lines.md: the Classical first, then the setups Maia meets most (decision 14d).
+    stages: [
+      stage('scotch-classical', 'Classical, 4...Bc5', 'e4 e5 Nf3 Nc6 d4 exd4 Nxd4 Bc5 Be3 Qf6 c3 Nge7 Bc4'),
+      stage('scotch-philidor', '2...d6, the Philidor', 'e4 e5 Nf3 d6 d4 exd4 Nxd4 Nf6 Nc3 Be7 Bc4 O-O O-O'), // the Italian's line; ends before 7...c5, where the tree's prep is 8.Nf5, a Stockfish pick
+      stage('starter-scotch-scandinavian', '1...d5, the Scandinavian', 'e4 d5 exd5 Qxd5 Nc3 Qa5 d4 Nf6 Nf3 c6 Bc4'),
+      stage('starter-scotch-french', '1...e6, the French', 'e4 e6 d4 d5 e5 c5 c3 Nc6 Nf3 Qb6 a3'),
+      stage('scotch-petroff', '2...Nf6, the Petroff', 'e4 e5 Nf3 Nf6 Nxe5 Nxe4 Qe2 d5 d3 Nf6 Nc6+ Qe7 Nxe7 Bxe7 c3'),
+    ],
+  },
+  {
+    id: 'qgd',
+    name: "Queen's Gambit Declined",
+    side: 'b',
+    tree: qgdTree(),
+    ideaFor: qgdIdea,
+    // The tree covers only 1.d4 (decision 16); Maia takes over after move 1, as in the Slav, which this is an alternative to.
+    forcedReplies: ['d4'],
+    heading: "Play your Queen's Gambit Declined as Black.",
+    opponentLine: (rating) => `White opens 1.d4, then answers like a ${rating}-rated player.`,
+    example: ['Nf6', 'e7e5'],
+    // docs/review/scotch-qgd-lines.md: the Orthodox first, then the setups Maia meets most (decision 14d).
+    stages: [
+      stage('qgd-orthodox', 'Orthodox', 'd4 d5 c4 e6 Nc3 Nf6 Bg5 Nbd7 e3 Be7 Nf3 O-O Rc1 c6 Bd3 dxc4 Bxc4 Nd5 Bxe7 Qxe7 O-O Nxc3 Rxc3 e5'),
+      stage('qgd-colle', '2.Nf3 or 2.e3, the Colle', 'd4 d5 Nf3 e6 e3 Nf6 Bd3 c5 c3 Nc6 Nbd2 Bd6 O-O O-O'),
+      stage('qgd-nc3-bg5', '2.Nc3 and Bg5', 'd4 d5 Nc3 Nf6 Nf3 e6 Bg5 Be7 e3 O-O Bd3 Nbd7 O-O c6'),
+      stage('qgd-london', '2.Bf4, the London', 'd4 d5 Bf4 Nf6 e3 e6 Nf3 Bd6 Bg3 O-O Bd3 Nbd7 Nbd2 b6'),
+      stage('qgd-nc3-bf4', '2.Nc3 and Bf4', 'd4 d5 Nc3 Nf6 Bf4 e6 Nb5 Bd6 Bxd6 cxd6 e3 O-O Nf3 Nc6'),
     ],
   },
 ];

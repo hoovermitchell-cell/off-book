@@ -1,4 +1,4 @@
-// Run: node extend-line.mjs <london|caro-kann|queens-gambit|slav|italian|french> "<SAN moves>" [toMove=12]  -- plays a line on to move toMove.
+// Run: node extend-line.mjs <london|caro-kann|queens-gambit|slav|italian|french|scotch|qgd> "<SAN moves>" [toMove=12]  -- plays a line on to move toMove.
 // Opponent's turn: Maia's likeliest reply, averaged over RATINGS as staged-lines.mjs does. Student's turn: the tree's
 // prep move if the position is in the tree, else build-tree.mjs's pick (first system move within SLACK of Stockfish's
 // best, else Stockfish's best). Ends on a student move. Prints the line, how each student move was chosen, and the

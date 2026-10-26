@@ -1,4 +1,4 @@
-// Run: node staged-lines.mjs [london|caro-kann|queens-gambit|slav|italian|french]  -- proposes the staged alternative lines for decision 14b.
+// Run: node staged-lines.mjs [london|caro-kann|queens-gambit|slav|italian|french|scotch|qgd]  -- proposes the staged alternative lines for decision 14b.
 // An alternative = the textbook line (or an earlier alternative) until the opponent deviates, then the
 // opponent's most likely replies through the prep tree to move 8. Ranked by how often a club player
 // meets the deviation: Maia's probability averaged over RATINGS, times the chance of reaching that position.
@@ -17,6 +17,8 @@ const OPENINGS = {
   slav: { side: 'b', textbook: 'd4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4 a4 Bf5 e3 e6 Bxc4 Bb4 O-O O-O Qe2 Nbd7', minReply: 0.02, show: 24, skip: 1 },
   // skip 1: only 1.e4 is given, so 1...e5 counts (51%) and the starter routes (1...d5, 1...e6) rank by their share of all games.
   italian: { side: 'w', textbook: 'e4 e5 Nf3 Nc6 Bc4 Bc5 c3 Nf6 d3 d6 O-O O-O Re1 a6 Bb3', minReply: 0.02, show: 24, skip: 1 },
+  scotch: { side: 'w', textbook: 'e4 e5 Nf3 Nc6 d4 exd4 Nxd4 Bc5 Be3 Qf6 c3 Nge7 Bc4', minReply: 0.02, show: 24, skip: 1 },
+  qgd: { side: 'b', textbook: 'd4 d5 c4 e6 Nc3 Nf6 Bg5 Nbd7 e3 Be7 Nf3 O-O Rc1 c6 Bd3 dxc4 Bxc4 Nd5 Bxe7 Qxe7 O-O Nxc3 Rxc3 e5', minReply: 0.02, show: 24, skip: 1 },
   french: { side: 'b', textbook: 'e4 e6 d4 d5 Nc3 dxe4 Nxe4 Nd7 Nf3 Ngf6 Nxf6+ Nxf6 Bd3 c5 dxc5 Bxc5 O-O O-O', minReply: 0.02, show: 24, skip: 1 },
 };
 const name = process.argv[2] ?? 'london';
