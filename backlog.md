@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: polish**. Rolling polish PR: #6. Next opening: batch 3 (decision 16's order), based on `feat/batch2-italian-french` (#12) until it merges.
+**Next slot: feature**. Rolling polish PR: #6. Next opening: batch 3 (decision 16's order), based on `feat/batch2-italian-french` (#12) until it merges.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -36,7 +36,6 @@ worktree: delete its `node_modules` junction first.
 
 From the design audit of 2026-10-25 (`refine/polish`, first polish slot). Best first.
 
-- P2, large: "How did it know?" drops the Stockfish explanation of the student's own mistake once the opponent replies, and the open panel hides the scoresheet
 - P2, copy (Mitch): the 6.Nbd2 idea in `london-ideas.ts` says "so the c-pawn can still move to c3" when c3 is already played in the Textbook line
 - P3: three live regions announce each drill move; the review step line is announced twice
 - P3: drill and review round the same loss differently (4.2 vs 4.3)
@@ -95,3 +94,4 @@ Brainstorm, 2026-10-25 (loop slot 3). Ranked by how much each strengthens the co
 - Loop: polish, confirm before Resign or a switch discards a game, PR #10 on `fix/confirm-discard`, 2026-10-25
 - Loop: feature, board entry for over-the-board games, PR #11 on `feat/board-entry`, 2026-10-25
 - Loop: batch 2, Italian + French with idea texts (decision 16), PR #12 on `feat/batch2-italian-french`, 2026-10-26
+- Loop: polish, How did it know? keeps Stockfish's verdict after the reply and no longer hides the scoresheet, PR #13 on `fix/know-panel`, 2026-10-26
