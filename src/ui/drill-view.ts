@@ -12,7 +12,7 @@ import { createMaiaRunner } from '../chess/maia-ort';
 import { createStockfish } from '../chess/stockfish-worker';
 import type { ImportedGame } from '../import/pgn';
 import { loadOpening, loadSaved, saveOpening, updateSaved, type Saved } from '../storage';
-import { dueNow, learn, pickStage, review, SECURE, stageViews, type Status } from '../levels';
+import { dueNow, learn, pickStage, review, SECURE, stageViews, tierRuns, type Status } from '../levels';
 import prepEndsSvg from '../../design/icons/prep-ends.svg?raw';
 import badgeBook from '../../design/icons/badges/book.svg?raw';
 import badgeGood from '../../design/icons/badges/good.svg?raw';
@@ -272,21 +272,13 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         <span class="${cls}">${STATUS[v.status]}</span>${v.stage.note && v.status !== 'locked' ? `<details class="line-more" data-stage="${v.stage.id}"${openNotes.has(v.stage.id) ? ' open' : ''}><summary>More on this line</summary><p></p></details>` : ''}</li>`;
     };
     shown = new Map(views.map((v) => [v.stage.id, v.status]));
-    // One list per run of equal tiers, in stage order; headings only when the opening has more than one tier.
-    const runs: (typeof views)[] = [];
-    for (const v of views) {
-      if (runs.at(-1)?.[0].stage.tier === v.stage.tier) runs.at(-1)!.push(v);
-      else runs.push([v]);
-    }
-    // A later tier that is still all locked folds to one line, and the headings wait until one opens,
-    // so the rail stays short on a Chromebook.
-    const folded = (run: (typeof views), i: number) => i > 0 && run.every((v) => v.status === 'locked');
-    const headed = runs.some((run, i) => i > 0 && !folded(run, i));
+    // One list per run of equal tiers, in stage order. A later tier that is still all locked folds to one line,
+    // and the headings wait until one opens, so the rail stays short on a Chromebook.
+    const { runs, headed } = tierRuns(views);
     els.due.textContent = due ? `${due} move${due === 1 ? '' : 's'} due for review` : 'Nothing due for review now';
     els.level.innerHTML = runs.map((run, i) => {
-        const tier = run[0].stage.tier;
-        if (folded(run, i)) return `<p class="soft tier-locked">${TIER[tier]}: ${run.length} more lines open after the ${TIER[runs[i - 1][0].stage.tier]} lines.</p>`;
-        return `${headed ? `<h3 class="tier-h" id="tier-${i}">${TIER[tier]}</h3>` : ''}<ol class="lines" ${headed ? `aria-labelledby="tier-${i}"` : 'aria-label="Staged lines"'}>${run.map(rowOf).join('')}</ol>`;
+        if (run.folded) return `<p class="soft tier-locked">${TIER[run.tier]}: ${run.views.length} more lines open after the ${TIER[runs[i - 1].tier]} lines.</p>`;
+        return `${headed ? `<h3 class="tier-h" id="tier-${i}">${TIER[run.tier]}</h3>` : ''}<ol class="lines" ${headed ? `aria-labelledby="tier-${i}"` : 'aria-label="Staged lines"'}>${run.views.map(rowOf).join('')}</ol>`;
       }).join('');
     // Notes are set as text, never markup.
     for (const v of views) {

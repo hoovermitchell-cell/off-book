@@ -1,7 +1,7 @@
 import { Chess } from 'chess.js';
 import { describe, expect, it } from 'vitest';
 import { buildTree } from './london';
-import { ALL_IDEAS, ideaFor } from './london-ideas';
+import { ADVANCED_IDEAS, ALL_IDEAS, ideaFor } from './london-ideas';
 
 const tree = buildTree();
 const ideas = [...tree].map(([key, prep]) => ({ key, prep, idea: ideaFor(`${key} 0 1`, prep) }));
@@ -11,6 +11,19 @@ describe('London ideas', () => {
     // Each MOMENTS entry must land on a tree position, or its note can never show.
     const shown = new Set(ideas.map((i) => i.idea));
     for (const text of ALL_IDEAS.slice(0, 10)) expect(shown.has(text), text).toBe(true);
+  });
+
+  it('every Advanced note is shown on a real prep position', () => {
+    const shown = new Set(ideas.map((i) => i.idea));
+    for (const text of ADVANCED_IDEAS) expect(shown.has(text), text).toBe(true);
+  });
+
+  it('the Advanced notes cover the ...g5 check, the h7 diagonal, the f3 kick and the h-pawn recapture', () => {
+    const adv = ADVANCED_IDEAS.join('\n');
+    expect(adv).toMatch(/Bxg5\? fxg5 costs you a bishop for a pawn/);
+    expect(adv).toMatch(/aimed at h7/);
+    expect(adv).toMatch(/f3! The pawn and the bishop both attack the knight/);
+    expect(adv).toMatch(/Take back with the h-pawn/);
   });
 
   it('nearly every prep position gets an idea', () => {

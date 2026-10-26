@@ -2,7 +2,7 @@
 // Each prep position climbs a ladder of spaced reviews; staged lines unlock one after another;
 // a clean real game marks a line Proven.
 import { Chess } from 'chess.js';
-import type { Opening, Stage } from './data/openings';
+import type { Opening, Stage, Tier } from './data/openings';
 import { ladderKey } from './data/prep';
 import { walkPrep } from './review/review';
 
@@ -75,6 +75,27 @@ export function stageViews(opening: Opening, ladder: Ladder, proven: readonly st
     if (open && !levels.every((l) => l >= UNLOCK)) open = false;
     return { stage, status, levels };
   });
+}
+
+/** One stretch of equal tiers in the rail, in stage order. */
+export interface TierRun {
+  tier: Tier;
+  views: StageView[];
+  /** A later tier that is still all locked shows as one line, so the rail stays short. */
+  folded: boolean;
+}
+
+/** How the rail groups an opening's lines (decision 16): a run per tier, Intro then Intermediate then Advanced.
+ *  Headings show only once a later tier has a line open; before that the rail reads as it always did. */
+export function tierRuns(views: StageView[]): { runs: TierRun[]; headed: boolean } {
+  const runs: TierRun[] = [];
+  for (const v of views) {
+    const last = runs.at(-1);
+    if (last?.tier === v.stage.tier) last.views.push(v);
+    else runs.push({ tier: v.stage.tier, views: [v], folded: false });
+  }
+  for (const [i, run] of runs.entries()) run.folded = i > 0 && run.views.every((v) => v.status === 'locked');
+  return { runs, headed: runs.some((run, i) => i > 0 && !run.folded) };
 }
 
 /** Which of the opening's staged lines the student has started: a learned move that no earlier line

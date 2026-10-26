@@ -45,7 +45,7 @@ describe('stages', () => {
   const first = stageKeys(london.stages[0], 'w');
 
   it('only the first line is open at the start, and it is picked', () => {
-    expect(stageViews(london, {}, []).map((v) => v.status)).toEqual(['learning', 'locked', 'locked', 'locked', 'locked', 'locked', 'locked']);
+    expect(stageViews(london, {}, []).map((v) => v.status)).toEqual(['learning', ...london.stages.slice(1).map(() => 'locked')]);
     expect(pickStage(london, {}, [], 0)?.id).toBe('textbook');
   });
 
@@ -58,7 +58,7 @@ describe('stages', () => {
 
   it('cleared at SECURE, proven when recorded, and free play when nothing is new or due', () => {
     const everything = all(london.stages.flatMap((s) => stageKeys(s, 'w')), SECURE);
-    expect(stageViews(london, everything, ['textbook']).map((v) => v.status)).toEqual(['proven', 'cleared', 'cleared', 'cleared', 'cleared', 'cleared', 'cleared']);
+    expect(stageViews(london, everything, ['textbook']).map((v) => v.status)).toEqual(['proven', ...london.stages.slice(1).map(() => 'cleared')]);
     expect(pickStage(london, everything, [], 0)).toBeNull();
     expect(dueNow(london, all(first, 1, 0), [], 1)).toBe(first.length);
   });
