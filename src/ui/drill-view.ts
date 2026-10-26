@@ -139,9 +139,10 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   }
   /** Destination square of the last move on the board, for the badge. */
   const lastTo = () => { const c = new Chess(); drill.getState().history.forEach((m) => { c.move(m); }); return c.history({ verbose: true }).at(-1)?.to as Key; };
-  let know: { kind: 'maia'; san: string; ply: number; top: TopMove[]; rating: number; p: number }
-    | { kind: 'staged'; san: string; ply: number; line: string }
-    | { kind: 'stockfish'; text: string; depth?: number; nodes?: number } | null = null;
+  // Two slots, so the opponent's reply doesn't wipe Stockfish's verdict on the student's move a second later.
+  let mine: { text: string; depth?: number; nodes?: number } | null = null;
+  let theirs: { kind: 'maia'; san: string; ply: number; top: TopMove[]; rating: number; p: number }
+    | { kind: 'staged'; san: string; ply: number; line: string } | null = null;
 
   // ---- engines ---------------------------------------------------------------------------------
   const ready = Promise.all([
@@ -267,23 +268,26 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
     const unit = opening.side === 'w'
       ? '<p class="soft">Scores are from White\'s side: higher is better for White. The number shown is how far your move\'s score fell below the better move.</p>'
       : '<p class="soft">Stockfish scores positions from White\'s side: higher is better for White. You play Black, so the number shown is flipped to your side: how far your move\'s score fell below the better move.</p>';
-    if (!know) {
+    if (!mine && !theirs) {
       els.know.innerHTML = `<h2 id="know-h">How did it know?</h2><p>Play a move. Here you'll see why ${opp()} chose its reply and how Stockfish judged yours.</p>`;
       return;
     }
-    if (know.kind === 'staged') {
-      els.know.innerHTML = `<h2 id="know-h">How did it know?</h2>
-        <p>${opp()} played <b>${label(know.ply, know.san)}</b> because it is the next move of your staged line, ${know.line}. Staged lines come first, so you meet the likely positions in order. When the line ends, Maia takes over and plays like a human at your chosen rating.</p>`;
-    } else if (know.kind === 'maia') {
-      const rows = know.top.map((m) => `<tr><td class="mv">${m.san}</td><td><span class="bar" style="--w:${Math.round(m.p * 100)}%"></span></td><td>${pct(m.p)}</td></tr>`).join('');
-      els.know.innerHTML = `<h2 id="know-h">How did it know?</h2>
-        <p>${opp()} is Maia, an engine trained on millions of human games. It plays the way a ${know.rating}-rated player does, not the best move.</p>
-        <p>It played <b>${label(know.ply, know.san)}</b>. Maia estimates ${pct(know.p)} of ${know.rating}-rated players would play that here. Its top choices:</p>
-        <table><tbody>${rows}</tbody></table>`;
-    } else {
-      const depth = know.depth ? ` It searched to depth ${know.depth} (counted in single moves, and deeper on forcing lines) and checked ${know.nodes?.toLocaleString()} positions in 0.3 seconds.` : '';
-      els.know.innerHTML = `<h2 id="know-h">How did it know?</h2><p>${know.text}${depth}</p>${unit}`;
+    let html = '<h2 id="know-h">How did it know?</h2>';
+    if (mine) {
+      const depth = mine.depth ? ` It searched to depth ${mine.depth} (counted in single moves, and deeper on forcing lines) and checked ${mine.nodes?.toLocaleString()} positions in 0.3 seconds.` : '';
+      html += `<h3>Your move</h3><p>${mine.text}${depth}</p>${unit}`;
     }
+    if (theirs?.kind === 'staged') {
+      html += `<h3>${opp()}'s reply</h3>
+        <p>${opp()} played <b>${label(theirs.ply, theirs.san)}</b> because it is the next move of your staged line, ${theirs.line}. Staged lines come first, so you meet the likely positions in order. When the line ends, Maia takes over and plays like a human at your chosen rating.</p>`;
+    } else if (theirs) {
+      const rows = theirs.top.map((m) => `<tr><td class="mv">${m.san}</td><td><span class="bar" style="--w:${Math.round(m.p * 100)}%"></span></td><td>${pct(m.p)}</td></tr>`).join('');
+      html += `<h3>${opp()}'s reply</h3>
+        <p>${opp()} is Maia, an engine trained on millions of human games. It plays the way a ${theirs.rating}-rated player does, not the best move.</p>
+        <p>It played <b>${label(theirs.ply, theirs.san)}</b>. Maia estimates ${pct(theirs.p)} of ${theirs.rating}-rated players would play that here. Its top choices:</p>
+        <table><tbody>${rows}</tbody></table>`;
+    }
+    els.know.innerHTML = html;
   }
 
   function sync(shapes?: DrawShape[]) {
@@ -329,7 +333,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
     const ply = s.history.length - 1;
     switch (e.type) {
       case 'start':
-        bookPlies = null; marks = new Map(); know = null; announced = 0; badge = null;
+        bookPlies = null; marks = new Map(); mine = null; theirs = null; announced = 0; badge = null;
         els.verdict.hidden = true;
         if (sparring) {
           setNow(opening.heading, `Sparring: a full game against Maia at ${s.rating}. No arrows and no takebacks. Learned prep moves still count when they're due.`);
@@ -343,12 +347,13 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         sync([]);
         break;
       case 'judging':
-        badge = null;
+        badge = null; mine = null;
         els.verdict.hidden = true; // it described the last move; the next one is being judged
         setNow('Checking with Stockfish…');
         sync();
         break;
       case 'prep-correct': {
+        mine = null;
         if (e.learnedNow) setVerdict('!', 'good', `${label(ply, e.san)}. Learned.`, 'new move');
         // Sparring has no misses before a prep move, so an uncounted one there is not learned yet.
         else setVerdict('!', 'good', `${label(ply, e.san)}. Your prep, from memory.`, !e.counted ? (sparring ? 'not learned yet' : 'no climb after a miss') : e.climbed ? 'up a rung' : 'not due yet');
@@ -364,7 +369,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         const prepNo = label(s.history.length, e.prep);
         if (e.verdict === 'playable') setVerdict('?!', 'dubious', `${moveNo}. Playable, but not your prep. Your prep is ${prepNo}.`, `${drop(e.loss)} behind prep`);
         else { const m = glyphFor(e.loss); setVerdict(m.g, m.cls, `${moveNo}. ${m.word}. Your prep is ${prepNo}.`, `${drop(e.loss)} behind prep`); }
-        know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${drop(e.loss)} lower than your prep move ${e.prep}. Under ${pts(PLAYABLE)} counts as playable.`, depth: e.depth, nodes: e.nodes };
+        mine = { text: `Stockfish scored ${e.played} ${drop(e.loss)} lower than your prep move ${e.prep}. Under ${pts(PLAYABLE)} counts as playable.`, depth: e.depth, nodes: e.nodes };
         setNow('Try again: play your prep move.', 'The arrow shows it. A miss drops this move one rung.');
         renderLevel();
         sync([{ orig: e.prepUci.slice(0, 2) as Key, dest: e.prepUci.slice(2, 4) as Key, brush: 'prep' }]);
@@ -375,7 +380,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         const prepNo = label(ply, e.prep);
         if (e.verdict === 'playable') setVerdict('?!', 'dubious', `${label(ply, e.played)}. Playable, but you left your prep. It was ${prepNo}.`, `${drop(e.loss)} behind prep`);
         else { const m = glyphFor(e.loss); marks.set(ply, m); setVerdict(m.g, m.cls, `${label(ply, e.played)}. ${m.word}. You left your prep. It was ${prepNo}.`, `${drop(e.loss)} behind prep`); }
-        know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${drop(e.loss)} lower than your prep move ${e.prep}. Under ${pts(PLAYABLE)} counts as playable.`, depth: e.depth, nodes: e.nodes };
+        mine = { text: `Stockfish scored ${e.played} ${drop(e.loss)} lower than your prep move ${e.prep}. Under ${pts(PLAYABLE)} counts as playable.`, depth: e.depth, nodes: e.nodes };
         setNote(`You left your prep with ${label(ply, e.played)}. From here it's your own chess.`, prepEndsSvg);
         renderLevel();
         setNow(`${opp()} is thinking…`);
@@ -383,7 +388,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         break;
       }
       case 'opponent-move':
-        know = e.staged && current ? { kind: 'staged', san: e.san, ply, line: current.name } : { kind: 'maia', san: e.san, ply, top: e.top, rating: e.rating, p: e.p };
+        theirs = e.staged && current ? { kind: 'staged', san: e.san, ply, line: current.name } : { kind: 'maia', san: e.san, ply, top: e.top, rating: e.rating, p: e.p };
         setNow(s.offBook ? 'Your move. Off book: play it out.' : 'Your move. Stay in your prep.', `${opp()} played ${label(ply, e.san)}.`);
         if (badge && lastTo() === badge.sq) badge = null; // a capture there would leave the badge on their piece
         sync([]);
@@ -399,7 +404,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         marks.set(ply, m);
         badge = { sq: lastTo(), svg: m.g === '??' ? badgeBlunder : badgeMistake };
         setVerdict(m.g, m.cls, `${label(ply, e.played)}. ${m.word}. ${label(ply, e.better)} was better.`, `${drop(e.loss)} lower`);
-        know = { kind: 'stockfish', text: `Stockfish scored ${e.played} ${drop(e.loss)} lower than its choice, ${e.better}. A drop of 1.0 or more counts as a mistake; 3.0 or more as a blunder.`, depth: e.depth, nodes: e.nodes };
+        mine = { text: `Stockfish scored ${e.played} ${drop(e.loss)} lower than its choice, ${e.better}. A drop of 1.0 or more counts as a mistake; 3.0 or more as a blunder.`, depth: e.depth, nodes: e.nodes };
         setNow(`${opp()} is thinking…`);
         sync(sparring ? [] : [{ orig: e.betterUci.slice(0, 2) as Key, dest: e.betterUci.slice(2, 4) as Key, brush: 'better' }]);
         break;
@@ -497,7 +502,6 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   els.knowBtn.addEventListener('click', () => {
     const open = els.know.hidden;
     els.know.hidden = !open;
-    els.scoresheet.hidden = open;
     els.knowBtn.setAttribute('aria-expanded', String(open));
     renderKnow();
   });
