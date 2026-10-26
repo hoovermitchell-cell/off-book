@@ -72,14 +72,6 @@ export const AUTO = {
   "p": 0.013,
   "line": "d4 e6 Bf4 b6"
  },
- "r1bqkb1r/ppp1pppp/2n2n2/3p4/3P1B2/4P3/PPP2PPP/RN1QKBNR w KQkq -": {
-  "san": "Nf3",
-  "uci": "g1f3",
-  "loss": -9,
-  "how": "system",
-  "p": 0.055,
-  "line": "d4 d5 Bf4 Nc6 e3 Nf6"
- },
  "r2qkbnr/ppp1pppp/2n5/3p1b2/3P1B2/4P3/PPP2PPP/RN1QKBNR w KQkq -": {
   "san": "Nf3",
   "uci": "g1f3",
@@ -736,14 +728,6 @@ export const AUTO = {
   "p": 0.008,
   "line": "d4 d5 Bf4 Nc6 e3 Nf6 Nf3 e6 Bd3 Bd6"
  },
- "r1bqk2r/ppp2ppp/2n1pn2/3p4/1b1P1B2/3BPN2/PPP2PPP/RN1QK2R w KQkq -": {
-  "san": "c3",
-  "uci": "c2c3",
-  "loss": 9,
-  "how": "system",
-  "p": 0.004,
-  "line": "d4 d5 Bf4 Nc6 e3 Nf6 Nf3 e6 Bd3 Bb4+"
- },
  "r2qkb1r/ppp2ppp/2n1pn2/3p4/3P1Bb1/2P1PN2/PP3PPP/RN1QKB1R w KQkq -": {
   "san": "Bd3",
   "uci": "f1d3",
@@ -1056,14 +1040,6 @@ export const AUTO = {
   "p": 0.003,
   "line": "d4 d5 Bf4 Nc6 e3 Nf6 Nf3 e6 Bd3 Bd6 Bg3 O-O"
  },
- "r1bqk2r/ppp2ppp/2n1pn2/b2p4/3P1B2/2PBPN2/PP3PPP/RN1QK2R w KQkq -": {
-  "san": "Nbd2",
-  "uci": "b1d2",
-  "loss": -8,
-  "how": "system",
-  "p": 0.002,
-  "line": "d4 d5 Bf4 Nc6 e3 Nf6 Nf3 e6 Bd3 Bb4+ c3 Ba5"
- },
  "r2qk2r/ppp2ppp/2nbpn2/3p4/3P1Bb1/2PBPN2/PP3PPP/RN1QK2R w KQkq -": {
   "san": "Bg3",
   "uci": "f4g3",
@@ -1183,14 +1159,6 @@ export const AUTO = {
   "how": "stockfish",
   "p": 0.003,
   "line": "d4 Nc6 Bf4 e5 dxe5 Qe7 Nf3 Qb4+ Bd2 Qxb2 Nc3 Bb4"
- },
- "r1bq1rk1/pppnppbp/3p1np1/8/3P1B2/4PN1P/PPP1BPP1/RN1QK2R w KQ -": {
-  "san": "c3",
-  "uci": "c2c3",
-  "loss": 4,
-  "how": "system",
-  "p": 0.004,
-  "line": "d4 Nf6 Bf4 d6 e3 g6 Nf3 Bg7 Be2 O-O h3 Nbd7"
  },
  "r1bq1rk1/ppp1ppbp/2np1np1/8/3P1B2/4PN1P/PPP1BPP1/RN1QK2R w KQ -": {
   "san": "c3",
