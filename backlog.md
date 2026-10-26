@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: feature**. Rolling polish PR: #6. Next opening: **none queued.** Advanced London + Caro-Kann (#16) was the last one Mitch queued. If the pointer reaches opening, stop the loop and ask.
+**Next slot: opening** (blocked: none queued, see below). Rolling polish PR: #6. Next opening: **none queued.** Advanced London + Caro-Kann (#16) was the last one Mitch queued. If the pointer reaches opening, stop the loop and ask.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -47,24 +47,21 @@ Brainstorm, 2026-10-25 (loop slot 3), topped up 2026-10-26 (loop slot 12; new it
 Ranked by how much each strengthens the core loop (learn → play → review) and the talk demo.
 Feature slots build from the top.
 
-1. **Battle record per line** (medium, decision 5, v1 scope 6). Each staged line in the rail shows
-   the W-D-L of imported real games that followed it (same attribution as Proven). Records,
-   not badges, per DESIGN.md.
-2. **Where opponents leave your prep** (new, medium, v1 scope 5; idea 3 in
+1. **Where opponents leave your prep** (new, medium, v1 scope 5; idea 3 in
    `docs/brainstorm/codex-2026-10-22.md`). Per opening, the opponent moves that took imported
    games out of book, with counts, split into "your tree answers this, not learned yet" and "no
    answer in your tree". Real games then point at what to drill next.
-3. **Opening names in review** (small-medium, v1 scope 1). Name the position where prep ended
+2. **Opening names in review** (small-medium, v1 scope 1). Name the position where prep ended
    from Lichess `chess-openings` (CC0): "you left prep in the Caro-Kann, Advance Variation".
    Build-time TSV filtered to the trees' positions, so no runtime fetch.
-4. **Opponent rating from import** (new, small, v1 scope 3 and 4). After a Lichess or Chess.com
+3. **Opponent rating from import** (new, small, v1 scope 3 and 4). After a Lichess or Chess.com
    username import, offer to set the Maia rating to the student's own rating, rounded to the
    nearest 100 within 600-1800. Public, anonymous profile endpoints; nothing stored but the
    chosen rating.
-5. **Opening-linked puzzles** (large, decision 7, v1 scope 7). Lichess puzzles (CC0) filtered
+4. **Opening-linked puzzles** (large, decision 7, v1 scope 7). Lichess puzzles (CC0) filtered
    offline to positions in the student's trees, shown per line, not as a standalone mode.
    Open question for Mitch first: do solved puzzles level the line (decisions, Still open).
-6. **Weekly goal** (medium, decision 5, v1 scope 6). Effort-based: reviews done this week against
+5. **Weekly goal** (medium, decision 5, v1 scope 6). Effort-based: reviews done this week against
    a target, no streak guilt. Needs Mitch's call on what counts and the default target before
    building; until then it stays last.
 
@@ -114,3 +111,4 @@ Feature slots build from the top.
 - Loop: feature, talk demo backup and a game that proves a line live (decision 14c), PR #15 on `feat/demo-backup`, 2026-10-26
 - Loop: Advanced tier, 4 lines each for the London and Caro-Kann, no existing prep move changed (decision 16), PR #16 on `feat/advanced-london-caro`, 2026-10-26
 - Loop: polish, typed moves accept a phone's capital first letter (D4) and a move number (1.d4), on rolling PR #6, 2026-10-26
+- Loop: feature, battle record per line from real games (decision 14c), PR #17 on `feat/battle-record`, 2026-10-26
