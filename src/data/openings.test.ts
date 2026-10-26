@@ -34,7 +34,9 @@ describe('openings', () => {
       const chess = new Chess();
       for (const san of s.moves) expect(() => chess.move(san), `${san} in ${s.id}`).not.toThrow();
       const theirs = s.moves.filter((_, i) => (i % 2 === 0) !== (o.side === 'w'));
-      expect(theirs.slice(0, o.forcedReplies.length), s.id).toEqual(o.forcedReplies);
+      // A starter route opens with another first move; a staged line wins over the forced reply (drill.test.ts).
+      if (s.id.startsWith('starter-')) expect(theirs[0], s.id).not.toBe(o.forcedReplies[0]);
+      else expect(theirs.slice(0, o.forcedReplies.length), s.id).toEqual(o.forcedReplies);
     }
   });
 
