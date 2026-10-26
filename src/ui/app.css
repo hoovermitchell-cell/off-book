@@ -69,7 +69,7 @@ button, input, select { font: inherit; color: inherit; }
 .rail-section + .rail-section { border-top: 1px solid var(--rule); padding-top: var(--space-3); }
 .setup { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .setup label { display: grid; gap: 0; min-height: 0; font-size: var(--text-sm); color: var(--ink-soft); }
-.setup label:first-child { flex: 1 1 17rem; }
+.setup label:first-child { flex: 1 1 100%; }
 .setup select { width: 100%; font-size: var(--text-md); color: var(--ink); }
 
 /* What to do now: sits above the board, always. */
@@ -121,8 +121,17 @@ button, input, select { font: inherit; color: inherit; }
   background: linear-gradient(90deg, var(--ink) var(--w), transparent var(--w)); }
 .soft { color: var(--ink-soft); font-size: var(--text-sm); }
 
-/* Level: tally marks, never a progress bar. */
-.level { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+/* Levelling (decision 14c): a small ladder per move and a status per staged line, never a progress bar. */
+.level { display: grid; gap: var(--space-1); }
+.level > p { margin: 0; }
+.lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.line-row { display: grid; grid-template-columns: 1fr auto 5.5rem; align-items: center; gap: var(--space-2);
+  font-size: var(--text-sm); padding: 1px var(--space-1); border-radius: var(--radius); }
+.line-row.current { background: var(--highlighter); }
+.line-row .line-name { font-family: var(--font-notation); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.line-row .rungs svg { display: block; }
+.line-row > :last-child { justify-self: start; }
+.line-row .soft.stamp { animation: stamp var(--dur-stamp) var(--ease-stamp); display: inline-block; }
 .badge-level {
   font: 700 var(--text-sm) var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--mark-good); border: 2px solid currentColor; border-radius: var(--radius);
@@ -130,7 +139,6 @@ button, input, select { font: inherit; color: inherit; }
 }
 .badge-level.stamp { animation: stamp var(--dur-stamp) var(--ease-stamp); }
 @keyframes stamp { from { transform: rotate(-4deg) scale(1.6); opacity: 0; } to { transform: rotate(-4deg) scale(1); opacity: 1; } }
-.tally svg { display: block; }
 
 /* Controls */
 .row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }

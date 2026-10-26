@@ -82,7 +82,6 @@ Feature slots build from the top.
 - Mitch: the London's pinned 4.Qc1 against 1.d4 Nf6 2.Bf4 c5 3.e3 Qb6 loses d4 (4...cxd4 5.exd4 Qxd4); Stockfish prefers 4.Nc3 by ~71cp at 3 s. Found by the tier pilot (#9); an Intro change, so it waits for you
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
-- Build the levelling from decision 14c (per-move ladder, staged-line unlocks, Proven from real games, per-line status UI); staged lines settled in 14d
 - Define this project's "done" gate beyond green CI, if any
 - Low priority, since the app is for a talk, not a rollout (Mitch, 2026-10-23): Chromebook load time and engine speed; questions for the school about devices and accounts
 
@@ -97,7 +96,9 @@ Feature slots build from the top.
 - Layout: notes under the board, tools in a rail, for drill and review (Codex studies, Mitch's pick), 2026-10-23 (`feat/layout-notes-under`)
 - All review branches (2026-10-22 and 2026-10-23 batches) merged to `main` by fast-forward, 2026-10-25
 - Repo public at github.com/hoovermitchell-cell/off-book (AGPL-3.0, footer link live), 2026-10-25
-- CI on GitHub Actions: build (with tsc) and tests on every PR and push to main, 2026-10-25 (#1). No linter yet; add one if the loop needs it
+- CI on GitHub Actions: build (with tsc) and tests on every PR and push to main, 2026-10-25 (#1); Biome lint added the same day (#2)
+- Levelling from decisions 14c and 14d: per-move ladder, staged lines, Proven from real games, per-line status in the rail, 2026-10-25 (`feat/levelling`)
+- Sparring against Maia (v1 scope 3): full game from move 1, no arrows or takebacks, then straight into Review, 2026-10-25 (`feat/sparring`)
 - Loop: repertoire plumbing (decision 16, step 0), PR #5 on `feat/repertoire-plumbing`, 2026-10-25
 - Loop: polish batch 1 (9 design-audit fixes, two P1), rolling PR #6 on `refine/polish`, 2026-10-25
 - Loop: feature brainstorm, 6 ranked ideas under `## Feature ideas`, 2026-10-25

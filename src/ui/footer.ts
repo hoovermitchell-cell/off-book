@@ -1,6 +1,6 @@
 // Quiet footer: backup and restore of device-only progress (decision 3) and the AGPL source link
 // (decision 6). Mounted from main.ts so it stays out of the drill view.
-import { exportBackup, loadSaved, parseBackup, updateSaved } from '../storage';
+import { exportBackup, loadSaved, parseBackup, updateSaved, type Saved } from '../storage';
 
 /** The public repo. Decision 6 makes the source public before students get the link, but the repo
  *  isn't published yet, so this link 404s until it is. */
@@ -42,13 +42,11 @@ export function mountFooter(root: HTMLElement) {
     const r = parseBackup(await file.text().catch(() => ''));
     if (!r.ok) return say(r.reason);
     const now = loadSaved();
-    const ok = confirm(
-      `Replace the progress in this browser (${now.correct} correct moves, ${now.learned.length} learned) ` +
-      `with the backup (${r.saved.correct} correct moves, ${r.saved.learned.length} learned)? This can't be undone.`,
-    );
+    const count = (s: Saved) => `${Object.keys(s.ladder).length} learned moves, ${s.proven.length} proven lines`;
+    const ok = confirm(`Replace the progress in this browser (${count(now)}) with the backup (${count(r.saved)})? This can't be undone.`);
     if (!ok) return say('Restore cancelled. Nothing changed.');
     if (!updateSaved(() => r.saved).ok) return say("This browser won't store progress, so the backup wasn't restored.");
     window.dispatchEvent(new Event('storage')); // the drill already reloads its state on this event
-    say(`Restored ${r.saved.correct} correct moves and ${r.saved.learned.length} learned.`);
+    say(`Restored ${count(r.saved)}.`);
   });
 }

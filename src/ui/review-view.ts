@@ -10,6 +10,8 @@ import { plyLabel, type ImportedGame } from '../import/pgn';
 import { analyze, chooseLesson, walkPrep, type MoveCheck } from '../review/review';
 import { boundaryText, lessonText, pendingText, SCORE_NOTE, stepText, type Text } from '../review/templates';
 import { createStockfish, type StockfishHandle } from '../chess/stockfish-worker';
+import { provenStage } from '../levels';
+import { updateSaved } from '../storage';
 import { mountImport } from './import-view';
 import prepEndsSvg from '../../design/icons/prep-ends.svg?raw';
 import badgeBook from '../../design/icons/badges/book.svg?raw';
@@ -32,7 +34,8 @@ const dropStockfish = () => { const p = stockfish; stockfish = null; p?.then((h)
 
 type Status = 'starting' | 'running' | 'done' | 'stopped' | 'failed';
 
-export function mountReview(root: HTMLElement) {
+/** Returns `open`, which reviews a game handed over from outside the import flow (a sparring game). */
+export function mountReview(root: HTMLElement): { open(game: ImportedGame): void } {
   root.innerHTML = '<div id="rv-import"></div><div id="rv-screen" hidden></div>';
   const importEl = root.querySelector<HTMLElement>('#rv-import')!;
   const screen = root.querySelector<HTMLElement>('#rv-screen')!;
@@ -55,6 +58,8 @@ export function mountReview(root: HTMLElement) {
     screen.hidden = false;
     teardown = review(screen, game, leave, () => !!screen.closest('[hidden]'));
   }
+
+  return { open: openGame };
 }
 
 /** Builds the review screen for one game inside `host`. Returns a function that stops everything it started. */
@@ -62,6 +67,11 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
   const { sans, side } = game;
   const opening = openingForSide(side)!; // the import step only opens games whose side has an opening
   const walk = walkPrep(sans, opening);
+  // A clean real game proves the staged line it followed (decision 14c). Recorded once, on opening the review.
+  // A sparring game is not a real game, so it proves nothing.
+  const proven = game.source === 'spar' ? undefined : provenStage(sans, opening);
+  const newlyProven = !!proven && updateSaved((s) => (s.proven.includes(proven.id) ? s : { ...s, proven: [...s.proven, proven.id] })).ok;
+  if (newlyProven) window.dispatchEvent(new Event('storage')); // the drill reloads its line list on this event
 
   // One replay of the game: the position, last move and check state after every ply.
   const replay = new Chess();
@@ -81,6 +91,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
         <div class="board" id="rv-board"></div>
         <div class="under">
           <p class="fb" id="rv-step" role="status"></p>
+          ${proven ? `<p class="note">This game proves your ${proven.name} line: you played your prep right until it ended or your opponent left it.${newlyProven ? '' : " This browser couldn't save that."}</p>` : ''}
         </div>
       </section>
       <aside class="rail" aria-label="Lesson, moves and steps">

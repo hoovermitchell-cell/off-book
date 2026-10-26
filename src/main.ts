@@ -23,17 +23,16 @@ app.innerHTML = `
   </header>
   ${SCREENS.map((s, i) => `<div id="screen-${s.id}"${i === 0 ? '' : ' hidden'}></div>`).join('')}`;
 
-mountDrill(document.getElementById('screen-drill')!);
-mountReview(document.getElementById('screen-review')!);
-mountFooter(document.getElementById('footer')!);
-
 const tabs = [...app.querySelectorAll<HTMLButtonElement>('.tab')];
-for (const tab of tabs) {
-  tab.addEventListener('click', () => {
-    for (const t of tabs) {
-      const on = t === tab;
-      if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
-      document.getElementById(`screen-${t.dataset.screen}`)!.hidden = !on;
-    }
-  });
+function show(screen: string) {
+  for (const t of tabs) {
+    const on = t.dataset.screen === screen;
+    if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
+    document.getElementById(`screen-${t.dataset.screen}`)!.hidden = !on;
+  }
 }
+for (const tab of tabs) tab.addEventListener('click', () => show(tab.dataset.screen!));
+
+const reviewScreen = mountReview(document.getElementById('screen-review')!);
+mountDrill(document.getElementById('screen-drill')!, (game) => { show('review'); reviewScreen.open(game); });
+mountFooter(document.getElementById('footer')!);
