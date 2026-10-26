@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: feature**. Rolling polish PR: #6. Next opening: batch 3 (decision 16's order), based on `feat/batch2-italian-french` (#12) until it merges.
+**Next slot: opening**. Rolling polish PR: #6. Next opening: batch 3 (decision 16's order), based on `feat/batch2-italian-french` (#12) until it merges.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -43,19 +43,32 @@ From the design audit of 2026-10-25 (`refine/polish`, first polish slot). Best f
 
 ## Feature ideas
 
-Brainstorm, 2026-10-25 (loop slot 3). Ranked by how much each strengthens the core loop
-(learn → play → review) and the talk demo. Feature slots build from the top.
+Brainstorm, 2026-10-25 (loop slot 3), topped up 2026-10-26 (loop slot 12; new items marked).
+Ranked by how much each strengthens the core loop (learn → play → review) and the talk demo.
+Feature slots build from the top.
 
-1. **Battle record per line** (medium, decision 5, v1 scope 6). Each staged line in the rail shows
+1. **Talk demo backup** (new, small, decision 14c, v1 scope 8). 14c says later stages are shown
+   at the talk "by restoring a prepared backup". A script writes that file in the app's backup
+   format: one line Learning, one Cleared, one Proven with an imported game and a battle record,
+   and moves due today. Committed under `demo/`, with a test that the restore accepts it.
+2. **Battle record per line** (medium, decision 5, v1 scope 6). Each staged line in the rail shows
    the W-D-L of imported real games that followed it (same attribution as Proven). Records,
    not badges, per DESIGN.md.
-2. **Opening names in review** (small-medium, v1 scope 1). Name the position where prep ended
+3. **Where opponents leave your prep** (new, medium, v1 scope 5; idea 3 in
+   `docs/brainstorm/codex-2026-10-22.md`). Per opening, the opponent moves that took imported
+   games out of book, with counts, split into "your tree answers this, not learned yet" and "no
+   answer in your tree". Real games then point at what to drill next.
+4. **Opening names in review** (small-medium, v1 scope 1). Name the position where prep ended
    from Lichess `chess-openings` (CC0): "you left prep in the Caro-Kann, Advance Variation".
    Build-time TSV filtered to the trees' positions, so no runtime fetch.
-3. **Opening-linked puzzles** (large, decision 7, v1 scope 7). Lichess puzzles (CC0) filtered
+5. **Opponent rating from import** (new, small, v1 scope 3 and 4). After a Lichess or Chess.com
+   username import, offer to set the Maia rating to the student's own rating, rounded to the
+   nearest 100 within 600-1800. Public, anonymous profile endpoints; nothing stored but the
+   chosen rating.
+6. **Opening-linked puzzles** (large, decision 7, v1 scope 7). Lichess puzzles (CC0) filtered
    offline to positions in the student's trees, shown per line, not as a standalone mode.
    Open question for Mitch first: do solved puzzles level the line (decisions, Still open).
-4. **Weekly goal** (medium, decision 5, v1 scope 6). Effort-based: reviews done this week against
+7. **Weekly goal** (medium, decision 5, v1 scope 6). Effort-based: reviews done this week against
    a target, no streak guilt. Needs Mitch's call on what counts and the default target before
    building; until then it stays last.
 
@@ -96,3 +109,4 @@ Brainstorm, 2026-10-25 (loop slot 3). Ranked by how much each strengthens the co
 - Loop: feature, board entry for over-the-board games, PR #11 on `feat/board-entry`, 2026-10-25
 - Loop: batch 2, Italian + French with idea texts (decision 16), PR #12 on `feat/batch2-italian-french`, 2026-10-26
 - Loop: polish, How did it know? keeps Stockfish's verdict after the reply and no longer hides the scoresheet, PR #13 on `fix/know-panel`, 2026-10-26
+- Loop: feature brainstorm top-up, 3 new ideas ranked into `## Feature ideas` (7 total), 2026-10-26
