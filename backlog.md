@@ -9,9 +9,8 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: opening** (batch 2). Rolling polish PR: #6. Next opening: batch 2, re-picked by decision 16's rule after the pilot (provisionally Italian + French), based on `feat/tier-pilot` (#9) until it merges.
+**Next slot: polish**. Rolling polish PR: #6. Next opening: batch 3 (decision 16's order), based on `feat/batch2-italian-french` (#12) until it merges.
 First, each tick: check open loop PRs' CI and fix any red ones.
-**Stop after batch 2** (Mitch, 2026-10-25: the last batch today). Once its PR is open and green, log it and end the loop.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
   (QG + Slav), the tier pilot, batch 2 (re-picked by decision 16's rule), batch 3.
@@ -95,3 +94,4 @@ Brainstorm, 2026-10-25 (loop slot 3). Ranked by how much each strengthens the co
 - Loop: tier pilot, Intermediate London + Caro-Kann with Pause new lines and theory notes (decision 16 step 2), PR #9 on `feat/tier-pilot`, 2026-10-25
 - Loop: polish, confirm before Resign or a switch discards a game, PR #10 on `fix/confirm-discard`, 2026-10-25
 - Loop: feature, board entry for over-the-board games, PR #11 on `feat/board-entry`, 2026-10-25
+- Loop: batch 2, Italian + French with idea texts (decision 16), PR #12 on `feat/batch2-italian-french`, 2026-10-26
