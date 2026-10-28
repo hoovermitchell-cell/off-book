@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildTree, posKey, type PrepTree } from '../data/london';
 import { buildTree as caroKannTree } from '../data/caro-kann';
 import type { MaiaMove } from '../chess/maia';
-import { createDrill, JUDGE_MS, MISTAKE, PLAYABLE, type DrillEvent } from './drill';
+import { createDrill, JUDGE_MS, MISTAKE, PLAYABLE, readTypedMove, type DrillEvent } from './drill';
 
 type Eval = { cp: number; best: string };
 
@@ -536,5 +536,21 @@ describe('drill: sparring (v1 scope 3, decision 14d)', () => {
     await drill.play(mv('d2', 'd4'));
     expect(events.find((e) => e.type === 'prep-correct')).toMatchObject({ counted: false, learnedNow: false });
     expect(learned.calls).toEqual([]);
+  });
+});
+
+describe('readTypedMove', () => {
+  const start = new Chess().fen();
+  const afterE4D5 = new Chess('rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2').fen();
+  it('forgives a phone capital and a move number', () => {
+    for (const t of ['d4', 'D4', 'd2d4', '1.d4', '1. d4', ' D4 ']) expect(readTypedMove(start, t)?.san, t).toBe('d4');
+    expect(readTypedMove(afterE4D5, 'Exd5')?.san).toBe('exd5');
+    expect(readTypedMove(afterE4D5, '2.exd5')?.san).toBe('exd5');
+  });
+  it('keeps piece letters and still rejects illegal moves', () => {
+    expect(readTypedMove(start, 'Nf3')?.san).toBe('Nf3');
+    expect(readTypedMove(start, 'e5')).toBeUndefined();
+    expect(readTypedMove(start, 'Bc4')).toBeUndefined();
+    expect(readTypedMove(start, '')).toBeUndefined();
   });
 });
