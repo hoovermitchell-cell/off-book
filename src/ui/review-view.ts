@@ -5,8 +5,9 @@ import type { Api } from 'chessground/api';
 import type { DrawBrushes, DrawShape } from 'chessground/draw';
 import type { Key } from 'chessground/types';
 import { Chess, type Move } from 'chess.js';
-import { openingForSide } from '../data/openings';
+import { OPENINGS } from '../data/openings';
 import { plyLabel, type ImportedGame } from '../import/pgn';
+import { loadRecent, saveRecent } from '../import/recent';
 import { analyze, chooseLesson, walkPrep, type MoveCheck } from '../review/review';
 import { boundaryText, lessonText, pendingText, SCORE_NOTE, stepText, type Text } from '../review/templates';
 import { createStockfish, type StockfishHandle } from '../chess/stockfish-worker';
@@ -56,20 +57,20 @@ export function mountReview(root: HTMLElement): { open(game: ImportedGame): void
     teardown();
     importEl.hidden = true;
     screen.hidden = false;
-    teardown = review(screen, game, leave, () => !!screen.closest('[hidden]'));
+    teardown = review(screen, game, leave, openGame, () => !!screen.closest('[hidden]'));
   }
 
   return { open: openGame };
 }
 
 /** Builds the review screen for one game inside `host`. Returns a function that stops everything it started. */
-function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHidden: () => boolean): () => void {
+function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, onReopen: (game: ImportedGame) => void, isHidden: () => boolean): () => void {
   const { sans, side } = game;
-  const opening = openingForSide(side)!; // the import step only opens games whose side has an opening
+  const opening = OPENINGS.find((o) => o.id === game.prep)!; // the import step only opens games with an opening
   const walk = walkPrep(sans, opening);
   // A clean real game proves the staged line it followed (decision 14c). Recorded once, on opening the review.
-  // A sparring game is not a real game, so it proves nothing.
-  const proven = game.source === 'spar' ? undefined : provenStage(sans, opening);
+  // A sparring game is not a real game, and a tie between openings is not known to be this one: neither proves anything.
+  const proven = game.source === 'spar' || game.prepFrom === 'tie' ? undefined : provenStage(sans, opening);
   const newlyProven = !!proven && updateSaved((s) => (s.proven.includes(proven.id) ? s : { ...s, proven: [...s.proven, proven.id] })).ok;
   if (newlyProven) window.dispatchEvent(new Event('storage')); // the drill reloads its line list on this event
 
@@ -84,6 +85,16 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
     inCheck.push(replay.inCheck());
   }
 
+  // The openings this game could be reviewed as: shown when there is a choice.
+  const choices = OPENINGS.filter((o) => o.side === side);
+  const reviewedAs = choices.length < 2 ? '' : `
+        <div class="rail-section setup">
+          <label>Reviewed as
+            <select id="rv-as">${choices.map((o) => `<option value="${o.id}"${o === opening ? ' selected' : ''}>${o.name}</option>`).join('')}</select>
+          </label>
+          ${game.prepFrom === 'tie' ? '<p class="soft">This game fits more than one opening equally, so it earns no Proven. Pick the one you played.</p>' : ''}
+        </div>`;
+
   host.innerHTML = `
     <main class="review">
       <section class="play" aria-label="Game review">
@@ -94,7 +105,7 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
           ${proven ? `<p class="note">This game proves your ${proven.name} line: you played your prep right until it ended or your opponent left it.${newlyProven ? '' : " This browser couldn't save that."}</p>` : ''}
         </div>
       </section>
-      <aside class="rail" aria-label="Lesson, moves and steps">
+      <aside class="rail" aria-label="Lesson, moves and steps">${reviewedAs}
         <section class="lesson rail-section" id="rv-lesson" aria-labelledby="rv-lesson-h"></section>
         <div class="rail-section">
           <div class="scoresheet"><ol class="moves rv-moves" id="rv-moves" aria-label="Moves of the game"></ol></div>
@@ -299,6 +310,13 @@ function review(host: HTMLElement, game: ImportedGame, onLeave: () => void, isHi
   btn.next.addEventListener('click', () => go(cursor + 1));
   btn.last.addEventListener('click', () => go(sans.length));
   $('rv-other').addEventListener('click', onLeave);
+  // The student's pick outranks the book walk and survives reopening the recent list.
+  host.querySelector<HTMLSelectElement>('#rv-as')?.addEventListener('change', (ev) => {
+    const picked: ImportedGame = { ...game, prep: (ev.target as HTMLSelectElement).value, prepFrom: 'student' };
+    const recent = loadRecent();
+    if (recent) saveRecent({ ...recent, games: recent.games.map((g) => (g.id === game.id ? picked : g)) });
+    onReopen(picked);
+  });
   els.moves.addEventListener('click', (ev) => {
     const b = (ev.target as HTMLElement).closest<HTMLElement>('.mv');
     if (b) go(Number(b.dataset.ply) + 1);

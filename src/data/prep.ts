@@ -19,6 +19,11 @@ export type PrepTree = Map<string, PrepMove>;
 
 export const posKey = (fen: string): string => fen.split(' ').slice(0, 4).join(' ');
 
+/** A ladder rung belongs to a position and the move prescribed there, so openings that share a
+ *  position but part ways at it keep separate progress. Five space-separated fields; a legacy key
+ *  (a bare posKey) has four. */
+export const ladderKey = (fen: string, uci: string): string => `${posKey(fen)} ${uci}`;
+
 /** Pinned LINES win over AUTO. `side` is the student's colour; the other side's moves are not stored. */
 export function buildPrepTree(lines: string[], auto: Record<string, PrepMove>, side: 'w' | 'b'): PrepTree {
   const tree: PrepTree = new Map();

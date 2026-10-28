@@ -64,7 +64,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
       <aside class="rail" aria-label="Drill setup and record">
         <div class="rail-section setup">
           <label>Opening
-            <select id="opening">${OPENINGS.map((o) => `<option value="${o.id}"${o === opening ? ' selected' : ''}>${o.name} (you play ${sideName(o.side)})</option>`).join('')}</select>
+            <select id="opening">${(['w', 'b'] as const).map((side) => `<optgroup label="You play ${sideName(side)}">${OPENINGS.filter((o) => o.side === side).map((o) => `<option value="${o.id}"${o === opening ? ' selected' : ''}>${o.name}</option>`).join('')}</optgroup>`).join('')}</select>
           </label>
           <label>Mode
             <select id="mode"><option value="drill">Drill</option><option value="spar">Spar</option></select>
@@ -141,6 +141,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
   const lastTo = () => { const c = new Chess(); drill.getState().history.forEach((m) => { c.move(m); }); return c.history({ verbose: true }).at(-1)?.to as Key; };
   let know: { kind: 'maia'; san: string; ply: number; top: TopMove[]; rating: number; p: number }
     | { kind: 'staged'; san: string; ply: number; line: string }
+    | { kind: 'forced'; san: string; ply: number }
     | { kind: 'stockfish'; text: string; depth?: number; nodes?: number } | null = null;
 
   // ---- engines ---------------------------------------------------------------------------------
@@ -177,7 +178,7 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
 
   ready.then(([sf, run]) => {
     drills = new Map(OPENINGS.map((o) => {
-      const d = createDrill({ tree: o.tree, side: o.side, openingMoves: o.openingMoves, learned, engine: sf.engine, maia: (chess, elo) => maiaMoves(run, chess, elo, elo) });
+      const d = createDrill({ tree: o.tree, side: o.side, forcedReplies: o.forcedReplies, learned, engine: sf.engine, maia: (chess, elo) => maiaMoves(run, chess, elo, elo) });
       d.on((e) => { if (d === drill) onEvent(e); });
       return [o.id, d];
     }));
@@ -269,7 +270,10 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
       els.know.innerHTML = `<h2 id="know-h">How did it know?</h2><p>Play a move. Here you'll see why ${opp()} chose its reply and how Stockfish judged yours.</p>`;
       return;
     }
-    if (know.kind === 'staged') {
+    if (know.kind === 'forced') {
+      els.know.innerHTML = `<h2 id="know-h">How did it know?</h2>
+        <p>${opp()} played <b>${label(know.ply, know.san)}</b> because your ${opening.name} starts from it. After that, Maia plays like a human at your chosen rating.</p>`;
+    } else if (know.kind === 'staged') {
       els.know.innerHTML = `<h2 id="know-h">How did it know?</h2>
         <p>${opp()} played <b>${label(know.ply, know.san)}</b> because it is the next move of your staged line, ${know.line}. Staged lines come first, so you meet the likely positions in order. When the line ends, Maia takes over and plays like a human at your chosen rating.</p>`;
     } else if (know.kind === 'maia') {
@@ -379,7 +383,9 @@ export function mountDrill(root: HTMLElement, onReview: (game: ImportedGame) => 
         break;
       }
       case 'opponent-move':
-        know = e.staged && current ? { kind: 'staged', san: e.san, ply, line: current.name } : { kind: 'maia', san: e.san, ply, top: e.top, rating: e.rating, p: e.p };
+        know = e.staged && current ? { kind: 'staged', san: e.san, ply, line: current.name }
+          : e.forced ? { kind: 'forced', san: e.san, ply }
+          : { kind: 'maia', san: e.san, ply, top: e.top, rating: e.rating, p: e.p };
         setNow(s.offBook ? 'Your move. You\'re off book: play it out.' : 'Your move. Stay in your prep.', `${opp()} played ${label(ply, e.san)}.`);
         sync([]);
         break;

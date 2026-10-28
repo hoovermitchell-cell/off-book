@@ -1,10 +1,13 @@
-// Run: node check-caro-kann.mjs  -- every Black prep move is legal, conflict-free, and close to Stockfish's best.
+// Run: node check-tree.mjs <london|caro-kann>  -- every prep move is legal, conflict-free, and close to Stockfish's best.
 import { createRequire } from 'node:module';
 import { Chess } from 'chess.js';
-import { buildTree } from './caro-kann.js';
 import { createEngine } from './engine.js';
 
-const tree = buildTree(Chess);
+const name = process.argv[2];
+const mod = await import(`./${name}.js`).catch(() => { throw new Error(`usage: node check-tree.mjs <london|caro-kann> (got ${name})`); });
+const tree = mod.buildTree(Chess);
+// The student's colour is the side to move in every prep position; Stockfish scores are White's view.
+const sign = [...tree.keys()][0].split(' ')[1] === 'w' ? 1 : -1;
 const sf = createRequire(import.meta.url)('stockfish')('lite-single', (l) => engine.onLine(l));
 const engine = createEngine((c) => sf.processCommand(c));
 await engine.ready();
@@ -16,9 +19,9 @@ for (const [key, prep] of tree) {
   const best = await engine.evaluate(fen, 400);
   const c = new Chess(fen); c.move(prep.san);
   const after = await engine.evaluate(c.fen(), 400);
-  const loss = after.cp - best.cp; // scores are White's view, so Black loses when the score rises
+  const loss = sign * (best.cp - after.cp);
   if (loss > LIMIT) { bad++; console.log(`TRAILS ${loss}cp: ${prep.san} (best ${best.best}) at ${key} [${prep.pinned ? 'pinned' : prep.line}]`); }
 }
-console.log(`${tree.size} prep positions, ${bad} trailing by more than ${LIMIT}cp`);
+console.log(`${name}: ${tree.size} prep positions, ${bad} trailing by more than ${LIMIT}cp`);
 sf.terminate();
 process.exitCode = bad ? 1 : 0;
