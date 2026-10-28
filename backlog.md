@@ -69,10 +69,20 @@ Feature slots build from the top.
 
 <!-- approved, scoped work — the loop drains these top to bottom -->
 
+- [ ] **Break opening-detection ties toward the drill's selected opening** (Mitch, 2026-10-27; option 1 in
+  `docs/review/scotch-qgd-lines.md` on PR #14). Since the Scotch reuses the Italian's routes, 303 of 445
+  Italian book paths are a tie and earn no Proven until the student picks. Rule: when `detectPrep` finds a
+  tie and the opening selected in the drill (`loadOpening()`) is one of the tied openings, name that opening
+  with `prepFrom: 'book'`; otherwise behaviour is unchanged (first tied opening, `'tie'`). Pass the selected
+  id in as an optional argument so `pgn.ts` stays storage-free; wire it at the call sites (`parsePgn`,
+  `recent.ts`, `import-view.ts` `prepFor`). Games already stored keep their saved `prepFrom`. Tests: a
+  Philidor game reads as the Scotch with Scotch selected, as the Italian with Italian selected, and stays a
+  tie with the London selected. Base on `feat/advanced-london-caro` (top of the opening stack, has #14);
+  own branch and PR.
+
 ## Needs shaping
 
 - Repertoire plumbing and batches: now run by the refinement loop above
-- Mitch: Italian/Scotch detection ties (#14): 303 of 445 Italian book paths now fit the Scotch equally and earn no Proven until the student picks. Options in `docs/review/scotch-qgd-lines.md`; Claude leans to breaking ties toward the opening selected in the drill
 - Mitch: prep holes found by the Advanced tier (#16): London 1.d4 c6 (1.6% of Maia games) and 1.d4 b6 (1.5%); Caro-Kann 2.Qf3 (2.4%), 2.e5 (1.9%), 2.f4 (1.6%). Setups rather than tactics, so likely Intermediate lines
 - Mitch: the London's pinned 4.Qc1 against 1.d4 Nf6 2.Bf4 c5 3.e3 Qb6 loses d4 (4...cxd4 5.exd4 Qxd4); Stockfish prefers 4.Nc3 by ~71cp at 3 s. Found by the tier pilot (#9); an Intro change, so it waits for you
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
