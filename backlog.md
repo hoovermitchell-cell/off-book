@@ -88,13 +88,18 @@ Feature slots build from the top.
   the usual Maia ranking. Add a theory note per line, regenerate with `KEEP=1`, no existing prep move changed.
   Base on the 4.Nc3 branch above (same `london.ts` and decision 17), own branch and PR; list the masters counts
   behind each pin in the PR. This is the refinement loop's next opening slot.
+- [ ] **Recheck the London's 38 Stockfish-fallback positions against the masters book** (Mitch, 2026-11-19).
+  Decision 17 applied to `london-auto.ts`: for each fallback position, look up the Lichess masters database.
+  Where its most-played move differs from Stockfish's pick and passes the 3 s blunder check, pin the book move;
+  where the book has too few games, keep Stockfish's move. Regenerate with `KEEP=1`. Base on the prep-holes
+  branch above, own branch and PR, with a table in the PR: position, old move, book move, masters count, eval.
 
 ## Needs shaping
 
 - Repertoire plumbing and batches: now run by the refinement loop above
 - Parked (Mitch, 2026-11-19, "masters only for now"): pick the student's book moves by rating band from the Lichess players database instead of masters only. Needs his Lichess login or API token
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
-- Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
+- Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and whatever fallbacks in `london-auto.ts` the book recheck (Ready) leaves on Stockfish
 - Low priority, since the app is for a talk, not a rollout (Mitch, 2026-10-23): Chromebook load time and engine speed; questions for the school about devices and accounts
 
 ## Done
