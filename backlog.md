@@ -69,11 +69,20 @@ Feature slots build from the top.
 
 <!-- approved, scoped work — the loop drains these top to bottom -->
 
+- [ ] **London Intro: 4.Nc3 instead of 4.Qc1 against 1.d4 Nf6 2.Bf4 c5 3.e3 Qb6** (Mitch, 2026-11-19).
+  4.Qc1 loses d4 (4...cxd4 5.exd4 Qxd4), and it does not appear in the Lichess masters database here. Mitch's
+  rule: teach the typical book move, not a Stockfish move that may be too theoretical. Masters play 4.Nc3 in 70%
+  of 261 games (then 4.Na3 21%), and Stockfish agrees (+71cp over 4.Qc1 at 3 s). Pin 4.Nc3, and pin White's
+  next move from the masters book too: 5.Nb5 against 4...Qxb2 (94%), 5.exd4 against 4...cxd4 (85%). Black's
+  other replies (masters: 4...d6 36%, 4...a6 15%, 4...e6 12%) come from the tree's usual Maia ranking. Fix the
+  comment and any idea or theory text that names Qc1 or guarding b2 (`london.ts`, `london-ideas.ts`). Regenerate
+  with `KEEP=1` so nothing else re-rolls; a student who learned 4.Qc1 just sees 4.Nc3 as a new position. Base
+  on `feat/advanced-london-caro`, own branch and PR, and note in the PR that 4.Nc3 allows the ...Qxb2 pawn grab.
+
 ## Needs shaping
 
 - Repertoire plumbing and batches: now run by the refinement loop above
 - Mitch: prep holes found by the Advanced tier (#16): London 1.d4 c6 (1.6% of Maia games) and 1.d4 b6 (1.5%); Caro-Kann 2.Qf3 (2.4%), 2.e5 (1.9%), 2.f4 (1.6%). Setups rather than tactics, so likely Intermediate lines
-- Mitch: the London's pinned 4.Qc1 against 1.d4 Nf6 2.Bf4 c5 3.e3 Qb6 loses d4 (4...cxd4 5.exd4 Qxd4); Stockfish prefers 4.Nc3 by ~71cp at 3 s. Found by the tier pilot (#9); an Intro change, so it waits for you
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
 - Define this project's "done" gate beyond green CI, if any
