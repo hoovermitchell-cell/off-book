@@ -9,7 +9,7 @@ Everything below waits for a human. Start the loop with the command in AGENTS.md
 Mitch, 2026-10-25. Each iteration runs one slot, then the pointer moves on:
 opening → polish → feature → opening …
 
-**Next slot: opening** (blocked: none queued, see below). Rolling polish PR: #6. Next opening: **none queued.** Advanced London + Caro-Kann (#16) was the last one Mitch queued. If the pointer reaches opening, stop the loop and ask.
+**Next slot: opening** (blocked: none queued, see below). Rolling polish PR: #6. Next opening: **the Advanced-tier prep holes**, queued in `## Ready` (Mitch, 2026-11-19). After that, none queued: if the pointer reaches opening, stop the loop and ask.
 First, each tick: check open loop PRs' CI and fix any red ones.
 
 - **Opening.** The next step in decision 16's order: plumbing (step 0), batch 1
@@ -81,11 +81,18 @@ Feature slots build from the top.
   Same PR: add decision 17 to `docs/decisions.md`, "the student's moves come from the human book" (Mitch,
   2026-11-19): pin the move the Lichess masters database plays most, with Stockfish as a blunder check and as
   the fallback only where the book has too few games.
+- [ ] **Prep holes from the Advanced tier (#16), one Intermediate line each** (Mitch, 2026-11-19). London 1.d4 c6
+  (1.6% of Maia games) and 1.d4 b6 (1.5%); Caro-Kann 2.Qf3 (2.4%), 2.e5 (1.9%), 2.f4 (1.6%). Setups rather than
+  tactics. Pin the student's moves by decision 17: the Lichess masters database's most-played move, Stockfish as
+  the blunder check at about 3 s, and the fallback only where the book has too few games. Opponent replies from
+  the usual Maia ranking. Add a theory note per line, regenerate with `KEEP=1`, no existing prep move changed.
+  Base on the 4.Nc3 branch above (same `london.ts` and decision 17), own branch and PR; list the masters counts
+  behind each pin in the PR. This is the refinement loop's next opening slot.
 
 ## Needs shaping
 
 - Repertoire plumbing and batches: now run by the refinement loop above
-- Mitch: prep holes found by the Advanced tier (#16): London 1.d4 c6 (1.6% of Maia games) and 1.d4 b6 (1.5%); Caro-Kann 2.Qf3 (2.4%), 2.e5 (1.9%), 2.f4 (1.6%). Setups rather than tactics, so likely Intermediate lines
+- Parked (Mitch, 2026-11-19, "masters only for now"): pick the student's book moves by rating band from the Lichess players database instead of masters only. Needs his Lichess login or API token
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
 - Define this project's "done" gate beyond green CI, if any
