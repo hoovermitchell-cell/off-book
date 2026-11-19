@@ -32,10 +32,16 @@ Visual and interface canon: [DESIGN.md](DESIGN.md), tokens in
 
 Work is queued in `backlog.md`. Start the hands-off loop with:
 
-    /loop Read backlog.md. Take the first `- [ ]` under `## Ready`. If one exists: invoke the `cycle` skill with that item's text and run the loop to VERIFY; then commit on a branch, push, and open a PR; watch CI and fix failures until it is green. When the PR is open and green, move the item to `## Done` and continue to the next item. If `## Ready` is empty: do NOT invent work — stop, and if `## Needs shaping` has items, list them and offer a quick shaping pass to promote one into `## Ready`; otherwise say the queue is dry. End the loop.
+    /loop Read backlog.md. Take the first `- [ ]` under `## Ready`. If one exists: invoke the `cycle` skill with that item's text and run the loop to VERIFY, including the smoke check below; then commit on a branch, push, and open a PR; watch CI and fix failures until it is green. When the PR is open and green, move the item to `## Done` and continue to the next item. If `## Ready` is empty: do NOT invent work — stop, and if `## Needs shaping` has items, list them and offer a quick shaping pass to promote one into `## Ready`; otherwise say the queue is dry. End the loop.
 
 Omit an interval so the loop self-paces. It opens PRs and pushes branches but
 never merges — the human's merge is the final gate even in full auto.
+
+**Done gate** (Mitch, 2026-11-19): green CI plus a browser smoke check for any change
+the app shows (UI, opening data, texts). Before opening the PR, run the app, play a few
+drill moves in the line that changed, open one review, and check the console has no
+errors. List what was played in the PR body and share a screenshot with Mitch where the
+harness allows. Docs-only and test-only changes skip it.
 
 ## Autonomy mode — `propose`
 

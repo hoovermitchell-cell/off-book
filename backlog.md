@@ -95,7 +95,6 @@ Feature slots build from the top.
 - Parked (Mitch, 2026-11-19, "masters only for now"): pick the student's book moves by rating band from the Lichess players database instead of masters only. Needs his Lichess login or API token
 - Mitch reviews the review-screen copy in `src/review/templates.ts` (decision 4b)
 - Mitch reviews the London tree's pinned lines (`src/data/london.ts`) and the 38 Stockfish-fallback positions in `london-auto.ts`
-- Define this project's "done" gate beyond green CI, if any
 - Low priority, since the app is for a talk, not a rollout (Mitch, 2026-10-23): Chromebook load time and engine speed; questions for the school about devices and accounts
 
 ## Done
