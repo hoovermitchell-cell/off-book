@@ -18,7 +18,9 @@ const MOMENTS: [string, string][] = [
   ['d4 e5 dxe5 Nc6 Nf3 Qe7 Bf4 Qb4+', 'Block the check with your bishop.'],
   ['d4 e5 dxe5 Nc6 Nf3 Qe7 Bf4 Qb4+ Bd2 Qxb2', "Here's the trap: 6.Bc3?? Bb4 7.Qd2 Bxc3 8.Qxc3 Qc1 is mate. Nc3 develops instead, your queen still guards a1, and Black's queen is short of squares."],
   // Key moments in the pinned lines
-  ['d4 Nf6 Bf4 c5 e3 Qb6', "Black's queen is aiming at b2. Qc1 guards it and keeps your setup."],
+  ['d4 Nf6 Bf4 c5 e3 Qb6', "Black's queen is aiming at b2. Let it: Nc3 develops, and if Black takes the pawn, your knight jumps to b5."],
+  ['d4 Nf6 Bf4 c5 e3 Qb6 Nc3 Qxb2', 'Nb5 threatens Nc7+, which hits the king and the rook on a8 at once.'],
+  ['d4 Nf6 Bf4 c5 e3 Qb6 Nc3 cxd4', "Take back with the e-pawn. Your queen guards d4, so ...Qxd4 would lose Black's queen."],
   ['d4 c5', 'Against ...c5, c3 keeps d4 protected. If Black takes on d4, take back with the c-pawn.'],
 ];
 

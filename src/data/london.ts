@@ -20,9 +20,10 @@ export const LINES: string[] = [
   // Early ...Bf5: trade it off with Bd3 instead of chasing b7
   'd4 d5 Bf4 Nf6 e3 Bf5 Bd3 Bxd3 Qxd3',
   'd4 d5 Bf4 Bf5 e3 e6 Bd3 Bxd3 Qxd3',
-  // Early ...c5 / ...Qb6: keep the setup, guard b2 with Qc1
+  // Early ...c5 / ...Qb6: Nc3, the masters' move (decision 17). It lets ...Qxb2, and Nb5 then threatens Nc7+
   'd4 d5 Bf4 c5 e3 Nc6 c3',
-  'd4 Nf6 Bf4 c5 e3 Qb6 Qc1',
+  'd4 Nf6 Bf4 c5 e3 Qb6 Nc3 Qxb2 Nb5',
+  'd4 Nf6 Bf4 c5 e3 Qb6 Nc3 cxd4 exd4',
   'd4 c5 c3',
   // ...Nc6 setups
   'd4 d5 Bf4 Nc6 e3 e6 Nf3 Nf6 Bd3',
