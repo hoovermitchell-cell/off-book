@@ -4,14 +4,16 @@ import { OPENINGS } from '../data/openings';
 import { detectPrep, parsePgn, plyLabel, type GameSource, type ImportedGame } from '../import/pgn';
 import { loadRecent, saveRecent } from '../import/recent';
 import { fetchChessCom, fetchLichess, ImportError } from '../import/sources';
+import { loadOpening } from '../storage';
 
 const SITES: Record<GameSource, string> = { lichess: 'Lichess', chesscom: 'Chess.com', paste: 'pasted PGN', spar: 'sparring game' };
 const SIDE = { w: 'White', b: 'Black' } as const;
 /** "the London as White and the Caro-Kann as Black", from OPENINGS. */
 const prepList = OPENINGS.map((o) => `the ${o.name} as ${SIDE[o.side]}`).join(' and ');
-/** The opening a game is reviewed as on `side`: the student's earlier pick while it stands, else the book walk. */
+/** The opening a game is reviewed as on `side`: the student's earlier pick while it stands, else the book walk,
+ *  with a tie going to the opening selected in the drill. */
 const prepFor = (g: ImportedGame, side: 'w' | 'b'): { prep: string | null; prepFrom: 'book' | 'tie' | 'student' } =>
-  g.prepFrom === 'student' && g.side === side ? { prep: g.prep, prepFrom: 'student' } : detectPrep(g.sans, side);
+  g.prepFrom === 'student' && g.side === side ? { prep: g.prep, prepFrom: 'student' } : detectPrep(g.sans, side, loadOpening());
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) => void): { show(): void } {
