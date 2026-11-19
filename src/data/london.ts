@@ -42,6 +42,9 @@ export const LINES: string[] = [
   'd4 d5 Bf4 Nf6 e3 e6 Nf3 c5 c3 Nc6 Nbd2 Bd6 Bg3 O-O Bd3 Re8 Ne5 cxd4 exd4 Nxe5 dxe5 Bxe5 Bxe5',
   // Intermediate tier (decision 16 pilot): King's Indian setup, extended to move 9
   'd4 Nf6 Bf4 g6 e3 Bg7 Nf3 O-O Be2 d6 h3 Nbd7 c3 Re8 Nbd2 e5 Bg5',
+  // Intermediate tier (decision 17): the prep holes the Advanced tier found, White's moves from the masters book
+  'd4 c6 Bf4 d5 e3 Nf6 Bd3 e6 Nf3 Bd6 Bg3 O-O c3',
+  'd4 b6 Bf4 Bb7 e3 e6 Nf3 Nf6 c3 Be7 Bd3 O-O Nbd2 d6 O-O',
   // Advanced tier (decision 16): the ...f6 trap's second try, ...g5. Qh5+ first; Bxg5? fxg5 loses the bishop for a pawn
   'd4 d5 Bf4 f6 e3 g5 Qh5+ Kd7 Bg3 Qe8 Qf3 c6 h4 gxh4 Rxh4',
   // Advanced tier: ...Bb4+ and ...Ba5 put Black's bishop out of play; Ne5 then dxe5 hits the knight on f6

@@ -53,8 +53,8 @@ describe('Advanced tier: the content rule (decision 16)', () => {
 
   it('the Intro and Intermediate lines have the length they had before the Advanced tier', () => {
     const lengths: Record<string, Record<string, number>> = {
-      london: { textbook: 15, 'nc6-bf5': 16, 'e6-bd6': 13, 'early-bf5': 11, 'nf6-bf5': 13, 'textbook-12': 23, kid: 17 },
-      'caro-kann': { classical: 26, 'exchange-nf3': 16, bc4: 15, 'nc3-exd5': 13, advance: 12, 'classical-bd3': 13, d3: 12, 'classical-17': 34, 'two-knights': 16, fantasy: 16, panov: 24 },
+      london: { textbook: 15, 'nc6-bf5': 16, 'e6-bd6': 13, 'early-bf5': 11, 'nf6-bf5': 13, 'textbook-12': 23, kid: 17, 'c6-setup': 13, 'b6-setup': 15 },
+      'caro-kann': { classical: 26, 'exchange-nf3': 16, bc4: 15, 'nc3-exd5': 13, advance: 12, 'classical-bd3': 13, d3: 12, 'classical-17': 34, 'two-knights': 16, fantasy: 16, panov: 24, qf3: 16, 'e5-early': 16, f4: 16 },
     };
     for (const id of WITH_ADVANCED) {
       const o = byId(id);

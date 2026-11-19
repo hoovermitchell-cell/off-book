@@ -84,6 +84,12 @@ export const OPENINGS: Opening[] = [
         "With your pieces out, the knight jumps to e5 and eyes Black's kingside. If Black swaps on d4, take back with the e-pawn: it keeps the e-file and e5 for you. Then if ...Nxe5, dxe5 attacks the bishop on d6 and the knight on f6 at once, and the pawn fork wins a piece for a pawn."),
       deeper('kid', "King's Indian setup", 'd4 Nf6 Bf4 g6 e3 Bg7 Nf3 O-O Be2 d6 h3 Nbd7 c3 Re8 Nbd2 e5 Bg5',
         "Against ...g6, ...Bg7 and ...d6, keep the London shape but put the bishop on e2. h3 gives the f4 bishop a retreat on h2, so ...Nh5 can't trade it off. Black's plan is ...e5; when it comes, Bg5 pins the f6 knight to the queen, since ...e5 has emptied e7."),
+      // Intermediate, decision 17: the prep holes the Advanced tier found, by Maia frequency (...c6 1.6%, ...b6 1.5%).
+      // After the pilot's lines, so no line a student has unlocked moves. White's moves are the masters' London moves.
+      deeper('c6-setup', '...c6 and ...d5', 'd4 c6 Bf4 d5 e3 Nf6 Bd3 e6 Nf3 Bd6 Bg3 O-O c3',
+        "Against ...c6 and ...d5, keep the usual setup. Masters play Bd3 before Nf3 here: the bishop covers f5, so Black's c8 bishop can't come out there without being traded. If ...Bd6 offers a bishop trade, drop back to g3 as in the Textbook, then c3 gives d4 a second guard."),
+      deeper('b6-setup', '...b6 and ...Bb7', 'd4 b6 Bf4 Bb7 e3 e6 Nf3 Nf6 c3 Be7 Bd3 O-O Nbd2 d6 O-O',
+        "...b6 and ...Bb7 aim Black's bishop down the long diagonal at e4 and your kingside. The London never needs e4, so play the usual setup: e3, Nf3, c3, Bd3, Nbd2 and castle. Your bishop on d3 and knight on d2 both cover e4, so the bishop on b7 has nothing to hit."),
       // Advanced, ranked by Maia's chance of reaching the opponent's critical move (docs/plans/2026-10-26-advanced-tier.md).
       critical('bb4-ba5', '...Bb4+ and ...Ba5', 'd4 d5 Bf4 Nc6 e3 Nf6 Nf3 e6 Bd3 Bb4+ c3 Ba5 Nbd2 O-O Qc2 Re8 Ne5 Nxe5 dxe5',
         "Black's ...Bb4+ looks active, but c3 is a move you wanted anyway, and after ...Ba5 the bishop sits at the edge of the board, far from its king. Stockfish rates the check about half a pawn worse for Black than ...Bd6. Keep developing: Nbd2, then Qc2, so your queen backs up the bishop on d3 and both aim at h7. Then play Ne5. If Black takes it, dxe5 attacks the knight on f6, and with the bishop and queen pointing at h7 that knight has no good square."),
@@ -124,6 +130,14 @@ export const OPENINGS: Opening[] = [
         "3.f3 props up e4 for a big center. Take on e4 and hit back with ...e5 before White is developed. With the f-pawn gone, the diagonals to White's king are open: dxe5 too early allows ...Qh4+, and after castling ...Qb6+ checks and hits b2. Don't take on f3 before ...Nd7: after Qxf3, the queen and the c4 bishop both hit f7."),
       deeper('panov', 'Panov', 'e4 c6 d4 d5 exd5 cxd5 c4 Nf6 Nc3 e6 Nf3 Be7 cxd5 Nxd5 Bd3 Nc6 O-O O-O Re1 Nf6 Be3 b6 Qc2 Nb4',
         "After the trades White has an isolated pawn on d4, with no pawn beside it to guard it. Aim your pieces at it, keep it blockaded, and welcome trades: every trade makes the lone pawn weaker. ...b6 makes room for your last bishop, and ...Nb4 hits the queen and the d3 bishop."),
+      // Intermediate, decision 17: the prep holes the Advanced tier found, by Maia frequency (2.Qf3 2.4%, 2.e5 1.9%, 2.f4 1.6%).
+      // After the pilot's lines, so no line a student has unlocked moves. Black's moves are the masters' moves.
+      deeper('qf3', '2.Qf3', 'e4 c6 Qf3 d5 exd5 cxd5 Bb5+ Nc6 Nc3 e6 Nge2 Nf6 Nd4 Qb6 Nxc6 bxc6',
+        "2.Qf3 brings the queen out early to back up e4. Answer with ...d5 as always, and after exd5 cxd5 you own the center. Block Bb5+ with ...Nc6, then develop with ...e6 and ...Nf6. When White's knight lands on d4, ...Qb6 guards c6 and attacks the knight. After Nxc6, take back with the b-pawn: it attacks the bishop on b5."),
+      deeper('e5-early', '2.e5', 'e4 c6 e5 d5 exd6 exd6 Nf3 d5 d4 Bf5 Bd3 Bxd3 Qxd3 Nd7 O-O Ngf6',
+        "2.e5 grabs space before you play ...d5. Play ...d5 anyway. If White takes en passant, take back with the e-pawn: your f8 bishop is free, and ...d5 next rebuilds the center. Then it's the usual Caro-Kann: ...Bf5, trade bishops when White plays Bd3, and develop with ...Nd7 and ...Ngf6."),
+      deeper('f4', '2.f4', 'e4 c6 f4 d5 e5 Bf5 d4 e6 Nf3 c5 c3 Qb6 Bd3 Bxd3 Qxd3 Nd7',
+        "2.f4 backs up an e5 push. After ...d5 and e5 the pawns lock as in the Advance, so play it like one: ...Bf5 before ...e6, then ...c5 to hit d4. ...Qb6 adds pressure on d4 and b2. When White's bishop comes to d3, trade it off and develop with ...Nd7. The e5 pawn takes f6 from your other knight, so that one comes out by e7."),
       // Advanced, ranked by Maia's chance of reaching the opponent's critical move (docs/plans/2026-10-26-advanced-tier.md).
       critical('nf3-dxe4', '3.Nf3 and 4.Ne5', 'e4 c6 d4 d5 Nf3 dxe4 Ne5 Nd7 Bc4 Nxe5 dxe5 Qa5+ Bd2 Qxe5',
         "After 3.Nf3 you can simply take the pawn: the knight doesn't guard e4. If White jumps to e5, which eyes f7, hit the knight with ...Nd7. When Bc4 puts a second attacker on f7, take the knight with ...Nxe5. After dxe5, ...Qa5+ checks the king and attacks e5 at the same time, and the pawn falls. Stockfish thinks ...Nxe5 is clearly the best fifth move."),

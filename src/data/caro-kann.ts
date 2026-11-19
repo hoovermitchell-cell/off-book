@@ -53,6 +53,10 @@ export const LINES: string[] = [
   'e4 c6 d4 d5 f3 dxe4 fxe4 e5 Nf3 Bg4 Bc4 Nd7 O-O Ngf6 dxe5 Qb6+',
   // Intermediate tier (decision 16 pilot): the Two Knights continued to move 8
   'e4 c6 Nc3 d5 Nf3 Bg4 h3 Bxf3 Qxf3 e6 d3 Nf6 Bg5 Nbd7 exd5 cxd5',
+  // Intermediate tier (decision 17): the prep holes the Advanced tier found, Black's moves from the masters book
+  'e4 c6 Qf3 d5 exd5 cxd5 Bb5+ Nc6 Nc3 e6 Nge2 Nf6 Nd4 Qb6 Nxc6 bxc6',
+  'e4 c6 e5 d5 exd6 exd6 Nf3 d5 d4 Bf5 Bd3 Bxd3 Qxd3 Nd7 O-O Ngf6',
+  'e4 c6 f4 d5 e5 Bf5 d4 e6 Nf3 c5 c3 Qb6 Bd3 Bxd3 Qxd3 Nd7',
   // Advanced tier (decision 16): 3.Nf3 dxe4 4.Ne5 Nd7, then the knight trade and ...Qa5+ win the e5 pawn
   'e4 c6 d4 d5 Nf3 dxe4 Ne5 Nd7 Bc4 Nxe5 dxe5 Qa5+ Bd2 Qxe5',
   // Advanced tier: 2.Qh5 Nf6 hits the queen; ...e5 and ...d5 take the center, and ...bxc6 (not ...Bd7) after Bxc6+
