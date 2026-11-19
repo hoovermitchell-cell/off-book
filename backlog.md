@@ -69,17 +69,6 @@ Feature slots build from the top.
 
 <!-- approved, scoped work — the loop drains these top to bottom -->
 
-- [ ] **Break opening-detection ties toward the drill's selected opening** (Mitch, 2026-10-27; option 1 in
-  `docs/review/scotch-qgd-lines.md` on PR #14). Since the Scotch reuses the Italian's routes, 303 of 445
-  Italian book paths are a tie and earn no Proven until the student picks. Rule: when `detectPrep` finds a
-  tie and the opening selected in the drill (`loadOpening()`) is one of the tied openings, name that opening
-  with `prepFrom: 'book'`; otherwise behaviour is unchanged (first tied opening, `'tie'`). Pass the selected
-  id in as an optional argument so `pgn.ts` stays storage-free; wire it at the call sites (`parsePgn`,
-  `recent.ts`, `import-view.ts` `prepFor`). Games already stored keep their saved `prepFrom`. Tests: a
-  Philidor game reads as the Scotch with Scotch selected, as the Italian with Italian selected, and stays a
-  tie with the London selected. Base on `feat/advanced-london-caro` (top of the opening stack, has #14);
-  own branch and PR.
-
 ## Needs shaping
 
 - Repertoire plumbing and batches: now run by the refinement loop above
@@ -122,3 +111,4 @@ Feature slots build from the top.
 - Loop: Advanced tier, 4 lines each for the London and Caro-Kann, no existing prep move changed (decision 16), PR #16 on `feat/advanced-london-caro`, 2026-10-26
 - Loop: polish, typed moves accept a phone's capital first letter (D4) and a move number (1.d4), on rolling PR #6, 2026-10-26
 - Loop: feature, battle record per line from real games (decision 14c), PR #17 on `feat/battle-record`, 2026-10-26
+- Ready: opening ties go to the drill's selected opening (Italian/Scotch, #14), PR #18 on `feat/tie-toward-drill`, 2026-11-19
