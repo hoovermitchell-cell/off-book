@@ -78,6 +78,9 @@ Feature slots build from the top.
   comment and any idea or theory text that names Qc1 or guarding b2 (`london.ts`, `london-ideas.ts`). Regenerate
   with `KEEP=1` so nothing else re-rolls; a student who learned 4.Qc1 just sees 4.Nc3 as a new position. Base
   on `feat/advanced-london-caro`, own branch and PR, and note in the PR that 4.Nc3 allows the ...Qxb2 pawn grab.
+  Same PR: add decision 17 to `docs/decisions.md`, "the student's moves come from the human book" (Mitch,
+  2026-11-19): pin the move the Lichess masters database plays most, with Stockfish as a blunder check and as
+  the fallback only where the book has too few games.
 
 ## Needs shaping
 
