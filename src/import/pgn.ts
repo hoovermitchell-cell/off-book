@@ -42,8 +42,9 @@ const RESULT = /^(1-0|0-1|1\/2-1\/2|\*)$/;
 /** The opening the student played, given the side they played: the game is walked through every opening
  *  on that side and each is scored by the student's moves that stayed in its prep. The highest score
  *  wins and needs at least one move (two for White); equal top scores are a tie, which still names the
- *  first tied opening so the review can open, but is marked so it can ask. */
-export function detectPrep(sans: string[], side: 'w' | 'b'): { prep: string | null; prepFrom: 'book' | 'tie' } {
+ *  first tied opening so the review can open, but is marked so it can ask. A tie that includes `prefer`
+ *  (the opening selected in the drill) is settled in its favour: the student is studying it, so the game counts. */
+export function detectPrep(sans: string[], side: 'w' | 'b', prefer?: string | null): { prep: string | null; prepFrom: 'book' | 'tie' } {
   // ponytail: White's first move alone (1.d4) is every d4 opening's, so White needs two moves in prep.
   // A per-opening "distinguishing move" would be exact; add it if two openings share more than move one.
   const min = side === 'w' ? 2 : 1;
@@ -56,6 +57,7 @@ export function detectPrep(sans: string[], side: 'w' | 'b'): { prep: string | nu
     if (score > best) { best = score; top.length = 0; }
     if (score === best && score >= min) top.push(o.id);
   }
+  if (top.length > 1 && prefer && top.includes(prefer)) return { prep: prefer, prepFrom: 'book' };
   return { prep: top[0] ?? null, prepFrom: top.length > 1 ? 'tie' : 'book' };
 }
 

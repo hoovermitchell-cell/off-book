@@ -152,6 +152,14 @@ describe('opening and side', () => {
     expect(detectPrep(sans('1. e4 e5 2. Nf3 Nc6'), 'w')).toEqual({ prep: 'italian', prepFrom: 'tie' }); // both answer 2...Nc6 with a different third move
   });
 
+  it('settles a tie toward the opening selected in the drill, and only a tied one', () => {
+    const philidor = sans('1. e4 e5 2. Nf3 d6 3. d4 exd4 4. Nxd4 Nf6 5. Nc3 Be7');
+    expect(detectPrep(philidor, 'w', 'scotch')).toEqual({ prep: 'scotch', prepFrom: 'book' });
+    expect(detectPrep(philidor, 'w', 'italian')).toEqual({ prep: 'italian', prepFrom: 'book' });
+    expect(detectPrep(philidor, 'w', 'london')).toEqual({ prep: 'italian', prepFrom: 'tie' }); // not one of the tied openings
+    expect(detectPrep(sans('1. e4 e5 2. Nf3 Nc6 3. Bc4'), 'w', 'scotch')).toEqual({ prep: 'italian', prepFrom: 'book' }); // no tie, so no pull
+  });
+
   it('a paste has no username: the side is guessed, and White when nothing is recognised', () => {
     expect(parsePgn('1. e4 c6 2. d4 d5', 'paste').games[0]).toMatchObject({ side: 'b', prep: 'caro-kann' });
     expect(parsePgn('1. d4 d5 2. Bf4 Nf6', 'paste').games[0]).toMatchObject({ side: 'w', prep: 'london' });

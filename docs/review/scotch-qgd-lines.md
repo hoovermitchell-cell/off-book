@@ -283,7 +283,7 @@ before it can count toward Proven. This is the choice the reuse forces. I kept t
 for it and the Scotch needs those answers, and I left detection alone, because making a tie resolve silently
 would credit one opening for a game that may have been the other.
 
-Options if you want fewer ties, none built:
+Options if you want fewer ties. Mitch picked option 1 on 2026-10-27, and it is built on `feat/tie-toward-drill`:
 1. Break ties toward the opening currently selected in the drill (`loadOpening()` already stores it). It is
    one extra argument to `detectPrep`, but it is a rule change in plumbing.
 2. Stop the Scotch reusing the Italian's routes that are not needed to teach it (the two starter routes and
