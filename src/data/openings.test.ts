@@ -22,10 +22,7 @@ describe('openings', () => {
     for (const key of o.tree.keys()) expect(key.split(' ')[1]).toBe(o.side);
   });
 
-  it.each(OPENINGS)('$id: the typed-move example is legal at the first student position', (o) => {
-    const chess = new Chess();
-    o.openingMoves.forEach((san) => { chess.move(san); });
-    expect(() => chess.move(o.example[0])).not.toThrow();
+  it.each(OPENINGS)('$id: the heading names the student\'s side', (o) => {
     expect(o.heading).toContain(o.side === 'w' ? 'White' : 'Black');
   });
 });

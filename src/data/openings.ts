@@ -31,8 +31,6 @@ export interface Opening {
   heading: string;
   /** The opponent line under it. */
   opponentLine(rating: number): string;
-  /** A move in SAN and in from-to form, for the typed-move hints. */
-  example: [string, string];
   /** Staged lines in the order they unlock (decisions 14b, 14d, 15). */
   stages: Stage[];
 }
@@ -47,7 +45,6 @@ export const OPENINGS: Opening[] = [
     openingMoves: [],
     heading: 'Play your London as White.',
     opponentLine: (rating) => `Black answers like a ${rating}-rated player.`,
-    example: ['Nf3', 'e2e4'],
     // docs/review/staged-lines.md, one line per setup (decision 14d).
     stages: [
       stage('textbook', 'Textbook', 'd4 d5 Bf4 Nf6 e3 e6 Nf3 c5 c3 Nc6 Nbd2 Bd6 Bg3 O-O Bd3'),
@@ -67,7 +64,6 @@ export const OPENINGS: Opening[] = [
     openingMoves: ['e4'],
     heading: 'Play your Caro-Kann as Black.',
     opponentLine: (rating) => `White opens 1.e4, then answers like a ${rating}-rated player.`,
-    example: ['Nf6', 'e7e5'],
     // docs/review/caro-kann-lines.md, in its order (decision 15).
     stages: [
       stage('classical', 'Classical', 'e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Ng3 Bg6 h4 h6 Nf3 Nd7 h5 Bh7 Bd3 Bxd3 Qxd3 e6 Bf4 Ngf6 O-O-O Be7 Kb1 O-O'),

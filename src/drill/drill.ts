@@ -37,6 +37,16 @@ export const OPPONENT_DELAY_MS = 350;
 export const MISTAKE_PAUSE_MS = 1200;
 export const DEFAULT_RATING = 1000;
 
+/** A typed move at `fen`, or undefined. Forgives a leading move number ("1.d4", "3...Nf6") and a
+ *  phone keyboard's capital first letter ("D4", "Exd5"); a real piece letter is tried as typed first. */
+export function readTypedMove(fen: string, typed: string): ReturnType<Chess['move']> | undefined {
+  const text = typed.trim().replace(/^\d+\.+\s*/, '');
+  for (const t of [text, text.charAt(0).toLowerCase() + text.slice(1)]) {
+    try { return new Chess(fen).move(t); } catch { /* not legal as written */ }
+  }
+  return undefined;
+}
+
 export type Result = 'won' | 'lost' | 'draw' | 'resigned';
 export type EndReason = 'checkmate' | 'draw' | 'resign';
 export type Phase = 'idle' | 'student' | 'judging' | 'opponent' | 'over';
