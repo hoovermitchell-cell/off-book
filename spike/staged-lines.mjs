@@ -1,4 +1,4 @@
-// Run: node staged-lines.mjs [london|caro-kann|queens-gambit|slav]  -- proposes the staged alternative lines for decision 14b.
+// Run: node staged-lines.mjs [london|caro-kann|queens-gambit|slav|italian|french]  -- proposes the staged alternative lines for decision 14b.
 // An alternative = the textbook line (or an earlier alternative) until the opponent deviates, then the
 // opponent's most likely replies through the prep tree to move 8. Ranked by how often a club player
 // meets the deviation: Maia's probability averaged over RATINGS, times the chance of reaching that position.
@@ -15,6 +15,9 @@ const OPENINGS = {
   // skip 2: both 1.d4 and the forced 1...d5 are given.
   'queens-gambit': { side: 'w', textbook: 'd4 d5 c4 e6 Nc3 Nf6 cxd5 exd5 Bg5 c6 e3 Be7 Bd3 Nbd7 Qc2 O-O Nf3 Re8 O-O Nf8 Rab1', minReply: 0.02, show: 24, skip: 2 },
   slav: { side: 'b', textbook: 'd4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4 a4 Bf5 e3 e6 Bxc4 Bb4 O-O O-O Qe2 Nbd7', minReply: 0.02, show: 24, skip: 1 },
+  // skip 1: only 1.e4 is given, so 1...e5 counts (51%) and the starter routes (1...d5, 1...e6) rank by their share of all games.
+  italian: { side: 'w', textbook: 'e4 e5 Nf3 Nc6 Bc4 Bc5 c3 Nf6 d3 d6 O-O O-O Re1 a6 Bb3', minReply: 0.02, show: 24, skip: 1 },
+  french: { side: 'b', textbook: 'e4 e6 d4 d5 Nc3 dxe4 Nxe4 Nd7 Nf3 Ngf6 Nxf6+ Nxf6 Bd3 c5 dxc5 Bxc5 O-O O-O', minReply: 0.02, show: 24, skip: 1 },
 };
 const name = process.argv[2] ?? 'london';
 const cfg = OPENINGS[name];
@@ -57,7 +60,7 @@ const lines = [{ name: 'Textbook', moves: TEXTBOOK, p: 1 }];
 // Deviations from every line found so far, best first; two rounds is enough to find the common ones.
 for (let round = 0; round < 2; round++) {
   for (const base of [...lines]) {
-    const c = new Chess(); let reach = base.p === 1 ? 1 : base.reachAtDeviation;
+    const c = new Chess(); let reach = 1; // the walk below multiplies in every opponent reply from move 1, the base's own deviation included
     for (let i = 0; i < base.moves.length; i++) {
       if (c.turn() === opp && i >= SKIP) { // the first SKIP plies are given (1.e4), not a deviation
         for (const [san, p] of await replies(c)) {
@@ -66,7 +69,7 @@ for (let round = 0; round < 2; round++) {
           if (!tree.has(posKey(t.fen()))) continue;
           const moves = await extend([...base.moves.slice(0, i), san]);
           if (lines.some((l) => l.moves.join(' ') === moves.join(' '))) continue;
-          lines.push({ name: `${Math.floor(i / 2) + 1}${side === 'w' ? '...' : '.'}${san}`, moves, p: reach * p, reachAtDeviation: reach * p });
+          lines.push({ name: `${Math.floor(i / 2) + 1}${side === 'w' ? '...' : '.'}${san}`, moves, p: reach * p });
         }
         reach *= (await replies(c)).find(([s]) => s === base.moves[i])?.[1] ?? 0;
       }

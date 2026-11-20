@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { buildTree as caroKannTree } from './caro-kann';
 import { AUTO as caroKannAuto } from './caro-kann-auto';
+import { buildTree as frenchTree } from './french';
+import { AUTO as frenchAuto } from './french-auto';
+import { buildTree as italianTree } from './italian';
+import { AUTO as italianAuto } from './italian-auto';
 import { buildTree as londonTree } from './london';
 import { AUTO as londonAuto } from './london-auto';
 import { OPENINGS } from './openings';
@@ -18,6 +22,8 @@ const SOURCES: Record<string, { pinned: PrepTree; auto: Record<string, PrepMove>
   'caro-kann': { pinned: caroKannTree({ auto: false }), auto: caroKannAuto },
   'queens-gambit': { pinned: queensGambitTree({ auto: false }), auto: queensGambitAuto },
   slav: { pinned: slavTree({ auto: false }), auto: slavAuto },
+  italian: { pinned: italianTree({ auto: false }), auto: italianAuto },
+  french: { pinned: frenchTree({ auto: false }), auto: frenchAuto },
 };
 
 describe('content rule', () => {

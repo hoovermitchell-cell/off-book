@@ -17,14 +17,14 @@ const LICHESS_LONDON = `[Event "Rated Blitz game"]
 
 1. d4 { [%clk 0:03:00] } 1... d5 { [%clk 0:03:00] } 2. Bf4 { [%clk 0:02:59] } 2... Nf6 3. e3 e6 4. Nf3 c5 5. c3 Nc6 6. Nbd2 Bd6 7. Bg3 O-O 8. Bd3 1-0
 `;
-const LICHESS_KINGS_PAWN = `[Event "Rated Rapid game"]
+const LICHESS_SICILIAN = `[Event "Rated Rapid game"]
 [Site "https://lichess.org/EfGh5678"]
 [White "student1"]
 [Black "other"]
 [Result "0-1"]
 [UTCDate "2026.10.19"]
 
-1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 0-1
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 0-1
 `;
 // The student's Black game: the Caro-Kann against 1.e4.
 const LICHESS_CARO_KANN = `[Event "Rated Blitz game"]
@@ -37,7 +37,7 @@ const LICHESS_CARO_KANN = `[Event "Rated Blitz game"]
 
 1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 0-1
 `;
-const lichessBody = `${LICHESS_LONDON}\n\n${LICHESS_KINGS_PAWN}\n`;
+const lichessBody = `${LICHESS_LONDON}\n\n${LICHESS_SICILIAN}\n`;
 const lichessBothBody = `${lichessBody}\n${LICHESS_CARO_KANN}`;
 
 const res = (body: string | object, status = 200) =>
@@ -93,7 +93,8 @@ describe('PGN parsing', () => {
     const sans = (s: string) => parsePgn(s, 'paste').games[0].sans;
     expect(detectPrep(sans('1. d4 d5 2. Bf4 Nf6'), 'w')).toEqual({ prep: 'london', prepFrom: 'book' });
     expect(detectPrep(sans('1. d4 Nf6 2. Nf3 d5 3. Bf4 e6'), 'w').prep).toBeNull(); // 2.Nf3 left prep after one move, and 1.d4 alone is too little
-    expect(detectPrep(sans('1. e4 e5 2. Nf3 Nc6 3. Bb5'), 'w').prep).toBeNull();
+    expect(detectPrep(sans('1. e4 c5 2. Nf3 d6'), 'w').prep).toBeNull(); // no opening of ours answers the Sicilian
+    expect(detectPrep(sans('1. e4 e5 2. Nf3 Nc6 3. Bb5'), 'w').prep).toBe('italian'); // the Ruy Lopez keeps the Italian's first two moves
     expect(detectPrep(sans('1. c4 e5 2. Nc3'), 'w').prep).toBeNull();
   });
 });
@@ -122,10 +123,16 @@ describe('opening and side', () => {
     expect(detectPrep(sans('1. d4 d5 2. Bf4 Nf6'), 'w')).toEqual({ prep: 'london', prepFrom: 'book' });
   });
 
+  it('detects the Italian for White and the French for Black', () => {
+    expect(detectPrep(sans('1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3'), 'w')).toEqual({ prep: 'italian', prepFrom: 'book' });
+    expect(detectPrep(sans('1. e4 e6 2. d4 d5 3. Nc3 dxe4'), 'b')).toEqual({ prep: 'french', prepFrom: 'book' });
+    expect(detectPrep(sans('1. e4 c6 2. d4 d5'), 'b')).toEqual({ prep: 'caro-kann', prepFrom: 'book' }); // the French answers 1.e4 too, but ...c6 is not its move
+  });
+
   it('a paste has no username: the side is guessed, and White when nothing is recognised', () => {
     expect(parsePgn('1. e4 c6 2. d4 d5', 'paste').games[0]).toMatchObject({ side: 'b', prep: 'caro-kann' });
     expect(parsePgn('1. d4 d5 2. Bf4 Nf6', 'paste').games[0]).toMatchObject({ side: 'w', prep: 'london' });
-    expect(parsePgn('1. e4 e5 2. Nf3 Nc6', 'paste').games[0]).toMatchObject({ side: 'w', prep: null });
+    expect(parsePgn('1. e4 c5 2. Nf3 d6', 'paste').games[0]).toMatchObject({ side: 'w', prep: null });
   });
 
   it('a username fixes the side as the colour that name played, whatever the moves', () => {

@@ -1,4 +1,4 @@
-// Run: node build-tree.mjs [london|caro-kann|queens-gambit|slav]   (default london; takes several minutes; KEEP=1 reuses existing picks)
+// Run: node build-tree.mjs [london|caro-kann|queens-gambit|slav|italian|french]   (default london; takes several minutes; KEEP=1 reuses existing picks)
 // Walks the opening from its start. At the student's turn: the pinned move if there is one, else the
 // first system-style move Stockfish rates within SLACK of its best, else Stockfish's best. At the
 // opponent's turn: every reply Maia plays at least MIN_REPLY often (max over RATINGS), while the path
@@ -48,6 +48,21 @@ export const OPENINGS = {
     side: 'b', start: ['d4'], maxMove: 8, maxCands: 9,
     system: ['d5', 'c6', 'Nf6', 'Bf5', 'Bg4', 'e6', 'Nbd7', 'Bd6', 'Be7', 'Bb4', 'O-O', 'dxc4', 'Nc6', 'h6', 'Qb6', 'a6', 'c5'],
     blocks: ['Bd7', 'Nbd7', 'Nfd7', 'Qd7', 'c6', 'Nc6'],
+    extra: () => [],
+    reject: (c, m, side) => !'pk'.includes(m.piece) && c.history({ verbose: true }).some((h) => h.color === side && h.to === m.from),
+  },
+  italian: {
+    side: 'w', start: ['e4', 'e5'], maxMove: 8, maxCands: 9,
+    system: ['Nf3', 'Bc4', 'c3', 'd3', 'O-O', 'Re1', 'Bb3', 'Nbd2', 'h3', 'a4', 'Nc3', 'd4', 'Be3', 'Bg5'],
+    blocks: ['c3', 'Nc3', 'Bd2', 'Nbd2', 'Nd2', 'Qd2'],
+    extra: () => [],
+    // ponytail: as for the others, plus Bb3, the one repeat that is the plan (it keeps the bishop against ...a6 and ...b5).
+    reject: (c, m, side) => m.san !== 'Bb3' && !'pk'.includes(m.piece) && c.history({ verbose: true }).some((h) => h.color === side && h.to === m.from),
+  },
+  french: {
+    side: 'b', start: ['e4'], maxMove: 8, maxCands: 9,
+    system: ['e6', 'd5', 'c5', 'Nc6', 'Nf6', 'Nd7', 'Ngf6', 'Be7', 'Bd6', 'O-O', 'Qb6', 'dxe4', 'cxd4', 'Bd7', 'Ne7', 'h6', 'a6', 'b6', 'Bb7'],
+    blocks: ['Bd7', 'Nbd7', 'Nfd7', 'Qd7', 'Nc6', 'Nbc6', 'c6', 'Be7'],
     extra: () => [],
     reject: (c, m, side) => !'pk'.includes(m.piece) && c.history({ verbose: true }).some((h) => h.color === side && h.to === m.from),
   },
