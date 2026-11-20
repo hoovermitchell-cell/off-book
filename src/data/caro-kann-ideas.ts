@@ -6,6 +6,9 @@
 import { Chess } from 'chess.js';
 import { posKey, type PrepMove } from './prep';
 
+/** ...d5 when no White pawn stands on e4, after 2.e5 (decision 17). */
+const D5_NO_E4 = 'd5 claims the center. The c6 pawn guards it, and your c8 bishop can still come out.';
+
 /** Notes for exact moments, keyed by the moves played before Black's move. */
 const MOMENTS: [string, string][] = [
   // Classical
@@ -38,6 +41,10 @@ const MOMENTS: [string, string][] = [
   ['e4 c6 Nc3 d5 Nf3 Bg4 h3', 'Trade the bishop for the knight. It removes a defender of e5 and d4, and then you can play ...e6.'],
   // Exchange
   ['e4 c6 d4 d5 exd5 cxd5 Bd3 Nc6 c3 Nf6 Bf4 Bg4 Qb3', 'The queen hits b7. Qd7 guards it, and ...e6 and ...Bd6 come next.'],
+  // 2.e5 and 2.f4 (decision 17)
+  ['e4 c6 e5', D5_NO_E4],
+  ['e4 c6 e5 d5 exd6 exd6 Nf3', D5_NO_E4],
+  ['e4 c6 f4 d5 e5 Bf5 d4 e6 Nf3 c5 c3 Qb6 Bd3 Bxd3 Qxd3', 'Nd7 develops a knight and backs up c5. Your other knight has no f6 square with a pawn on e5, so it goes to e7 later.'],
 ];
 
 /** Notes for the Advanced tier's lines (decision 16, docs/plans/2026-10-26-advanced-tier.md), keyed the same way. DRAFT, pending Mitch's review. */

@@ -354,14 +354,6 @@ export const AUTO: Record<string, PrepMove> = {
   "p": 0.006,
   "line": "d4 e6 Bf4 c5 e3 cxd4"
  },
- "rn1qkbnr/pbpp1ppp/1p2p3/8/3P1B2/4P3/PPP2PPP/RN1QKBNR w KQkq -": {
-  "san": "Nf3",
-  "uci": "g1f3",
-  "loss": 2,
-  "how": "system",
-  "p": 0.01,
-  "line": "d4 e6 Bf4 b6 e3 Bb7"
- },
  "r2qkb1r/ppp1pppp/2n2n2/3p1b2/3P1B2/4PN2/PPP2PPP/RN1QKB1R w KQkq -": {
   "san": "Nbd2",
   "uci": "b1d2",
@@ -681,14 +673,6 @@ export const AUTO: Record<string, PrepMove> = {
   "how": "system",
   "p": 0.002,
   "line": "d4 Nf6 Bf4 e6 e3 Bb4+ c3 Ba5"
- },
- "rn1qkb1r/pbpp1ppp/1p2pn2/8/3P1B2/4PN2/PPP2PPP/RN1QKB1R w KQkq -": {
-  "san": "c3",
-  "uci": "c2c3",
-  "loss": 8,
-  "how": "system",
-  "p": 0.002,
-  "line": "d4 Nf6 Bf4 e6 e3 b6 Nf3 Bb7"
  },
  "rnbqk1nr/pppp1ppp/4p3/8/3P4/2P3b1/PP2PPPP/RN1QKBNR w KQkq -": {
   "san": "hxg3",
