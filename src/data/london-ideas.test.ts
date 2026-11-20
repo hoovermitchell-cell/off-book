@@ -10,7 +10,7 @@ describe('London ideas', () => {
   it('every trap and key moment is a real prep position', () => {
     // Each MOMENTS entry must land on a tree position, or its note can never show.
     const shown = new Set(ideas.map((i) => i.idea));
-    for (const text of ALL_IDEAS.slice(0, 10)) expect(shown.has(text), text).toBe(true);
+    for (const text of ALL_IDEAS.slice(0, 12)) expect(shown.has(text), text).toBe(true);
   });
 
   it('every Advanced note is shown on a real prep position', () => {
@@ -35,6 +35,14 @@ describe('London ideas', () => {
     const bg3 = ideas.find((i) => i.prep.san === 'Bg3' && new Chess(`${i.key} 0 1`).get('d6')?.type === 'b');
     expect(bg3?.idea).toMatch(/bishop trade/);
     expect(ideas.find((i) => i.key.startsWith('rn1qkb1r/ppp1pppp/5n2/3p1b2/3P1B2/4P3'))?.idea).toMatch(/Bd3 offers to trade/);
+  });
+
+  it('4.Nc3 against ...Qb6: Nb5 then Nc7+ hits king and rook, and after exd4 the queen guards d4', () => {
+    const play = (line: string) => { const c = new Chess(); for (const m of line.split(' ')) c.move(m); return c; };
+    const nb5 = play('d4 Nf6 Bf4 c5 e3 Qb6 Nc3 Qxb2 Nb5 e6');
+    expect(nb5.move('Nc7+').san).toBe('Nc7+');
+    expect(nb5.attackers('a8', 'w')).toEqual(['c7']);
+    expect(play('d4 Nf6 Bf4 c5 e3 Qb6 Nc3 cxd4 exd4').attackers('d4', 'w')).toContain('d1');
   });
 
   it('copy has no em dashes', () => {
