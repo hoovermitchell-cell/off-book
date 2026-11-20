@@ -53,6 +53,14 @@ export const LINES: string[] = [
   'e4 c6 d4 d5 f3 dxe4 fxe4 e5 Nf3 Bg4 Bc4 Nd7 O-O Ngf6 dxe5 Qb6+',
   // Intermediate tier (decision 16 pilot): the Two Knights continued to move 8
   'e4 c6 Nc3 d5 Nf3 Bg4 h3 Bxf3 Qxf3 e6 d3 Nf6 Bg5 Nbd7 exd5 cxd5',
+  // Advanced tier (decision 16): 3.Nf3 dxe4 4.Ne5 Nd7, then the knight trade and ...Qa5+ win the e5 pawn
+  'e4 c6 d4 d5 Nf3 dxe4 Ne5 Nd7 Bc4 Nxe5 dxe5 Qa5+ Bd2 Qxe5',
+  // Advanced tier: 2.Qh5 Nf6 hits the queen; ...e5 and ...d5 take the center, and ...bxc6 (not ...Bd7) after Bxc6+
+  'e4 c6 Qh5 Nf6 Qf3 e5 Bc4 d5 exd5 cxd5 Bb5+ Nc6 Bxc6+ bxc6 d3 Bd6',
+  // Advanced tier: 2.Nf3 d5 3.Ne5 dxe4 4.Bc4 e6 5.O-O Qd4! hits e5 and c4 and b2; ...g6 meets Qh5
+  'e4 c6 Nf3 d5 Ne5 dxe4 Bc4 e6 O-O Qd4 Qh5 g6',
+  // Advanced tier: 2.Nc3 d5 3.f3 d4! and, after c3, ...d3! wedges a pawn into White's camp
+  'e4 c6 Nc3 d5 f3 d4 Nce2 e5 c3 d3 Ng3 g6',
 ];
 
 export const buildTree = ({ auto = true }: { auto?: boolean } = {}): PrepTree =>

@@ -17,7 +17,7 @@ import { buildTree as qgdTree } from './qgd';
 import { ideaFor as qgdIdea } from './qgd-ideas';
 import type { PrepMove, PrepTree } from './prep';
 
-/** How deep a staged line goes (decision 16). Every line so far is an intro. */
+/** How deep a staged line goes (decision 16): Intro, then Intermediate, then Advanced, in unlock order. */
 export type Tier = 'intro' | 'intermediate' | 'advanced';
 
 /** A staged line (decision 14b): the opponent plays these fixed moves, then Maia takes over. */
@@ -34,6 +34,9 @@ export interface Stage {
 const stage = (id: string, name: string, moves: string): Stage => ({ id, name, tier: 'intro', moves: moves.split(' ') });
 /** An Intermediate line (decision 16 pilot, docs/plans/2026-10-25-tier-pilot.md). DRAFT notes, pending Mitch's review. */
 const deeper = (id: string, name: string, moves: string, note: string): Stage => ({ ...stage(id, name, moves), tier: 'intermediate', note });
+/** An Advanced line (decision 16): a critical continuation or tactical exception, with why the tempting alternative fails.
+ *  docs/plans/2026-10-26-advanced-tier.md. DRAFT notes, pending Mitch's review. */
+const critical = (id: string, name: string, moves: string, note: string): Stage => ({ ...stage(id, name, moves), tier: 'advanced', note });
 
 export interface Opening {
   id: string;
@@ -81,6 +84,15 @@ export const OPENINGS: Opening[] = [
         "With your pieces out, the knight jumps to e5 and eyes Black's kingside. If Black swaps on d4, take back with the e-pawn: it keeps the e-file and e5 for you. Then if ...Nxe5, dxe5 attacks the bishop on d6 and the knight on f6 at once, and the pawn fork wins a piece for a pawn."),
       deeper('kid', "King's Indian setup", 'd4 Nf6 Bf4 g6 e3 Bg7 Nf3 O-O Be2 d6 h3 Nbd7 c3 Re8 Nbd2 e5 Bg5',
         "Against ...g6, ...Bg7 and ...d6, keep the London shape but put the bishop on e2. h3 gives the f4 bishop a retreat on h2, so ...Nh5 can't trade it off. Black's plan is ...e5; when it comes, Bg5 pins the f6 knight to the queen, since ...e5 has emptied e7."),
+      // Advanced, ranked by Maia's chance of reaching the opponent's critical move (docs/plans/2026-10-26-advanced-tier.md).
+      critical('bb4-ba5', '...Bb4+ and ...Ba5', 'd4 d5 Bf4 Nc6 e3 Nf6 Nf3 e6 Bd3 Bb4+ c3 Ba5 Nbd2 O-O Qc2 Re8 Ne5 Nxe5 dxe5',
+        "Black's ...Bb4+ looks active, but c3 is a move you wanted anyway, and after ...Ba5 the bishop sits at the edge of the board, far from its king. Stockfish rates the check about half a pawn worse for Black than ...Bd6. Keep developing: Nbd2, then Qc2, so your queen backs up the bishop on d3 and both aim at h7. Then play Ne5. If Black takes it, dxe5 attacks the knight on f6, and with the bishop and queen pointing at h7 that knight has no good square."),
+      critical('bxg3', '...Bxg3 and hxg3', 'd4 d5 Bf4 Nf6 e3 e6 Nf3 Bd6 Bg3 Bxg3 hxg3 O-O Nc3 Nc6 Ne5 Nxe5 dxe5 Ne4 Nxe4',
+        "When Black trades bishops on g3, take back with the h-pawn. hxg3 opens the h-file for your rook, and your f2 pawn keeps guarding e3. fxg3? looks natural, but then no pawn guards e3 and Stockfish prefers Black. Develop with Nc3 and Ne5. If Black takes on e5, dxe5 attacks the knight on f6. If it jumps to e4, Nxe4 dxe4 and your rook swings to h4 to attack the weak pawn."),
+      critical('f6-g5', '...f6 and ...g5', 'd4 d5 Bf4 f6 e3 g5 Qh5+ Kd7 Bg3 Qe8 Qf3 c6 h4 gxh4 Rxh4',
+        "After ...f6, Black's ...g5 tries to win your bishop. Don't take on g5: Bxg5? fxg5 costs you a bishop for a pawn, and Stockfish prefers Black. Check first. Black's f- and g-pawns have both moved, so Qh5+ is check, and the king has one square, d7. Then the bishop drops back to g3, safe, and Black can never castle. Open the h-file with h4 and go after a king stuck in the middle."),
+      critical('ne4-f3', '...Ne4 and f3', 'd4 d5 Bf4 Nf6 e3 Ne4 Bd3 Bf5 f3 Nd6 Bxd6 Bxd3 Bxe7 Qxe7 Qxd3',
+        "If Black jumps ...Ne4 on move 3, hit it with Bd3. When Black guards it with ...Bf5, play f3! The knight is attacked twice, by the pawn and the bishop, and Stockfish says White is winning against every move except ...Nd6. Then Bxd6, and if Black takes on d3 first, Bxe7 wins a pawn: ...Qxe7 Qxd3. Don't play Bxe4 instead. It just trades, and the position is equal."),
     ],
   },
   {
@@ -112,6 +124,15 @@ export const OPENINGS: Opening[] = [
         "3.f3 props up e4 for a big center. Take on e4 and hit back with ...e5 before White is developed. With the f-pawn gone, the diagonals to White's king are open: dxe5 too early allows ...Qh4+, and after castling ...Qb6+ checks and hits b2. Don't take on f3 before ...Nd7: after Qxf3, the queen and the c4 bishop both hit f7."),
       deeper('panov', 'Panov', 'e4 c6 d4 d5 exd5 cxd5 c4 Nf6 Nc3 e6 Nf3 Be7 cxd5 Nxd5 Bd3 Nc6 O-O O-O Re1 Nf6 Be3 b6 Qc2 Nb4',
         "After the trades White has an isolated pawn on d4, with no pawn beside it to guard it. Aim your pieces at it, keep it blockaded, and welcome trades: every trade makes the lone pawn weaker. ...b6 makes room for your last bishop, and ...Nb4 hits the queen and the d3 bishop."),
+      // Advanced, ranked by Maia's chance of reaching the opponent's critical move (docs/plans/2026-10-26-advanced-tier.md).
+      critical('nf3-dxe4', '3.Nf3 and 4.Ne5', 'e4 c6 d4 d5 Nf3 dxe4 Ne5 Nd7 Bc4 Nxe5 dxe5 Qa5+ Bd2 Qxe5',
+        "After 3.Nf3 you can simply take the pawn: the knight doesn't guard e4. If White jumps to e5, which eyes f7, hit the knight with ...Nd7. When Bc4 puts a second attacker on f7, take the knight with ...Nxe5. After dxe5, ...Qa5+ checks the king and attacks e5 at the same time, and the pawn falls. Stockfish thinks ...Nxe5 is clearly the best fifth move."),
+      critical('qh5', '2.Qh5', 'e4 c6 Qh5 Nf6 Qf3 e5 Bc4 d5 exd5 cxd5 Bb5+ Nc6 Bxc6+ bxc6 d3 Bd6',
+        "2.Qh5 brings the queen out early, so make White pay for the lost time. ...Nf6 develops a piece and attacks the queen. After Qf3, grab the center with ...e5. When the bishop comes to c4, ...d5! hits it, and after exd5 ...cxd5 hits it again. The trap to know comes at the end: after Bb5+ Nc6 Bxc6+, take back with the b-pawn. ...Bd7?? and ...Ke7?? both lose."),
+      critical('f3-d4', '2.Nc3 and 3.f3', 'e4 c6 Nc3 d5 f3 d4 Nce2 e5 c3 d3 Ng3 g6',
+        "3.f3 tries to protect e4, but the knight on c3 has no good square after ...d4!. The best retreat, Nce2, shuts in White's own bishop on f1. Take space with ...e5. If White then plays the natural 5.c3?, ...d3! The pawn attacks the knight on e2, and White has nothing that attacks it: the queen is blocked by the pawn on d2 and the bishop by the knight. Stockfish thinks Black is winning. After Ng3, ...g6 takes f5 from the knight, and ...h5 comes next."),
+      critical('ne5-qd4', '2.Nf3 and 3.Ne5', 'e4 c6 Nf3 d5 Ne5 dxe4 Bc4 e6 O-O Qd4 Qh5 g6',
+        "3.Ne5 hopes for a quick attack on f7. Take the pawn: the knight on e5 doesn't attack e4. After Bc4, ...e6 blocks the bishop's diagonal to f7, so only the knight still attacks it. When White castles, ...Qd4! attacks the knight on e5, which nothing guards. If White goes for f7 with Qh5, ...g6 hits the queen and stops Qxf7+."),
     ],
   },
   {

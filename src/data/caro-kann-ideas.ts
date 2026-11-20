@@ -40,6 +40,31 @@ const MOMENTS: [string, string][] = [
   ['e4 c6 d4 d5 exd5 cxd5 Bd3 Nc6 c3 Nf6 Bf4 Bg4 Qb3', 'The queen hits b7. Qd7 guards it, and ...e6 and ...Bd6 come next.'],
 ];
 
+/** Notes for the Advanced tier's lines (decision 16, docs/plans/2026-10-26-advanced-tier.md), keyed the same way. DRAFT, pending Mitch's review. */
+const ADVANCED_MOMENTS: [string, string][] = [
+  // 3.Nf3 and 4.Ne5
+  ['e4 c6 d4 d5 Nf3', "Take the pawn. The knight on f3 doesn't guard e4, so you are a pawn up for now."],
+  ['e4 c6 d4 d5 Nf3 dxe4 Ne5', "Nd7 attacks the knight on e5. Don't defend f7; make the knight move or trade it."],
+  ['e4 c6 d4 d5 Nf3 dxe4 Ne5 Nd7 Bc4', 'The knight and the bishop both aim at f7. Take the knight: ...Nxe5 removes one of the attackers.'],
+  ['e4 c6 d4 d5 Nf3 dxe4 Ne5 Nd7 Bc4 Nxe5 dxe5', 'Qa5+ checks the king and attacks the pawn on e5 at the same time.'],
+  // 2.Qh5
+  ['e4 c6 Qh5', 'Nf6 attacks the queen and develops a piece. White loses time again.'],
+  ['e4 c6 Qh5 Nf6 Qf3', "Grab the center with e5. White's queen has moved twice and no other piece is out."],
+  ['e4 c6 Qh5 Nf6 Qf3 e5 Bc4', 'd5 hits the bishop and the center at once. If White takes, cxd5 attacks the bishop again.'],
+  ['e4 c6 Qh5 Nf6 Qf3 e5 Bc4 d5 exd5', 'Take back with the c-pawn. It attacks the bishop on c4 again.'],
+  ['e4 c6 Qh5 Nf6 Qf3 e5 Bc4 d5 exd5 cxd5 Bb5+ Nc6 Bxc6+', 'Take back with the b-pawn. ...Bd7?? and ...Ke7?? both lose.'],
+  // 2.Nc3 d5 3.f3
+  ['e4 c6 Nc3 d5 f3', "d4! attacks the knight. Its best square, e2, blocks White's own bishop on f1."],
+  ['e4 c6 Nc3 d5 f3 d4 Nce2', 'e5 builds the center. Your pawns on d4 and e5 take space from White.'],
+  ['e4 c6 Nc3 d5 f3 d4 Nce2 e5 c3', "d3! The pawn attacks the knight on e2. White has nothing that attacks it: the queen is blocked by the pawn on d2 and the bishop by the knight."],
+  ['e4 c6 Nc3 d5 f3 d4 Nce2 e5 c3 d3 Ng3', 'g6 takes the f5 square from the knight. ...h5 comes next.'],
+  // 2.Nf3 d5 3.Ne5
+  ['e4 c6 Nf3 d5 Ne5', "Take the pawn. The knight on e5 attacks f7, but it doesn't attack e4, so you are a pawn up for now."],
+  ['e4 c6 Nf3 d5 Ne5 dxe4 Bc4', "e6 blocks the bishop's diagonal to f7, so only the knight still attacks it. It also opens the way for your f8 bishop."],
+  ['e4 c6 Nf3 d5 Ne5 dxe4 Bc4 e6 O-O', 'Qd4! The queen attacks the knight on e5, and nothing guards it. It also eyes the bishop on c4 and the pawn on b2.'],
+  ['e4 c6 Nf3 d5 Ne5 dxe4 Bc4 e6 O-O Qd4 Qh5', 'g6 attacks the queen and blocks its diagonal to f7, so Qxf7+ is off.'],
+];
+
 const BISHOP_OUT = 'e6 backs up d5 and opens the way for your f8 bishop. The c8 bishop is already out, so nothing gets locked in.';
 const BISHOP_IN = 'e6 backs up d5 and opens the way for your f8 bishop.';
 const TRADE_BISHOPS = "Trade bishops. White's bishop was aimed at your kingside, so swapping it off makes castling safer.";
@@ -75,7 +100,7 @@ const MOVES: Record<string, string> = {
 };
 
 const momentKeys = new Map(
-  MOMENTS.map(([line, text]) => {
+  [...MOMENTS, ...ADVANCED_MOMENTS].map(([line, text]) => {
     const c = new Chess();
     line.split(' ').forEach((m) => { c.move(m); });
     return [posKey(c.fen()), text] as const;
@@ -104,9 +129,12 @@ export function ideaFor(fen: string, prep: PrepMove): string | null {
   return MOVES[base] ?? (prep.how === 'stockfish' ? STOCKFISH : null);
 }
 
+export const ADVANCED_IDEAS = ADVANCED_MOMENTS.map(([, t]) => t);
+
 /** Every text, for review and tests. */
 export const ALL_IDEAS = [
   ...MOMENTS.map(([, t]) => t),
+  ...ADVANCED_IDEAS,
   ...new Set(Object.values(MOVES)),
   BISHOP_OUT, BISHOP_IN, ND7_LATE, TRADE_BISHOPS, QUEEN_TRADE, TAKE_C, ANSWER_CHECK, STOCKFISH,
 ];
