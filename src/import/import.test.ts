@@ -114,7 +114,12 @@ describe('opening and side', () => {
     const london = sans('1. d4 d5 2. Bf4 Nf6');
     expect(guessSide(london)).toBe('w');
     expect(detectPrep(london, 'w').prep).toBe('london');
-    expect(detectPrep(london, 'b').prep).toBeNull();
+    expect(detectPrep(london, 'b').prep).not.toBe('london'); // Black's ...d5 and ...Nf6 are the Slav's, not the London's
+  });
+
+  it('tells the Queen\'s Gambit from the London on move two', () => {
+    expect(detectPrep(sans('1. d4 d5 2. c4 e6 3. Nc3'), 'w')).toEqual({ prep: 'queens-gambit', prepFrom: 'book' });
+    expect(detectPrep(sans('1. d4 d5 2. Bf4 Nf6'), 'w')).toEqual({ prep: 'london', prepFrom: 'book' });
   });
 
   it('a paste has no username: the side is guessed, and White when nothing is recognised', () => {
@@ -128,7 +133,7 @@ describe('opening and side', () => {
     // The student as White plays 1.e4 and meets ...c6: still White, and no prep to show.
     expect(parseGame(pgn('Student1', 'rival', '1. e4 c6 2. d4 d5'), 'lichess', 'x', 'student1')).toMatchObject({ side: 'w', prep: null });
     expect(parseGame(pgn('rival', 'student1', '1. e4 c6 2. d4 d5'), 'lichess', 'x', 'STUDENT1')).toMatchObject({ side: 'b', prep: 'caro-kann' });
-    expect(parseGame(pgn('rival', 'Student1', '1. d4 d5 2. Bf4 Nf6'), 'chesscom', 'x', 'student1')).toMatchObject({ side: 'b', prep: null });
+    expect(parseGame(pgn('rival', 'Student1', '1. d4 d5 2. Bf4 Nf6'), 'chesscom', 'x', 'student1')).toMatchObject({ side: 'b', prep: 'slav' }); // Black's ...d5 and ...Nf6 against 2.Bf4 are the Slav's answer to the London
     expect(parseGame(pgn('Student1', 'rival', '1. d4 d5 2. Bf4 Nf6'), 'chesscom', 'x', 'student1')).toMatchObject({ side: 'w', prep: 'london' });
   });
 });
