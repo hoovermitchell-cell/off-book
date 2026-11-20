@@ -9,9 +9,18 @@ describe('openings', () => {
     expect(OPENINGS[0].id).toBe('london');
   });
 
-  it.each(OPENINGS)('$id: the forced moves are legal and leave the student on move, inside prep', (o) => {
+  it('has unique stage ids across openings, and every stage has a tier', () => {
+    const ids = OPENINGS.flatMap((o) => o.stages.map((s) => s.id));
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const o of OPENINGS) for (const s of o.stages) expect(['intro', 'intermediate', 'advanced'], s.id).toContain(s.tier);
+  });
+
+  it.each(OPENINGS)('$id: the forced replies are legal along the prep and leave the student on move, inside prep', (o) => {
     const chess = new Chess();
-    for (const san of o.openingMoves) expect(() => chess.move(san), san).not.toThrow();
+    for (let n = 0; n < o.forcedReplies.length; ) {
+      if (chess.turn() === o.side) chess.move(o.tree.get(posKey(chess.fen()))!.san);
+      else expect(() => chess.move(o.forcedReplies[n++]), o.forcedReplies[n - 1]).not.toThrow();
+    }
     expect(chess.turn()).toBe(o.side);
     const prep = o.tree.get(posKey(chess.fen()));
     expect(prep, 'prep at the first student position').toBeDefined();
@@ -24,7 +33,7 @@ describe('openings', () => {
 
   it.each(OPENINGS)('$id: the typed-move example is legal at the first student position', (o) => {
     const chess = new Chess();
-    o.openingMoves.forEach((san) => { chess.move(san); });
+    if (o.side === 'b') chess.move(o.forcedReplies[0]);
     expect(() => chess.move(o.example[0])).not.toThrow();
     expect(o.heading).toContain(o.side === 'w' ? 'White' : 'Black');
   });

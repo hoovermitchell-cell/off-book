@@ -1,6 +1,6 @@
 // Import flow: pick a source, pick a game, confirm the moves. Nothing is analysed until the student
 // has confirmed the move list (a legal but mistyped move would give a convincing wrong analysis).
-import { OPENINGS, openingForSide } from '../data/openings';
+import { OPENINGS } from '../data/openings';
 import { detectPrep, parsePgn, plyLabel, type GameSource, type ImportedGame } from '../import/pgn';
 import { loadRecent, saveRecent } from '../import/recent';
 import { fetchChessCom, fetchLichess, ImportError } from '../import/sources';
@@ -9,6 +9,9 @@ const SITES: Record<GameSource, string> = { lichess: 'Lichess', chesscom: 'Chess
 const SIDE = { w: 'White', b: 'Black' } as const;
 /** "the London as White and the Caro-Kann as Black", from OPENINGS. */
 const prepList = OPENINGS.map((o) => `the ${o.name} as ${SIDE[o.side]}`).join(' and ');
+/** The opening a game is reviewed as on `side`: the student's earlier pick while it stands, else the book walk. */
+const prepFor = (g: ImportedGame, side: 'w' | 'b'): { prep: string | null; prepFrom: 'book' | 'tie' | 'student' } =>
+  g.prepFrom === 'student' && g.side === side ? { prep: g.prep, prepFrom: 'student' } : detectPrep(g.sans, side);
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) => void): { show(): void } {
@@ -94,13 +97,14 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
   function renderConfirm(g: ImportedGame, played = g.side) {
     picked = g;
     side = played;
-    const opening = openingForSide(side);
+    const found = prepFor(g, side);
+    const opening = OPENINGS.find((o) => o.id === found.prep);
     // A username import knows the side; only a paste asks.
     const choice = g.source === 'paste'
       ? `<div class="row"><span id="im-side-l">You played</span><div class="seg row" role="group" aria-labelledby="im-side-l">${(['w', 'b'] as const).map((c) => `<button type="button" class="quiet" data-side="${c}" aria-pressed="${c === side}">${SIDE[c]}</button>`).join('')}</div></div>`
       : '';
     const verdict = opening
-      ? `Off Book will check your ${opening.name} prep and your moves as ${SIDE[side]}.`
+      ? `Off Book will check your ${opening.name} prep and your moves as ${SIDE[side]}.${found.prepFrom === 'tie' ? ' This game fits more than one opening equally; you can change which on the next screen.' : ''}`
       : `Off Book has prep for ${prepList}, so it can't review a game as ${SIDE[side]} yet.`;
     let moves = '';
     for (let i = 0; i < g.sans.length; i += 2) moves += `<li><span class="n">${i / 2 + 1}.</span><span>${g.sans[i]}</span><span>${g.sans[i + 1] ?? ''}</span></li>`;
@@ -178,11 +182,18 @@ export function mountImport(root: HTMLElement, onReview: (game: ImportedGame) =>
       renderConfirm(picked, t.dataset.side as 'w' | 'b');
       root.querySelector<HTMLElement>(`[data-side="${side}"]`)!.focus();
     }
-    if (id === 'im-yes' && picked) onReview({ ...picked, side, prep: detectPrep(picked.sans, side) });
+    if (id === 'im-yes' && picked) onReview({ ...picked, side, ...prepFor(picked, side) });
     if (id === 'im-no') { if (games.length > 1) renderList(); else step('start'); }
   });
 
   setSource('lichess');
   renderRecent();
-  return { show: () => (games.length > 1 ? renderList() : step('start')) };
+  return {
+    show: () => {
+      // A pick made in the review is saved to the recent list; take it, so the list tags match.
+      const r = loadRecent();
+      if (r) games = games.map((g) => r.games.find((x) => x.id === g.id && x.prepFrom === 'student') ?? g);
+      if (games.length > 1) renderList(); else step('start');
+    },
+  };
 }

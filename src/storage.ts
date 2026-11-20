@@ -1,4 +1,6 @@
 // Device-only progress (decision 3). Every read and write is guarded: storage can be blocked or full.
+import { OPENINGS } from './data/openings';
+import { ladderKey } from './data/prep';
 import type { Ladder } from './levels';
 
 export const STORAGE_KEY = 'offbook.v1';
@@ -41,8 +43,28 @@ export function saveOpening(id: string, store: Pick<Storage, 'setItem'> | undefi
   }
 }
 
+/** Before ladder keys carried the prescribed move (backup version 3), a key was a bare posKey of four
+ *  fields. Only the London and the Caro-Kann existed then, so their trees say which move each meant.
+ *  A legacy key in neither tree is dropped. Keys of any other shape pass through, so this is idempotent. */
+function migrate(ladder: Ladder): Ladder {
+  const legacy = OPENINGS.filter((o) => o.id === 'london' || o.id === 'caro-kann');
+  const out: Ladder = {};
+  for (const [k, r] of Object.entries(ladder)) {
+    let key = k;
+    if (k.split(' ').length === 4) {
+      const prep = legacy.map((o) => o.tree.get(k)).find(Boolean);
+      if (!prep) continue;
+      key = ladderKey(k, prep.uci);
+    }
+    // ponytail: a legacy and a current key meeting at one key keeps the higher level; nothing sums them.
+    if (!out[key] || out[key].level < r.level) out[key] = r;
+  }
+  return out;
+}
+
 /** The one place raw stored or uploaded data becomes a `Saved`: junk fields fall back to empty.
- *  The first format ({ correct, learned }) carries over: learned moves start the ladder, due now. */
+ *  The first format ({ correct, learned }) carries over: learned moves start the ladder, due now.
+ *  Legacy four-field ladder keys are migrated (see migrate). */
 function sanitize(parsed: unknown): Saved {
   const p = parsed as { ladder?: unknown; proven?: unknown; learned?: unknown } | null;
   const ladder: Ladder = {};
@@ -55,7 +77,7 @@ function sanitize(parsed: unknown): Saved {
     for (const k of p.learned) if (typeof k === 'string') ladder[k] = { level: 0, due: 0 };
   }
   const proven = Array.isArray(p?.proven) ? p.proven.filter((k): k is string => typeof k === 'string') : [];
-  return { ladder, proven };
+  return { ladder: migrate(ladder), proven };
 }
 
 export function loadSaved(store: Pick<Storage, 'getItem'> | undefined = safeStorage()): Saved {
@@ -89,7 +111,7 @@ export function updateSaved(
 
 // ---- Backup file (decision 3) ------------------------------------------------------------------
 export const BACKUP_APP = 'off-book';
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 3;
 
 export interface Backup {
   app: typeof BACKUP_APP;
@@ -112,8 +134,8 @@ export function parseBackup(text: string): { ok: true; saved: Saved } | { ok: fa
     return no("That file isn't a readable backup. Pick a file made with Back up progress.");
   }
   if (!file || typeof file !== 'object' || file.app !== BACKUP_APP) return no("That file isn't an Off Book backup.");
-  // Version 1 files ({ correct, learned }) still restore; sanitize carries them over.
-  if (file.version !== BACKUP_VERSION && file.version !== 1) return no('That backup comes from a different version of Off Book, so it cannot be restored here.');
+  // Version 1 files ({ correct, learned }) and version 2 files (bare-position ladder keys) still restore; sanitize carries them over.
+  if (file.version !== BACKUP_VERSION && file.version !== 2 && file.version !== 1) return no('That backup comes from a different version of Off Book, so it cannot be restored here.');
   const d = file.data as { ladder?: unknown; learned?: unknown } | null;
   if (!d || typeof d !== 'object') return no("That backup has no progress in it, so it wasn't restored.");
   const moves = file.version === 1 ? Array.isArray(d.learned) && d.learned.every((k) => typeof k === 'string') : !!d.ladder && typeof d.ladder === 'object';

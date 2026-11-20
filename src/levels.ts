@@ -3,8 +3,10 @@
 // a clean real game marks a line Proven.
 import { Chess } from 'chess.js';
 import type { Opening, Stage } from './data/openings';
-import { posKey } from './data/prep';
+import { ladderKey } from './data/prep';
 import { walkPrep } from './review/review';
+
+const uciOf = (m: { from: string; to: string; promotion?: string }) => m.from + m.to + (m.promotion ?? '');
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -20,7 +22,7 @@ export interface Rung {
   /** Epoch ms when the next review is due. */
   due: number;
 }
-/** Position key to its rung. A position missing here has not been learned yet. */
+/** Ladder key (position + prescribed move) to its rung. A key missing here has not been learned yet. */
 export type Ladder = Record<string, Rung>;
 
 const wait = (level: number) => RUNG_MS[Math.min(level, RUNG_MS.length - 1)];
@@ -45,8 +47,9 @@ export function stageKeys(stage: Stage, side: 'w' | 'b'): string[] {
   const chess = new Chess();
   const keys: string[] = [];
   for (const san of stage.moves) {
-    if (chess.turn() === side) keys.push(posKey(chess.fen()));
-    chess.move(san);
+    const fen = chess.fen();
+    const m = chess.move(san);
+    if (m.color === side) keys.push(ladderKey(fen, uciOf(m)));
   }
   return keys;
 }
@@ -96,23 +99,27 @@ export function dueNow(opening: Opening, ladder: Ladder, proven: readonly string
 
 /** The staged line a real game proves, if any (decision 14c): the student played every prep move
  *  right until the opponent left book or the prep ran out, and the game covered at least half of the
- *  line's moves. Positions, not move order, so a transposition still counts. */
+ *  line's moves, including at least one the opening's other lines don't have (a shared prefix proves
+ *  nothing). Positions, not move order, so a transposition still counts. */
 export function provenStage(sans: string[], opening: Opening): Stage | null {
   const walk = walkPrep(sans, opening);
   if (walk.leftBy === 'student') return null;
   const chess = new Chess();
   const played = new Set<string>();
-  for (const [ply, san] of sans.slice(0, walk.lastPrepPly + 1).entries()) {
-    if (ply % 2 === (opening.side === 'w' ? 0 : 1)) played.add(posKey(chess.fen()));
-    chess.move(san);
+  for (const san of sans.slice(0, walk.lastPrepPly + 1)) {
+    const fen = chess.fen();
+    const m = chess.move(san);
+    if (m.color === opening.side) played.add(ladderKey(fen, uciOf(m)));
   }
+  const all = opening.stages.map((stage) => stageKeys(stage, opening.side));
   let best: Stage | null = null;
   let most = 0;
-  for (const stage of opening.stages) {
-    const keys = stageKeys(stage, opening.side);
+  for (const [i, stage] of opening.stages.entries()) {
+    const keys = all[i];
     const hit = keys.filter((k) => played.has(k)).length;
+    const own = keys.some((k) => played.has(k) && !all.some((other, j) => j !== i && other.includes(k)));
     // ponytail: "half the line" is a judgement call; raise it if openings that barely start count.
-    if (hit * 2 >= keys.length && hit > most) { best = stage; most = hit; }
+    if (own && hit * 2 >= keys.length && hit > most) { best = stage; most = hit; }
   }
   return best;
 }

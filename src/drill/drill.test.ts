@@ -1,6 +1,7 @@
 import { Chess } from 'chess.js';
 import { describe, expect, it, vi } from 'vitest';
 import { buildTree, posKey, type PrepTree } from '../data/london';
+import { ladderKey } from '../data/prep';
 import { buildTree as caroKannTree } from '../data/caro-kann';
 import type { MaiaMove } from '../chess/maia';
 import { createDrill, JUDGE_MS, MISTAKE, PLAYABLE, type DrillEvent } from './drill';
@@ -8,6 +9,8 @@ import { createDrill, JUDGE_MS, MISTAKE, PLAYABLE, type DrillEvent } from './dri
 type Eval = { cp: number; best: string };
 
 const START = posKey(new Chess().fen());
+/** The ladder key of London's 1.d4: the start position plus the move prescribed there. */
+const D4 = ladderKey(new Chess().fen(), 'd2d4');
 /** Tree that covers only the start position, so any Black reply leaves book. */
 const tinyTree = (): PrepTree => new Map([[START, { san: 'd4', uci: 'd2d4' }]]);
 
@@ -35,13 +38,13 @@ function queuedEngine(queue: Eval[] = []) {
 /** Everything already learned, so tests exercise the testing step unless they pass their own set. */
 const allLearned = { has: () => true, add: () => {} };
 
-function setup(opts: { tree?: PrepTree; maia?: string[]; engine?: Eval[]; learned?: Set<string>; side?: 'w' | 'b'; openingMoves?: string[] } = {}) {
+function setup(opts: { tree?: PrepTree; maia?: string[]; engine?: Eval[]; learned?: Set<string>; side?: 'w' | 'b'; forcedReplies?: string[] } = {}) {
   const engine = queuedEngine(opts.engine);
   const drill = createDrill({
     tree: opts.tree ?? tinyTree(),
     learned: opts.learned ?? allLearned,
     side: opts.side,
-    openingMoves: opts.openingMoves,
+    forcedReplies: opts.forcedReplies,
     engine,
     maia: scriptedMaia(opts.maia ?? []),
     rand: () => 0,
@@ -145,11 +148,11 @@ describe('drill: learning step (decision 13)', () => {
     await drill.play(mv('d2', 'd4'));
     expect(of('prep-correct')[0]).toMatchObject({ learnedNow: true, counted: false });
     expect(drill.getState().reps).toBe(0);
-    expect(learned.has(START)).toBe(true);
+    expect(learned.has(D4)).toBe(true);
   });
 
   it('a learned position is tested: hidden, and a first-try correct move earns a rep', async () => {
-    const learned = new Set<string>([START]);
+    const learned = new Set<string>([D4]);
     const { drill, of } = setup({ tree: buildTree(), maia: ['d5'], learned });
     expect(drill.getState().teach).toBeNull();
     await drill.play(mv('d2', 'd4'));
@@ -312,11 +315,12 @@ describe('drill: Black student', () => {
     return posKey(c.fen());
   };
   const afterE4 = keyAfter('e4');
+  const afterE4C6 = `${afterE4} c7c6`;
   /** Tree that covers only the position after 1.e4, so any White reply leaves book. */
   const tinyBlack = (san = 'c6', uci = 'c7c6'): PrepTree => new Map([[afterE4, { san, uci }]]);
-  const black = (o: Parameters<typeof setup>[0] = {}) => setup({ side: 'b', openingMoves: ['e4'], ...o });
+  const black = (o: Parameters<typeof setup>[0] = {}) => setup({ side: 'b', forcedReplies: ['e4'], ...o });
 
-  it('the opponent moves first: the config plays 1.e4 and the student is on move', () => {
+  it('the opponent moves first: the config forces 1.e4 and the student is on move', () => {
     const { drill, events } = black({ tree: caroKannTree() });
     const s = drill.getState();
     expect(s.history).toEqual(['e4']);
@@ -344,11 +348,11 @@ describe('drill: Black student', () => {
     expect(await drill.play(mv('e7', 'e5'))).toBe(false);
     await drill.play(mv('c7', 'c6'));
     expect(of('prep-correct')[0]).toMatchObject({ san: 'c6', learnedNow: true, counted: false });
-    expect(learned.has(afterE4)).toBe(true);
+    expect(learned.has(afterE4C6)).toBe(true);
     expect(drill.getState().history).toEqual(['e4', 'c6', 'd4']);
     expect(drill.getState().teach?.san).toBe('d5'); // the next position is new too
 
-    const t = black({ tree: caroKannTree(), maia: ['d4'], learned: new Set([afterE4]) });
+    const t = black({ tree: caroKannTree(), maia: ['d4'], learned: new Set([afterE4C6]) });
     expect(t.drill.getState().teach).toBeNull();
     await t.drill.play(mv('c7', 'c6'));
     expect(t.of('prep-correct')[0]).toMatchObject({ learnedNow: false, counted: true });
@@ -424,7 +428,7 @@ describe('drill: Black student', () => {
   it('a checkmate by the student ends the game as won and is never flagged as a mistake', async () => {
     // Fool's mate: 1.f3 e5 2.g4 Qh4#
     const tree: PrepTree = new Map([[keyAfter('f3'), { san: 'e5', uci: 'e7e5' }]]);
-    const { drill, of } = setup({ side: 'b', openingMoves: ['f3'], tree, maia: ['g4'] });
+    const { drill, of } = setup({ side: 'b', forcedReplies: ['f3'], tree, maia: ['g4'] });
     await drill.play(mv('e7', 'e5'));
     await drill.play(mv('d8', 'h4'));
     expect(drill.getState()).toMatchObject({ phase: 'over', result: 'won' });
@@ -472,7 +476,7 @@ describe('drill: staged lines and the ladder (decision 14c)', () => {
     drill.on((e) => events.push(e));
     drill.start(1000);
     await drill.play(mv('d2', 'd4'));
-    expect(learned.calls).toEqual([[START, true]]);
+    expect(learned.calls).toEqual([[D4, true]]);
     expect(events.find((e) => e.type === 'prep-correct')).toMatchObject({ counted: true, climbed: true });
   });
 
@@ -483,7 +487,7 @@ describe('drill: staged lines and the ladder (decision 14c)', () => {
     await drill.play(mv('e2', 'e4')); // not prep
     drill.revealPrep();
     await drill.play(mv('d2', 'd4'));
-    expect(learned.calls).toEqual([[START, false]]);
+    expect(learned.calls).toEqual([[D4, false]]);
   });
 
   it('looking at the prep is a miss', () => {
@@ -491,7 +495,7 @@ describe('drill: staged lines and the ladder (decision 14c)', () => {
     const drill = createDrill({ tree: buildTree(), learned, engine: queuedEngine(), maia: scriptedMaia([]), rand: () => 0, delay: async () => {} });
     drill.start(1000);
     drill.revealPrep();
-    expect(learned.calls).toEqual([[START, false]]);
+    expect(learned.calls).toEqual([[D4, false]]);
   });
 });
 
@@ -515,7 +519,7 @@ describe('drill: sparring (v1 scope 3, decision 14d)', () => {
     const s = drill.getState();
     expect(s.history).toEqual(['e4', 'e5']);
     expect(s.offBook).toBe(true);
-    expect(learned.calls).toEqual([[START, false]]);
+    expect(learned.calls).toEqual([[D4, false]]);
     expect(events.find((e) => e.type === 'left-prep')).toMatchObject({ played: 'e4', prep: 'd4', loss: 80, verdict: 'mistake' });
     expect(events.some((e) => e.type === 'prep-miss')).toBe(false);
   });
@@ -526,7 +530,7 @@ describe('drill: sparring (v1 scope 3, decision 14d)', () => {
     expect(drill.getState().teach).toBeNull();
     expect(drill.revealPrep()).toBeUndefined();
     await drill.play(mv('d2', 'd4'));
-    expect(learned.calls).toEqual([[START, true]]);
+    expect(learned.calls).toEqual([[D4, true]]);
   });
 
   it('a position not learned yet takes any move and touches no ladder', async () => {
@@ -536,5 +540,51 @@ describe('drill: sparring (v1 scope 3, decision 14d)', () => {
     await drill.play(mv('d2', 'd4'));
     expect(events.find((e) => e.type === 'prep-correct')).toMatchObject({ counted: false, learnedNow: false });
     expect(learned.calls).toEqual([]);
+  });
+});
+
+// The opponent's first moves are played by rule while the student is in book (decision 16, step 0).
+describe('drill: forced replies', () => {
+  const keyAfter = (...sans: string[]) => {
+    const c = new Chess();
+    sans.forEach((san) => { c.move(san); });
+    return posKey(c.fen());
+  };
+  /** An Italian-like White tree: 1.e4, then 2.Nf3 after 1...e5. */
+  const italian = (): PrepTree => new Map([[START, { san: 'e4', uci: 'e2e4' }], [keyAfter('e4', 'e5'), { san: 'Nf3', uci: 'g1f3' }]]);
+
+  it('answers the first move by rule, Maia not consulted, and says so', async () => {
+    const maia = vi.fn(scriptedMaia(['c5']));
+    const events: DrillEvent[] = [];
+    const drill = createDrill({ tree: italian(), forcedReplies: ['e5'], learned: allLearned, engine: queuedEngine(), maia, rand: () => 0, delay: async () => {} });
+    drill.on((e) => events.push(e));
+    drill.start(1000);
+    await drill.play(mv('e2', 'e4'));
+    expect(drill.getState()).toMatchObject({ history: ['e4', 'e5'], offBook: false, phase: 'student' });
+    expect(events.find((e) => e.type === 'opponent-move')).toMatchObject({ san: 'e5', staged: false, forced: true });
+    expect(maia).not.toHaveBeenCalled();
+  });
+
+  it('a staged line wins over the forced reply', async () => {
+    const { drill, of } = setup({ tree: italian(), forcedReplies: ['e5'], maia: ['d5'] });
+    drill.start(1000, ['e4', 'c5']);
+    await drill.play(mv('e2', 'e4'));
+    expect(drill.getState().history).toEqual(['e4', 'c5']);
+    expect(of('opponent-move').at(-1)).toMatchObject({ staged: true, forced: false });
+  });
+
+  it('as Black, a staged line that starts differently keeps the forced first move off the board', async () => {
+    const { drill } = setup({ side: 'b', forcedReplies: ['e4'], tree: tinyTree(), maia: [] });
+    drill.start(1000, ['d4', 'd5']);
+    expect(drill.getState()).toMatchObject({ history: [], phase: 'opponent' });
+    await vi.waitFor(() => expect(drill.getState().history).toEqual(['d4']));
+  });
+
+  it('stops once the student has left book: Maia replies then', async () => {
+    const { drill, of } = setup({ tree: italian(), forcedReplies: ['e5'], maia: ['d5'] });
+    drill.start(1000, [], true); // sparring: a move that is not prep stands
+    await drill.play(mv('d2', 'd4'));
+    expect(drill.getState()).toMatchObject({ offBook: true, history: ['d4', 'd5'] });
+    expect(of('opponent-move')[0]).toMatchObject({ san: 'd5', forced: false });
   });
 });

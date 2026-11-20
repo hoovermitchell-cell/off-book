@@ -24,7 +24,7 @@ covers 1.e4. After any other first move the student is out of book on move one.
 
 Pinned lines (`LINES`, 20 of them after decision 15) cover one answer per row. The generator fills
 in the likelier White deviations, 358 positions in all. Every Black move in the tree
-is within 60 centipawns of Stockfish's best (checked with `spike/check-caro-kann.mjs`, Stockfish
+is within 60 centipawns of Stockfish's best (checked with `spike/check-tree.mjs caro-kann`, Stockfish
 lite at 400 ms a position). That is a short search. It is not a check against opening theory.
 
 Two traps are worth their own notes:

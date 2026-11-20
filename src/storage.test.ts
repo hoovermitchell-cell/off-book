@@ -1,4 +1,6 @@
+import { Chess } from 'chess.js';
 import { describe, expect, it } from 'vitest';
+import { posKey } from './data/prep';
 import { BACKUP_APP, BACKUP_VERSION, exportBackup, loadOpening, loadSaved, OPENING_KEY, parseBackup, save, saveOpening, STORAGE_KEY, updateSaved } from './storage';
 
 const memory = () => {
@@ -53,7 +55,7 @@ describe('storage', () => {
 
     it('round-trips through export and parse', () => {
       const b = exportBackup(data, new Date('2026-10-23T12:00:00Z'));
-      expect(b).toMatchObject({ app: 'off-book', version: 2, exportedAt: '2026-10-23T12:00:00.000Z' });
+      expect(b).toMatchObject({ app: 'off-book', version: 3, exportedAt: '2026-10-23T12:00:00.000Z' });
       expect(parseBackup(JSON.stringify(b))).toEqual({ ok: true, saved: data });
     });
 
@@ -82,7 +84,7 @@ describe('storage', () => {
     });
 
     it('rejects an unknown version', () => {
-      expect(reason(file({ version: 3 }))).toMatch(/different version/);
+      expect(reason(file({ version: 4 }))).toMatch(/different version/);
       expect(reason(file({ version: undefined }))).toMatch(/different version/);
     });
 
@@ -92,6 +94,45 @@ describe('storage', () => {
       expect(reason(file({ version: 1 }, { correct: 1, learned: 'a' }))).toMatch(/learned moves/);
       expect(reason(file({ version: 1 }, { correct: 1, learned: ['a', 2] }))).toMatch(/learned moves/);
     });
+  });
+});
+
+// Ladder keys gained the prescribed move (backup version 3). Older saves and backups key by position only.
+describe('legacy ladder keys', () => {
+  const at = (...sans: string[]) => {
+    const c = new Chess();
+    for (const san of sans) c.move(san);
+    return posKey(c.fen());
+  };
+  // Positions in the London tree (White: 1.d4, 2.Bf4) and the Caro-Kann tree (Black: 1...c6), and one in neither.
+  const legacy = { [at()]: { level: 3, due: 10 }, [at('d4', 'd5')]: { level: 1, due: 20 }, [at('e4')]: { level: 2, due: 30 }, [at('h4')]: { level: 4, due: 40 } };
+  const migrated = { [`${at()} d2d4`]: { level: 3, due: 10 }, [`${at('d4', 'd5')} c1f4`]: { level: 1, due: 20 }, [`${at('e4')} c7c6`]: { level: 2, due: 30 } };
+  const v2 = JSON.stringify({ app: BACKUP_APP, version: 2, exportedAt: 'x', data: { ladder: legacy, proven: ['textbook'] } });
+
+  it('a version 2 backup restores with exactly its earned rungs under the new keys', () => {
+    // 1.h4 is in neither tree, so that rung is dropped rather than guessed at.
+    expect(parseBackup(v2)).toEqual({ ok: true, saved: { ladder: migrated, proven: ['textbook'] } });
+  });
+
+  it('the first format (learned list) migrates too', () => {
+    const v1 = JSON.stringify({ app: BACKUP_APP, version: 1, exportedAt: 'x', data: { correct: 3, learned: [at(), at('h4')] } });
+    expect(parseBackup(v1)).toEqual({ ok: true, saved: { ladder: { [`${at()} d2d4`]: { level: 0, due: 0 } }, proven: [] } });
+  });
+
+  it('a saved ladder with old keys migrates on load, and migrating twice changes nothing', () => {
+    const store = memory();
+    store.setItem(STORAGE_KEY, JSON.stringify({ ladder: legacy, proven: [] }));
+    const once = loadSaved(store);
+    expect(once.ladder).toEqual(migrated);
+    save(once, store);
+    expect(loadSaved(store)).toEqual(once);
+  });
+
+  it('keys already in the new shape pass through, and a legacy key meeting one keeps the higher level', () => {
+    const store = memory();
+    const k = `${at()} d2d4`;
+    store.setItem(STORAGE_KEY, JSON.stringify({ ladder: { [k]: { level: 1, due: 5 }, [at()]: { level: 3, due: 10 }, [`${at('c4')} e7e5`]: { level: 2, due: 7 } }, proven: [] }));
+    expect(loadSaved(store).ladder).toEqual({ [k]: { level: 3, due: 10 }, [`${at('c4')} e7e5`]: { level: 2, due: 7 } });
   });
 });
 
