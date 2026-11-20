@@ -34,6 +34,10 @@ export const LINES = [
   // Englund: the trap is for White. 6.Bc3?? Bb4 7.Qd2 Bxc3 8.Qxc3?? Qc1#. Learn 6.Nc3 instead.
   'd4 e5 dxe5 Nc6 Nf3 Qe7 Bf4 Qb4+ Bd2 Qxb2 Nc3',
   'd4 d5 Bf4 e5 Bxe5',
+  // Intermediate tier (decision 16 pilot): the textbook continued to move 12
+  'd4 d5 Bf4 Nf6 e3 e6 Nf3 c5 c3 Nc6 Nbd2 Bd6 Bg3 O-O Bd3 Re8 Ne5 cxd4 exd4 Nxe5 dxe5 Bxe5 Bxe5',
+  // Intermediate tier (decision 16 pilot): King's Indian setup, extended to move 9
+  'd4 Nf6 Bf4 g6 e3 Bg7 Nf3 O-O Be2 d6 h3 Nbd7 c3 Re8 Nbd2 e5 Bg5',
 ];
 
 export const posKey = (fen) => fen.split(' ').slice(0, 4).join(' ');

@@ -4,20 +4,23 @@
 // opponent's turn: every reply Maia plays at least MIN_REPLY often (max over RATINGS), while the path
 // stays likely enough (MIN_PATH) and the move number is at most maxMove.
 // ponytail: system preference is a fixed move list, not a plan model; good enough for one opening.
+// Importing this file only exposes makePicker (used by extend-line.mjs); the generator runs when it is the entry point.
 import { writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import * as ort from 'onnxruntime-web';
 import { Chess } from 'chess.js';
 import { createEngine } from './engine.js';
 import { maiaMoves } from './maia.js';
 
 const RATINGS = [800, 1200, 1600];
-const MIN_REPLY = 0.08, MIN_PATH = 0.002, SLACK = 35;
+export const SLACK = 35;
+const MIN_REPLY = 0.08, MIN_PATH = 0.002;
 
 // Per opening: the student's side, the moves before the first student move, how deep to go, and the
 // "system" preference list (SAN, best first). `extra` adds candidates after the recaptures and check
 // answers; `reject` drops a candidate. London's two hooks are exactly its old inline rules.
-const OPENINGS = {
+export const OPENINGS = {
   london: {
     side: 'w', start: [], maxMove: 8, maxCands: 7,
     system: ['d4', 'Bf4', 'e3', 'Nf3', 'c3', 'Bd3', 'Nbd2', 'O-O', 'h3', 'Be2', 'Qc2', 'Qe2', 'Ngf3', 'Nd2', 'Re1', 'a4', 'Bh2', 'Qc1', 'b3'],
@@ -49,79 +52,93 @@ const OPENINGS = {
     reject: (c, m, side) => !'pk'.includes(m.piece) && c.history({ verbose: true }).some((h) => h.color === side && h.to === m.from),
   },
 };
-const name = process.argv[2] ?? 'london';
-const cfg = OPENINGS[name];
-if (!cfg) throw new Error(`unknown opening ${name}; try ${Object.keys(OPENINGS).join(', ')}`);
-const { side, start, maxMove: MAX_MOVE, system: SYSTEM, blocks: BLOCKS } = cfg;
-const { buildTree, posKey, AUTO: old } = await import(`./${name}.js`);
-const sign = side === 'w' ? 1 : -1; // Stockfish scores are from White's point of view
 
-const pinned = buildTree(Chess, { auto: false });
-const keep = process.env.KEEP ? old ?? {} : {}; // KEEP=1: reuse the picks already generated, so new pins only redo the positions they change
-const sf = createRequire(import.meta.url)('stockfish')('lite-single', (l) => engine.onLine(l));
-const engine = createEngine((c) => sf.processCommand(c));
-await engine.ready();
-const session = await ort.InferenceSession.create('./maia3-5m.fp16.onnx', { graphOptimizationLevel: 'basic' });
+/** The student's move picker for opening `name`: the first candidate within SLACK of Stockfish's best, else its best. */
+export function makePicker(name, engine) {
+  const cfg = OPENINGS[name];
+  if (!cfg) throw new Error(`unknown opening ${name}; try ${Object.keys(OPENINGS).join(', ')}`);
+  const { side, system: SYSTEM, blocks: BLOCKS } = cfg;
+  const sign = side === 'w' ? 1 : -1; // Stockfish scores are from White's point of view
 
-function candidates(c) {
-  const legal = c.moves({ verbose: true });
-  const last = c.history({ verbose: true }).at(-1);
-  const out = [];
-  if (last?.captured) out.push(...legal.filter((m) => m.to === last.to).sort((a, b) => 'pnbrqk'.indexOf(a.piece) - 'pnbrqk'.indexOf(b.piece)));
-  if (c.inCheck()) out.push(...BLOCKS.map((s) => legal.find((m) => m.san.replace('+', '') === s)).filter(Boolean));
-  out.push(...cfg.extra(c, legal));
-  out.push(...SYSTEM.map((s) => legal.find((m) => m.san.replace(/[+#]/, '') === s)).filter(Boolean));
-  // Never "develop" a piece back to where it just came from (Bg3, then Bf4 again).
-  const undoes = (m) => c.history({ verbose: true }).some((h) => h.color === side && h.from === m.to && h.to === m.from);
-  return [...new Set(out.filter(Boolean))].filter((m) => !undoes(m) && !cfg.reject(c, m, side)).slice(0, cfg.maxCands);
-}
-
-async function pickMine(c) {
-  const best = await engine.evaluate(c.fen(), 400);
-  for (const m of candidates(c)) {
-    const t = new Chess(c.fen()); t.move(m.san);
-    const after = await engine.evaluate(t.fen(), 250);
-    const loss = sign * (best.cp - after.cp);
-    if (loss <= SLACK) return { san: m.san, uci: m.from + m.to + (m.promotion ?? ''), loss, how: 'system' };
+  function candidates(c) {
+    const legal = c.moves({ verbose: true });
+    const last = c.history({ verbose: true }).at(-1);
+    const out = [];
+    if (last?.captured) out.push(...legal.filter((m) => m.to === last.to).sort((a, b) => 'pnbrqk'.indexOf(a.piece) - 'pnbrqk'.indexOf(b.piece)));
+    if (c.inCheck()) out.push(...BLOCKS.map((s) => legal.find((m) => m.san.replace('+', '') === s)).filter(Boolean));
+    out.push(...cfg.extra(c, legal));
+    out.push(...SYSTEM.map((s) => legal.find((m) => m.san.replace(/[+#]/, '') === s)).filter(Boolean));
+    // Never "develop" a piece back to where it just came from (Bg3, then Bf4 again).
+    const undoes = (m) => c.history({ verbose: true }).some((h) => h.color === side && h.from === m.to && h.to === m.from);
+    return [...new Set(out.filter(Boolean))].filter((m) => !undoes(m) && !cfg.reject(c, m, side)).slice(0, cfg.maxCands);
   }
-  const m = new Chess(c.fen()).move({ from: best.best.slice(0, 2), to: best.best.slice(2, 4), promotion: best.best[4] });
-  return { san: m.san, uci: best.best, loss: 0, how: 'stockfish' };
+
+  async function pickMine(c) {
+    const best = await engine.evaluate(c.fen(), 400);
+    for (const m of candidates(c)) {
+      const t = new Chess(c.fen()); t.move(m.san);
+      const after = await engine.evaluate(t.fen(), 250);
+      const loss = sign * (best.cp - after.cp);
+      if (loss <= SLACK) return { san: m.san, uci: m.from + m.to + (m.promotion ?? ''), loss, how: 'system' };
+    }
+    const m = new Chess(c.fen()).move({ from: best.best.slice(0, 2), to: best.best.slice(2, 4), promotion: best.best[4] });
+    return { san: m.san, uci: best.best, loss: 0, how: 'stockfish' };
+  }
+  return { pickMine };
 }
 
-async function replies(c) {
-  const byMove = new Map();
-  for (const r of RATINGS) for (const m of await maiaMoves(ort, session, c, r, r)) byMove.set(m.san, Math.max(byMove.get(m.san) ?? 0, m.p));
-  return [...byMove].filter(([, p]) => p >= MIN_REPLY);
-}
+async function generate() {
+  const name = process.argv[2] ?? 'london';
+  const cfg = OPENINGS[name];
+  if (!cfg) throw new Error(`unknown opening ${name}; try ${Object.keys(OPENINGS).join(', ')}`);
+  const { side, start, maxMove: MAX_MOVE } = cfg;
+  const { buildTree, posKey, AUTO: old } = await import(`./${name}.js`);
 
-const auto = {}, seen = new Set();
-const queue = [{ moves: start, p: 1 }];
-while (queue.length) {
-  const { moves, p } = queue.shift();
-  const c = new Chess(); moves.forEach((m) => c.move(m));
-  const key = posKey(c.fen());
-  if (seen.has(key) || c.isGameOver()) continue;
-  seen.add(key);
-  const w = pinned.get(key) ?? (auto[key] = { ...(keep[key] ?? await pickMine(c)), p: +p.toFixed(3), line: moves.join(' ') });
-  if (c.moveNumber() >= MAX_MOVE) continue;
-  c.move(w.san);
-  if (c.isGameOver()) continue;
-  for (const [san, q] of await replies(c)) if (p * q >= MIN_PATH) queue.push({ moves: [...moves, w.san, san], p: p * q });
-  process.stdout.write(`\r${seen.size} positions, ${Object.keys(auto).length} auto, queue ${queue.length}   `);
-}
-sf.terminate();
+  const pinned = buildTree(Chess, { auto: false });
+  const keep = process.env.KEEP ? old ?? {} : {}; // KEEP=1: reuse the picks already generated, so new pins only redo the positions they change
+  const sf = createRequire(import.meta.url)('stockfish')('lite-single', (l) => engine.onLine(l));
+  const engine = createEngine((c) => sf.processCommand(c));
+  await engine.ready();
+  const session = await ort.InferenceSession.create('./maia3-5m.fp16.onnx', { graphOptimizationLevel: 'basic' });
+  const { pickMine } = makePicker(name, engine);
 
-if (cfg.spikeCopy) writeFileSync(`${name}-auto.js`, `// Generated by build-tree.mjs. Do not edit by hand; pin lines in ${name}.js instead.
+  async function replies(c) {
+    const byMove = new Map();
+    for (const r of RATINGS) for (const m of await maiaMoves(ort, session, c, r, r)) byMove.set(m.san, Math.max(byMove.get(m.san) ?? 0, m.p));
+    return [...byMove].filter(([, p]) => p >= MIN_REPLY);
+  }
+
+  const auto = {}, seen = new Set();
+  const queue = [{ moves: start, p: 1 }];
+  while (queue.length) {
+    const { moves, p } = queue.shift();
+    const c = new Chess(); moves.forEach((m) => c.move(m));
+    const key = posKey(c.fen());
+    if (seen.has(key) || c.isGameOver()) continue;
+    seen.add(key);
+    const w = pinned.get(key) ?? (auto[key] = { ...(keep[key] ?? await pickMine(c)), p: +p.toFixed(3), line: moves.join(' ') });
+    if (c.moveNumber() >= MAX_MOVE) continue;
+    c.move(w.san);
+    if (c.isGameOver()) continue;
+    for (const [san, q] of await replies(c)) if (p * q >= MIN_PATH) queue.push({ moves: [...moves, w.san, san], p: p * q });
+    process.stdout.write(`\r${seen.size} positions, ${Object.keys(auto).length} auto, queue ${queue.length}   `);
+  }
+  sf.terminate();
+
+  if (cfg.spikeCopy) writeFileSync(`${name}-auto.js`, `// Generated by build-tree.mjs. Do not edit by hand; pin lines in ${name}.js instead.
 export const AUTO = ${JSON.stringify(auto, null, 1)};
 `);
-// The app's copy. ponytail: london.js's LINES must match src/data/london.ts by hand; every other opening's
-// spike module (ts-opening.js) reads its LINES and AUTO straight from the TS files. Move this generator into
-// the app when Node can import the app's extensionless TS modules.
-const types = `import type { PrepMove } from './${name === 'london' ? 'london' : 'prep'}';`; // london.ts re-exports PrepMove; the rest import it from prep.ts
-writeFileSync(`../src/data/${name}-auto.ts`, `// Generated by spike/build-tree.mjs. Do not edit by hand; pin lines in ${name}.ts instead.
+  // The app's copy. ponytail: london.js's LINES must match src/data/london.ts by hand; every other opening's
+  // spike module (ts-opening.js) reads its LINES and AUTO straight from the TS files. Move this generator into
+  // the app when Node can import the app's extensionless TS modules.
+  const types = `import type { PrepMove } from './${name === 'london' ? 'london' : 'prep'}';`; // london.ts re-exports PrepMove; the rest import it from prep.ts
+  writeFileSync(`../src/data/${name}-auto.ts`, `// Generated by spike/build-tree.mjs. Do not edit by hand; pin lines in ${name}.ts instead.
 ${types}
 
 export const AUTO: Record<string, PrepMove> = ${JSON.stringify(auto, null, 1)};
 `);
-const vals = Object.values(auto);
-console.log(`\nwrote ${vals.length} auto positions (${vals.filter((v) => v.how === 'stockfish').length} fell back to Stockfish's move)`);
+  const vals = Object.values(auto);
+  console.log(`\nwrote ${vals.length} auto positions (${vals.filter((v) => v.how === 'stockfish').length} fell back to Stockfish's move)`);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await generate();

@@ -45,7 +45,7 @@ describe('stages', () => {
   const first = stageKeys(london.stages[0], 'w');
 
   it('only the first line is open at the start, and it is picked', () => {
-    expect(stageViews(london, {}, []).map((v) => v.status)).toEqual(['learning', 'locked', 'locked', 'locked', 'locked']);
+    expect(stageViews(london, {}, []).map((v) => v.status)).toEqual(['learning', 'locked', 'locked', 'locked', 'locked', 'locked', 'locked']);
     expect(pickStage(london, {}, [], 0)?.id).toBe('textbook');
   });
 
@@ -58,14 +58,30 @@ describe('stages', () => {
 
   it('cleared at SECURE, proven when recorded, and free play when nothing is new or due', () => {
     const everything = all(london.stages.flatMap((s) => stageKeys(s, 'w')), SECURE);
-    expect(stageViews(london, everything, ['textbook']).map((v) => v.status)).toEqual(['proven', 'cleared', 'cleared', 'cleared', 'cleared']);
+    expect(stageViews(london, everything, ['textbook']).map((v) => v.status)).toEqual(['proven', 'cleared', 'cleared', 'cleared', 'cleared', 'cleared', 'cleared']);
     expect(pickStage(london, everything, [], 0)).toBeNull();
     expect(dueNow(london, all(first, 1, 0), [], 1)).toBe(first.length);
   });
 
+  it('paused: picks a started line with a due move, skips an unstarted one, else free play', () => {
+    const [a, b] = london.stages.map((s) => stageKeys(s, 'w'));
+    const started = (due: number): Ladder => ({ ...all(a, UNLOCK), [a[0]]: { level: UNLOCK, due } }); // line 1 learned, line 2 open
+    expect(pickStage(london, started(0), [], 5, true)?.id).toBe('textbook'); // a move due in the started line
+    expect(pickStage(london, started(1e15), [], 5)?.id).toBe('nc6-bf5'); // unpaused, the unstarted line 2 would begin
+    expect(pickStage(london, started(1e15), [], 5, true)).toBeNull(); // paused: nothing due, line 2 stays unstarted
+    expect(pickStage(london, {}, [], 0, true)).toBeNull(); // only unstarted lines remain
+    // A line with one learned move and new moves left is started and still has something new to play.
+    expect(pickStage(london, learn({}, a[0], 0), [], 0, true)?.id).toBe('textbook');
+    // The second line shares its first moves with the first; only a move of its own starts it. Then it is picked on that move's due date.
+    const two: Ladder = { ...all(a, UNLOCK), [b.find((k) => !a.includes(k))!]: { level: 0, due: 0 } };
+    expect(pickStage(london, two, [], 1, true)?.id).toBe('nc6-bf5');
+    expect(dueNow(london, started(0), [], 5, true)).toBe(1);
+  });
+
   it('a clean real game proves the line it followed; leaving prep yourself does not', () => {
     const textbook = london.stages[0].moves;
-    expect(provenStage([...textbook, 'Nb4'], london)?.id).toBe('textbook');
+    expect(provenStage([...textbook, 'Nb4'], london)?.id).toBe('textbook'); // the deeper textbook-12 contains it, and doesn't block it
+    expect(provenStage([...london.stages.find((s) => s.id === 'textbook-12')!.moves, 'Qe7'], london)?.id).toBe('textbook-12');
     expect(provenStage(['d4', 'd5', 'Bf4', 'Nf6', 'Nf3'], london)).toBeNull(); // 3.Nf3 is not the prep 3.e3
     expect(provenStage(['d4', 'g6', 'Bf4'], london)).toBeNull(); // too little of any line
     expect(provenStage([...caro.stages[4].moves, 'c3'], caro)?.id).toBe('advance');
