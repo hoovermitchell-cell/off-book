@@ -94,7 +94,7 @@ browser tab bars: `favicon.svg`, with `favicon-svg-16.png` and
 `favicon-svg-32.png` as fallbacks. Files: [design/brand/off-the-page/](design/brand/off-the-page/).
 The tab and highlighted-knight directions were not chosen; their files stay
 in `design/brand/` for reference. Before going public, confirm the mark is distinct from Lichess's
-knight logo (backlog: trademark check).
+knight logo (trademark check: issue #37).
 
 ## Type
 All OFL, all self-hosted from [design/fonts/](design/fonts/), with each
